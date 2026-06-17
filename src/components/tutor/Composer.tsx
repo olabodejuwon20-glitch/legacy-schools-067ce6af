@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Paperclip, Mic, Square, X, Send, Loader2, Image as ImageIcon, File as FileIcon, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,13 +23,24 @@ interface Props {
   onTextChange?: (text: string) => void;
   /** School scope for credit accounting & access control on server endpoints. */
   schoolId?: string;
+  /** Seed/overwrite composer text from a parent (e.g. AI draft). Increment a counter
+   *  in `seedNonce` to re-apply the same string. */
+  seedText?: string;
+  seedNonce?: number;
 }
 
 export function Composer({
   bucket, userId, prefix, disabled, busy, placeholder = "Message…",
   onSubmit, onStop, accept = "image/*,application/pdf,.txt,.md,.docx", transcribeVoice = true, onTextChange, schoolId,
+  seedText, seedNonce,
 }: Props) {
   const [text, setText] = useState("");
+  useEffect(() => {
+    if (seedText == null) return;
+    setText(seedText);
+    onTextChange?.(seedText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seedNonce, seedText]);
   const [pending, setPending] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [recording, setRecording] = useState(false);
