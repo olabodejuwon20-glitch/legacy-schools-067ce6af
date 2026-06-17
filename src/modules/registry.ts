@@ -4,7 +4,7 @@ import {
   ClipboardCheck, ClipboardList, BarChart3, Award, Mail, FilePlus2, PencilRuler, MessagesSquare,
   FolderOpen, ListChecks, Sparkles, UserSquare2, Activity, Package,
   Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine,
-  ScrollText,
+  ScrollText, Inbox as InboxIcon,
 } from "lucide-react";
 import { ModuleManifest } from "./types";
 
@@ -167,6 +167,12 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
   },
 
   // ---- Communication ----
+  {
+    slug: "communication-hub", name: "Communication Hub", category: "communication", icon: InboxIcon, core: true,
+    sidebar: [
+      { label: "Communication", to: "communication", icon: InboxIcon, roles: ["admin", "teacher", "student", "parent"] },
+    ],
+  },
   {
     slug: "messages", name: "Messaging", category: "communication", icon: MessagesSquare, core: true,
     sidebar: [
