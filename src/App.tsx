@@ -281,6 +281,31 @@ const App = () => (
               <Route path="trad-unlock/:resultId" element={<TradUnlockResult />} />
               <Route path="help" element={<HelpPage />} />
 
+              {/* ===== Communication Hub (unified for all roles) ===== */}
+              {(["admin", "teacher", "student", "parent"] as const).map((r) => (
+                <Route key={r} path={`${r}/communication`} element={<RoleGate allow={r}><CommsHub /></RoleGate>}>
+                  <Route index element={<Navigate to="inbox" replace />} />
+                  <Route path="inbox" element={<CommsInbox />} />
+                  <Route path="dm" element={<CommsDM />} />
+                  <Route path="dm/:convId" element={<CommsDM />} />
+                  <Route path="channels" element={<CommsChannels />} />
+                  <Route path="channels/:channelId" element={<CommsChannels />} />
+                  <Route path="announcements" element={<CommsAnnouncements />} />
+                  <Route path="broadcasts" element={<CommsBroadcasts />} />
+                  <Route path="tickets" element={<CommsTickets />} />
+                  <Route path="templates" element={<CommsTemplates />} />
+                  <Route path="scheduled" element={<CommsScheduled />} />
+                  <Route path="notifications" element={<CommsNotifications />} />
+                  <Route path="analytics" element={<CommsAnalytics />} />
+                </Route>
+              ))}
+
+              {/* Legacy redirects → unified hub (zero breakage) */}
+              <Route path="admin/inbox-legacy" element={<RoleGate allow="admin"><Inbox /></RoleGate>} />
+              <Route path="teacher/inbox-legacy" element={<RoleGate allow="teacher"><Inbox /></RoleGate>} />
+              <Route path="student/inbox-legacy" element={<RoleGate allow="student"><Inbox /></RoleGate>} />
+              <Route path="parent/inbox-legacy" element={<RoleGate allow="parent"><Inbox /></RoleGate>} />
+
               <Route path="teacher" element={<RoleGate allow="teacher"><TeacherDashboard /></RoleGate>} />
               <Route path="teacher/classes" element={<RoleGate allow="teacher"><TeacherClasses /></RoleGate>} />
               <Route path="teacher/attendance" element={<RoleGate allow="teacher"><TeacherAttendance /></RoleGate>} />
