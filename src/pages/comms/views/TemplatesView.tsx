@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText, Plus, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ export default function TemplatesView() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("general");
   const [body, setBody] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
 
   const refresh = async () => {
     if (!school) return;
@@ -42,6 +43,18 @@ export default function TemplatesView() {
     refresh();
   };
 
+  const aiAssist = async (intent: "draft" | "improve") => {
+    if (!school) return;
+    if (intent === "improve" && !body.trim()) { toast.error("Write something first"); return; }
+    setAiBusy(true);
+    const { data, error } = await supabase.functions.invoke("comms-ai-assist", {
+      body: { school_id: school.id, intent, text: body || name, options: { purpose: name || category } },
+    });
+    setAiBusy(false);
+    if (error || (data as any)?.error) return toast.error(error?.message ?? (data as any)?.error ?? "AI failed");
+    setBody((data as any).text ?? "");
+  };
+
   return (
     <div className="h-full overflow-auto p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -59,7 +72,17 @@ export default function TemplatesView() {
                   {["general","fee_reminder","attendance_alert","exam_notice","result_notice","behavior_report"].map((c) => <option key={c} value={c}>{c.replace("_"," ")}</option>)}
                 </select>
               </div>
-              <div><Label>Body</Label><Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder="Hi {{parent_name}}, this is to inform you..."/></div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Body</Label>
+                  <div className="flex gap-1">
+                    <Button type="button" size="sm" variant="ghost" disabled={aiBusy} onClick={() => aiAssist("draft")} className="h-7 text-xs"><Sparkles className="size-3 mr-1"/> Draft</Button>
+                    <Button type="button" size="sm" variant="ghost" disabled={aiBusy} onClick={() => aiAssist("improve")} className="h-7 text-xs"><Sparkles className="size-3 mr-1"/> Improve</Button>
+                  </div>
+                </div>
+                <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder="Hi {{parent_name}}, this is to inform you..."/>
+                {aiBusy && <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Loader2 className="size-3 animate-spin"/> AI thinking…</div>}
+              </div>
             </div>
             <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={create}>Save</Button></DialogFooter>
           </DialogContent>
