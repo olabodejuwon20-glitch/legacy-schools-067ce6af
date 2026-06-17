@@ -30,7 +30,7 @@ export default function CommsHub() {
 
   return (
     <>
-      <SEO title="Communication Hub" description="Unified inbox, channels, broadcasts and tickets for your school." />
+      <SEO title="Communication Hub" description="Unified inbox, channels, broadcasts and tickets for your school." path="/communication" />
       <div className="h-[calc(100vh-3.5rem)] flex bg-background">
         <aside className="w-56 shrink-0 border-r bg-card/40 overflow-y-auto">
           <div className="px-4 py-3">
