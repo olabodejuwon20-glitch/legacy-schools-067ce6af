@@ -1,92 +1,115 @@
-## Traditional Exam System — Phase 1
+## Legacyskool Communication Hub — Upgrade Plan
 
-A new module sitting alongside (not replacing) the existing CBT system. Phase 1 delivers the planning + authoring foundation only. Approvals, scheduling, student execution, and scratch cards land in later phases.
+This refactors the existing messaging/announcement/support stack into one cohesive "Communication" workspace. **No data loss, no breaking changes.** Existing `messages`, `conversations`, `conversation_messages`, `announcements`, `platform_announcements`, `parent_comms`, `support_tickets`, and notifier realtime continue to work as-is — we layer on top.
 
-Namespace convention: `trad_*` tables, `/admin/trad-exams/*` and `/teacher/trad-exams/*` routes, `traditional-exams` module slug. Nothing in `exams`/`assessments`/`questions_v2` is touched.
+---
 
-### 1. Database (new migration)
+### Phase 0 — Foundation (no schema risk)
 
-New tables, all `school_id`-scoped with RLS + GRANTs:
+1. **New module** `communication-hub` in `src/modules/registry.ts` replacing scattered entries:
+   - Today: `messages`, `announcements`, `parent-comms` (teacher), `teacher-comms` (parent), Inbox (shared), Support (super only).
+   - After: a single "Communication" group with sub-routes, role-filtered. Old slugs stay as aliases so existing links/bookmarks keep working.
+2. **Shell layout** `src/pages/comms/Hub.tsx` — Slack-style 3-pane: left rail (channels/sections), middle list, right reading pane. Mobile responsive (stacked drawers via existing `Sheet`).
+3. **Shared primitives** in `src/components/comms/`: `ChannelList`, `MessageThread`, `Composer` (reuses existing `MessagesPanel` logic), `UnreadBadge`, `PresenceDot`, `TemplatePicker`.
 
-- `trad_exam_sessions` — exam period container (e.g. "2026 First Term Exams"). Fields: name, term, year, start_date, end_date, status (`planning|published|locked`), created_by.
-- `trad_exam_timetable` — one row per scheduled paper. Fields: session_id, class_id, subject_id, exam_date, start_time, duration_minutes, venue, status (`draft|pending|approved`). DB-level conflict check via trigger (same class + overlapping time window).
-- `trad_exams` — the exam paper itself, linked 1:1 to a timetable row. Fields: timetable_id, title, instructions, total_marks, exam_type (`mcq|theory|mixed`), draft_status (`draft|submitted`), author_id.
-- `trad_exam_sections` — optional sections within a paper (Section A: MCQ, Section B: Theory). Fields: exam_id, label, instructions, position.
-- `trad_exam_questions` — question bank for this module. Fields: exam_id, section_id, position, type (`mcq|theory`), prompt, options (jsonb, MCQ only), correct_index (MCQ, kept private), marks, image_path (storage), explanation, ai_generated bool.
-- `trad_exam_uploads` — record of uploaded source documents. Fields: exam_id, file_path, mime, status (`pending|parsing|parsed|failed`), parse_meta jsonb, uploaded_by.
+### Phase 1 — Unified Inbox & DMs
 
-Storage:
-- New private bucket `trad-exam-assets` for source docs + extracted diagram images. RLS scoped to school staff.
+- **Unified Inbox**: merges DMs + announcements + parent comms + ticket replies + system notifications into one feed. Backed by a view `v_inbox_items` UNION across existing tables (read-only, RLS via underlying tables — no new auth surface).
+- **Search/filters**: client-side over fetched window + server `ilike` for older. Filter chips: Unread, Starred, Archived, by role, by channel.
+- **Starred/Archived**: extend `conversation_participants` (already has `archived`, `muted`) — add `starred boolean default false` column. Add `inbox_stars` table for non-conversation items (announcements, tickets).
+- **Read receipts**: already have `conversation_participants.last_read_at` + `messages.read_at`. Surface them in UI.
+- **Attachments**: existing `attachments jsonb` on `conversation_messages` — add upload via existing storage buckets; new bucket `comms-attachments` with RLS scoped to participant membership.
 
-RLS summary (Teacher → Admin only, no HOD this phase):
-- Admins (full or slotted with new `trad-exams` permission) — full CRUD within their school.
-- Teachers — CRUD on their own draft exams + read on timetable rows for their assigned class/subject.
-- Students/parents — no access in Phase 1.
+### Phase 2 — Class & Subject Channels
 
-### 2. Permissions + module registration
+- **Auto-provisioned channels**: on `classes` insert (and backfill), create a `conversations` row with `kind='group'`, `title='SS1A'`, `metadata={ source: 'class', class_id }`. Participants synced from `class_enrollments` + `class_subject_teachers` via trigger.
+- **Subject channels**: same pattern keyed by `(class_id, subject)` from `class_subject_teachers`.
+- **No new messages table** — channels = `conversations` with a tag. RLS already enforces participant-only reads.
+- **Parent Communication Center**: surfaces existing `parent_comms` + auto-generated alerts (attendance/results/fees/behavior) from already-existing tables. New `comms_templates` table for reusable message templates (admin/teacher managed).
 
-- Add `traditional-exams` to `src/modules/registry.ts` with sidebar entries for admin ("Traditional Exams") and teacher ("Exam Papers").
-- Add `trad-exams` and `action:approve_trad_exam` to `PERMISSION_GROUPS` in `src/lib/adminPermissions.ts` (new "Examinations" group) so the existing custom-role workspace can grant/revoke it.
+### Phase 3 — Broadcast, Tickets, AI
 
-### 3. Routes (added to `src/App.tsx`)
+- **Broadcast Center** (admin): wraps existing `announcements` + new `broadcast_jobs` table for scheduling, audience targeting (role/class/level/users), delivery channels (in-app now, email/SMS stubs ready), and delivery stats (`broadcast_deliveries`). Reuses existing `notify-recipients` edge function.
+- **Scheduled Messages**: same `broadcast_jobs.send_at` powers DM/announcement scheduling. Cron via existing `automation-runner`.
+- **Support Tickets**: existing `support_tickets`/`support_messages` already work for super admin — extend to school-scoped tickets with categories (`academic`, `result`, `payment`, `technical`, `admission`) and status workflow. Add school-admin policies.
+- **AI Assistant**: extend `principal-copilot` edge function with new intents: `draft_message`, `improve_tone`, `translate`, `summarize_thread`, `generate_announcement`. UI: a "✨ AI" button in Composer.
 
-Admin:
-- `/admin/trad-exams` — sessions list + create
-- `/admin/trad-exams/:sessionId` — timetable builder (drag-drop grid by class × day) with conflict detection
-- `/admin/trad-exams/:sessionId/calendar` — month/week calendar view
+### Super Admin Communication Center
 
-Teacher:
-- `/teacher/trad-exams` — list of papers assigned to me (by class/subject)
-- `/teacher/trad-exams/:examId` — paper editor (sections, questions, upload)
-- `/teacher/trad-exams/:examId/upload` — document upload + AI parse review
+- Extends existing `platform_announcements`: new audience targeting UI (all schools / selected schools / by plan / by status). Existing RLS unchanged.
 
-### 4. UI components (new, in `src/components/tradexam/`)
+### Communication Analytics
 
-- `SessionCard`, `SessionForm`
-- `TimetableGrid` — drag-drop using existing libs (react-dnd already present? if not, use HTML5 DnD + state). Highlights conflicts in red.
-- `ConflictBadge`
-- `ExamCalendar` — reuses `MonthCalendar`.
-- `QuestionEditor` with two modes:
-  - **MCQ**: prompt (rich text), 4 options A–D, correct answer, marks, optional image upload.
-  - **Theory**: prompt, expected marks, optional image upload, model-answer field (private).
-- `SectionList` with reordering.
-- `DocumentUploadPanel` — drop PDF/DOCX, shows parse progress, then a review table where the teacher can edit/accept each extracted question before they hit `trad_exam_questions`.
+- New `comms_events` table (insert-only) capturing send/read/click. Lightweight aggregation view for: messages sent/received, read rates, parent engagement %, teacher avg response time, top channels. New `/communication/analytics` page reusing `recharts`.
 
-### 5. AI document parsing edge function
+---
 
-New function `supabase/functions/parse-trad-exam-doc/index.ts`:
+### Routing & sidebar (addresses your "40+ routes" concern)
 
-1. Auth: JWT required; verify caller is teacher/admin of the exam's school.
-2. Download file from `trad-exam-assets` (PDF or DOCX).
-3. Extract text:
-   - PDF: use `pdfjs-dist` via `npm:` import.
-   - DOCX: use `mammoth` via `npm:`.
-4. Extract embedded images and upload each to `trad-exam-assets/extracted/<exam_id>/img-N.png`, capturing their byte position so we can re-attach them.
-5. Send the text (+ image placeholders) to Lovable AI Gateway (`google/gemini-2.5-pro` for accuracy on mixed MCQ/theory) with a strict JSON schema: `{questions:[{type, prompt, options?, correct_index?, marks, image_ref?}]}`.
-6. Persist results to `trad_exam_questions` with `ai_generated=true` and `draft_status` so the teacher can review/edit before submitting. Update `trad_exam_uploads.status`.
+Collapse to **one parent route `/app/:role/communication`** with nested child routes:
+```
+/communication              → Inbox (default)
+/communication/dm/:convId   → Direct messages
+/communication/channels/:id → Class/Subject channel
+/communication/announcements
+/communication/broadcasts   (admin)
+/communication/tickets
+/communication/templates    (admin/teacher)
+/communication/scheduled
+/communication/analytics    (admin)
+/communication/notifications
+```
+Old routes (`/messages`, `/announcements`, `/parent-comms`, `/teacher-comms`, `/inbox`) become **redirects** — zero breakage.
 
-Surfaces 402/429 errors verbatim per the AI-gateway guidance.
+---
 
-### 6. Offline / caching
+### Database changes (single migration, additive only)
 
-Reuse the existing `dataCache.ts` pattern to cache session lists, timetable rows, and exam drafts per school — same approach as other admin pages.
+1. `ALTER TABLE conversation_participants ADD COLUMN starred boolean DEFAULT false;`
+2. `ALTER TABLE conversations ADD COLUMN metadata jsonb DEFAULT '{}'::jsonb, ADD COLUMN channel_type text;` (`'dm' | 'class' | 'subject' | 'group' | 'broadcast'`)
+3. New tables (all RLS + GRANTs + tenant-scoped): `comms_templates`, `broadcast_jobs`, `broadcast_deliveries`, `comms_events`, `inbox_stars`, `support_ticket_categories`.
+4. Triggers: auto-create class/subject channels on `classes` / `class_subject_teachers` insert; sync participants on enrollment changes.
+5. Backfill function `comms_backfill_channels()` run once.
 
-### 7. What this phase does NOT do (deferred)
+### Multi-tenant guarantee
 
-- Approval workflow (Teacher → Admin chain, version history, lock-after-approve)
-- Auto-publish at scheduled time + student exam listing
-- Student exam UI, auto-save, auto-submit
-- MCQ auto-marking, theory grading queue, admin validation
-- Scratch card PIN generation, Paystack purchase flow, result unlock
-- Student/parent result viewing
+Every new table has `school_id uuid not null` + RLS policy `using (is_member(school_id, auth.uid()))`. Broadcasts/channels never cross schools. Verified via existing `is_member`/`is_school_admin`/`has_school_role` helpers.
 
-These are scoped for Phase 2 and Phase 3 follow-ups so we don't ship a half-broken pipeline.
+### Backward compatibility checklist
 
-### Risk + compatibility notes
+- ✅ `messages` table untouched (DM legacy path keeps working)
+- ✅ `conversations`/`conversation_messages` only get additive columns
+- ✅ `announcements`, `parent_comms`, `support_tickets` unchanged
+- ✅ `RealtimeNotifier` keeps firing on `messages` INSERT
+- ✅ Old sidebar slugs remain registered as hidden aliases for one release
+- ✅ `MessagesPanel` becomes a thin wrapper around new `MessageThread`
 
-- All names prefixed `trad_` so no collision with `exams`, `exam_questions`, `assessments`, `questions_v2`.
-- No edits to `auth`, `memberships`, CBT tables, or `src/integrations/supabase/client.ts`.
-- New permission key plugs into the existing `useAdminPermissions` hook — full admins get it automatically; slotted admins must be granted via the Roles workspace.
-- Module is registered through `MODULE_MANIFESTS` so the existing super-admin module toggle controls per-school visibility.
+---
 
-Approve this and I'll run the migration, then build the routes, components, and the AI parsing function.
+### Delivery order (so you can ship incrementally)
+
+| Step | Scope | Risk |
+|---|---|---|
+| 1 | Migration (additive cols + new tables + RLS + GRANTs) | low |
+| 2 | Hub shell + sidebar consolidation + redirects | low |
+| 3 | Unified Inbox + DMs (wraps existing) | low |
+| 4 | Class/Subject channels + backfill | medium |
+| 5 | Broadcast Center + Scheduled + Templates | medium |
+| 6 | Tickets workflow + Parent Comm Center | low |
+| 7 | AI assistant intents in Copilot | low |
+| 8 | Analytics dashboard | low |
+
+I'll execute Step 1 + Step 2 in the first batch after approval, then proceed sequentially with check-ins.
+
+---
+
+### On your route-count question
+
+40+ routes is **fine** for a multi-role SaaS — Notion, Linear, and Teams have hundreds. What matters is:
+1. **Grouping** by domain (this plan reduces Communication from 5 top-level entries to 1 with children).
+2. **Role-based filtering** at the sidebar level (already done via `roles` in `MODULE_MANIFESTS`).
+3. **Lazy loading** route components (consider `React.lazy` for heavy admin pages in a later pass).
+
+After this consolidation you'll drop ~6 sidebar entries and gain a cleaner mental model.
+
+Approve to proceed with Step 1 (migration) + Step 2 (hub shell).
