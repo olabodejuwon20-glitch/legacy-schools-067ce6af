@@ -1049,6 +1049,115 @@ export type Database = {
         }
         Relationships: []
       }
+      broadcast_deliveries: {
+        Row: {
+          broadcast_id: string
+          channel: string
+          created_at: string
+          error: string | null
+          id: string
+          read_at: string | null
+          school_id: string
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          broadcast_id: string
+          channel?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          read_at?: string | null
+          school_id: string
+          sent_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          broadcast_id?: string
+          channel?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          read_at?: string | null
+          school_id?: string
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_deliveries_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "broadcast_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broadcast_jobs: {
+        Row: {
+          audience: Json
+          body: string
+          channels: string[]
+          created_at: string
+          created_by: string
+          id: string
+          recurrence: string | null
+          scheduled_for: string | null
+          school_id: string
+          sent_at: string | null
+          stats: Json
+          status: string
+          template_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audience?: Json
+          body: string
+          channels?: string[]
+          created_at?: string
+          created_by: string
+          id?: string
+          recurrence?: string | null
+          scheduled_for?: string | null
+          school_id: string
+          sent_at?: string | null
+          stats?: Json
+          status?: string
+          template_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: Json
+          body?: string
+          channels?: string[]
+          created_at?: string
+          created_by?: string
+          id?: string
+          recurrence?: string | null
+          scheduled_for?: string | null
+          school_id?: string
+          sent_at?: string | null
+          stats?: Json
+          status?: string
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_jobs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "comms_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_enrollments: {
         Row: {
           class_id: string
@@ -1259,6 +1368,78 @@ export type Database = {
         }
         Relationships: []
       }
+      comms_events: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          metadata: Json
+          ref_id: string | null
+          school_id: string
+          surface: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          metadata?: Json
+          ref_id?: string | null
+          school_id: string
+          surface?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          metadata?: Json
+          ref_id?: string | null
+          school_id?: string
+          surface?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      comms_templates: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          school_id: string
+          subject: string | null
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          body: string
+          category?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          school_id: string
+          subject?: string | null
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          school_id?: string
+          subject?: string | null
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: []
+      }
       conversation_messages: {
         Row: {
           attachments: Json
@@ -1315,6 +1496,7 @@ export type Database = {
           last_read_at: string | null
           muted: boolean
           role_at_join: string | null
+          starred: boolean
           user_id: string
         }
         Insert: {
@@ -1325,6 +1507,7 @@ export type Database = {
           last_read_at?: string | null
           muted?: boolean
           role_at_join?: string | null
+          starred?: boolean
           user_id: string
         }
         Update: {
@@ -1335,6 +1518,7 @@ export type Database = {
           last_read_at?: string | null
           muted?: boolean
           role_at_join?: string | null
+          starred?: boolean
           user_id?: string
         }
         Relationships: [
@@ -1349,34 +1533,40 @@ export type Database = {
       }
       conversations: {
         Row: {
+          channel_type: string | null
           created_at: string
           created_by: string
           id: string
           kind: string
           last_message_at: string | null
           last_message_preview: string | null
+          metadata: Json
           school_id: string
           title: string | null
           updated_at: string
         }
         Insert: {
+          channel_type?: string | null
           created_at?: string
           created_by: string
           id?: string
           kind?: string
           last_message_at?: string | null
           last_message_preview?: string | null
+          metadata?: Json
           school_id: string
           title?: string | null
           updated_at?: string
         }
         Update: {
+          channel_type?: string | null
           created_at?: string
           created_by?: string
           id?: string
           kind?: string
           last_message_at?: string | null
           last_message_preview?: string | null
+          metadata?: Json
           school_id?: string
           title?: string | null
           updated_at?: string
@@ -1795,6 +1985,33 @@ export type Database = {
           occupied?: number
           school_id?: string
           warden?: string | null
+        }
+        Relationships: []
+      }
+      inbox_stars: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          school_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          school_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          school_id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -4333,6 +4550,42 @@ export type Database = {
           },
         ]
       }
+      support_ticket_categories: {
+        Row: {
+          created_at: string
+          default_assignee: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          school_id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_assignee?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          school_id: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_assignee?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          school_id?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       support_tickets: {
         Row: {
           assignee: string | null
@@ -5594,6 +5847,15 @@ export type Database = {
           _window_seconds: number
         }
         Returns: boolean
+      }
+      comms_backfill_channels: { Args: never; Returns: number }
+      comms_ensure_class_channel: {
+        Args: { _class_id: string }
+        Returns: string
+      }
+      comms_sync_class_participants: {
+        Args: { _class_id: string }
+        Returns: undefined
       }
       create_subscription_invoice: {
         Args: { _cycle?: string; _plan: string; _school_id: string }
