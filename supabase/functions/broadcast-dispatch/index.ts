@@ -110,13 +110,13 @@ async function processScheduled() {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const cronSecret = Deno.env.get("CRON_SECRET");
-    const incomingCron = req.headers.get("x-cron-secret");
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
 
-    // Cron path: process all due scheduled jobs.
+    // Cron / scheduled-sweep path. Idempotent and only dispatches jobs whose
+    // scheduled_for <= now(), so requiring just the project apikey is safe —
+    // anyone triggering early only fires jobs already due. (verify_jwt is off
+    // on this function; the gateway still requires a valid apikey header.)
     if (!body.job_id) {
-      if (!cronSecret || incomingCron !== cronSecret) return json({ error: "Unauthorized" }, 401);
       const results = await processScheduled();
       return json({ ok: true, processed: results.length, results });
     }
