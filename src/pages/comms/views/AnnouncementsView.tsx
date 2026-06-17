@@ -4,7 +4,7 @@ import { useSchool } from "@/contexts/SchoolContext";
 import { Megaphone } from "lucide-react";
 import { relTime } from "@/lib/comms";
 
-interface Ann { id: string; title: string; body: string; created_at: string; audience: string | null; }
+interface Ann { id: string; title: string; body: string; created_at: string; }
 
 export default function AnnouncementsView() {
   const { school } = useSchool();
@@ -13,7 +13,7 @@ export default function AnnouncementsView() {
     if (!school) return;
     (async () => {
       const { data } = await supabase.from("announcements")
-        .select("id,title,body,created_at,audience").eq("school_id", school.id)
+        .select("id,title,body,created_at").eq("school_id", school.id)
         .order("created_at", { ascending: false }).limit(100);
       setItems((data ?? []) as Ann[]);
     })();
@@ -29,7 +29,6 @@ export default function AnnouncementsView() {
             <span className="text-xs text-muted-foreground shrink-0">{relTime(a.created_at)}</span>
           </div>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{a.body}</p>
-          {a.audience && <div className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">{a.audience}</div>}
         </article>
       ))}
     </div>

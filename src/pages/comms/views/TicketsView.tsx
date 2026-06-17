@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 interface Cat { id: string; name: string; slug: string; }
-interface Ticket { id: string; subject: string; status: string; priority: string | null; created_at: string; category: string | null; }
+interface Ticket { id: string; subject: string; status: string; priority: string | null; created_at: string; }
 
 export default function TicketsView() {
   const { school, user } = useSchool();
@@ -26,7 +26,7 @@ export default function TicketsView() {
     if (!school || !user) return;
     const [c, t] = await Promise.all([
       (supabase as any).from("support_ticket_categories").select("id,name,slug").eq("school_id", school.id).eq("is_active", true),
-      supabase.from("support_tickets").select("id,subject,status,priority,created_at,category").eq("created_by", user.id).order("created_at", { ascending: false }).limit(50),
+      supabase.from("support_tickets").select("id,subject,status,priority,created_at").eq("opened_by", user.id).order("created_at", { ascending: false }).limit(50),
     ]);
     setCats((c.data ?? []) as Cat[]);
     setTickets((t.data ?? []) as Ticket[]);
@@ -36,7 +36,7 @@ export default function TicketsView() {
   const create = async () => {
     if (!user || !subject.trim() || !body.trim()) return;
     const { data: ticket, error } = await supabase.from("support_tickets")
-      .insert({ subject, category, created_by: user.id, status: "open", priority: "normal" } as any)
+      .insert({ subject, opened_by: user.id, school_id: school!.id, status: "open", priority: "normal" } as any)
       .select("id").single();
     if (error) { toast.error(error.message); return; }
     await supabase.from("support_messages").insert({ ticket_id: ticket!.id, sender_id: user.id, body } as any);
@@ -73,7 +73,7 @@ export default function TicketsView() {
           <div key={t.id} className="rounded-xl border bg-card p-4 flex items-center gap-3">
             <div className="min-w-0">
               <div className="font-semibold truncate">{t.subject}</div>
-              <div className="text-xs text-muted-foreground">{t.category || "general"} • {new Date(t.created_at).toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">{new Date(t.created_at).toLocaleString()}</div>
             </div>
             <Badge variant="secondary" className="ml-auto capitalize">{t.status}</Badge>
           </div>
