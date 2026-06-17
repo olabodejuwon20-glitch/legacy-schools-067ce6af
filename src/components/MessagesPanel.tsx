@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessagesSquare, Search, ArrowLeft, Check, CheckCheck, WifiOff } from "lucide-react";
+import { MessagesSquare, Search, ArrowLeft, Check, CheckCheck, WifiOff, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -8,6 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Composer } from "@/components/tutor/Composer";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { AttachmentView } from "@/components/tutor/MessageBubble";
 import { Attachment } from "@/lib/uploads";
 import { useOnlineStatus } from "@/lib/realtime-status";
@@ -27,6 +30,31 @@ export function MessagesPanel() {
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef(0);
   const peerTypingTimerRef = useRef<number | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiNotes, setAiNotes] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [seedText, setSeedText] = useState<string | undefined>(undefined);
+  const [seedNonce, setSeedNonce] = useState(0);
+
+  async function aiAssist(intent: "draft" | "improve") {
+    if (!school) return;
+    const source = intent === "improve" ? aiNotes : aiNotes;
+    if (!source.trim()) { toast.error("Type a few notes first"); return; }
+    setAiBusy(true);
+    const { data, error } = await supabase.functions.invoke("comms-ai-assist", {
+      body: {
+        school_id: school.id, intent, text: source,
+        options: { purpose: `direct message to ${active?.profile?.full_name ?? "a colleague"}` },
+      },
+    });
+    setAiBusy(false);
+    const err = error?.message ?? (data as any)?.error;
+    if (err) { toast.error(err); return; }
+    setSeedText((data as any).text ?? "");
+    setSeedNonce((n) => n + 1);
+    setAiOpen(false);
+    setAiNotes("");
+  }
 
   // Load school members
   useEffect(() => {
@@ -215,6 +243,32 @@ export function MessagesPanel() {
               <div ref={endRef} />
             </div>
             <div className="-mx-4 -mb-4">
+              <div className="px-3 pt-2 flex justify-end">
+                <Popover open={aiOpen} onOpenChange={setAiOpen}>
+                  <PopoverTrigger asChild>
+                    <Button type="button" size="sm" variant="ghost" className="h-7 text-xs">
+                      <Sparkles className="size-3 mr-1"/> AI assist
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80">
+                    <div className="space-y-2">
+                      <div className="text-xs font-medium">Notes for the AI</div>
+                      <Textarea rows={4} value={aiNotes} onChange={(e) => setAiNotes(e.target.value)}
+                        placeholder="e.g. Remind parent about PTM on Friday 4pm, polite tone"/>
+                      <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="outline" disabled={aiBusy} onClick={() => aiAssist("improve")}>
+                          {aiBusy ? <Loader2 className="size-3 animate-spin"/> : <Sparkles className="size-3"/>}
+                          <span className="ml-1">Improve</span>
+                        </Button>
+                        <Button size="sm" disabled={aiBusy} onClick={() => aiAssist("draft")}>
+                          {aiBusy ? <Loader2 className="size-3 animate-spin"/> : <Sparkles className="size-3"/>}
+                          <span className="ml-1">Draft</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
               <Composer
                 bucket="message-attachments"
                 userId={user!.id}
@@ -224,6 +278,8 @@ export function MessagesPanel() {
                 transcribeVoice={false}
                 onSubmit={sendComposer}
                 onTextChange={notifyTyping}
+                seedText={seedText}
+                seedNonce={seedNonce}
               />
             </div>
           </>}
