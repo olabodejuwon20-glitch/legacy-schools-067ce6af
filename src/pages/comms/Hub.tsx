@@ -2,7 +2,7 @@ import { NavLink, Outlet, useParams } from "react-router-dom";
 import { Inbox, MessageSquare, Hash, Megaphone, Radio, LifeBuoy, FileText, Clock, BarChart3, Bell } from "lucide-react";
 import { useSchool } from "@/contexts/SchoolContext";
 import { cn } from "@/lib/utils";
-import { SEO } from "@/components/SEO";
+import SEO from "@/components/SEO";
 
 /**
  * Communication Hub shell — Slack/Teams-style 2-pane layout that hosts all
