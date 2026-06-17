@@ -63,6 +63,17 @@ import SubscriptionCallback from "./pages/SubscriptionCallback";
 import HelpPage from "./pages/Help";
 import LibraryManager from "./pages/shared/LibraryManager";
 import Inbox from "./pages/shared/Inbox";
+import CommsHub from "./pages/comms/Hub";
+import CommsInbox from "./pages/comms/views/InboxView";
+import CommsDM from "./pages/comms/views/DMView";
+import CommsChannels from "./pages/comms/views/ChannelsView";
+import CommsAnnouncements from "./pages/comms/views/AnnouncementsView";
+import CommsBroadcasts from "./pages/comms/views/BroadcastsView";
+import CommsTickets from "./pages/comms/views/TicketsView";
+import CommsTemplates from "./pages/comms/views/TemplatesView";
+import CommsScheduled from "./pages/comms/views/ScheduledView";
+import CommsNotifications from "./pages/comms/views/NotificationsView";
+import CommsAnalytics from "./pages/comms/views/AnalyticsView";
 
 import TeacherDashboard from "./pages/teacher/Dashboard";
 import TeacherClasses from "./pages/teacher/Classes";
