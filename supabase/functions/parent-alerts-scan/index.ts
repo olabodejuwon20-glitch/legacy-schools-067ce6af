@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     });
 
     if (!alerts.length) return json({ created: 0, flagged: flagged.length });
-    const { error, count } = await admin.from("parent_alerts").upsert(alerts, { onConflict: "dedupe_key", ignoreDuplicates: true, count: "exact" });
+    const { error, count } = await admin.from("parent_alerts").upsert(alerts, { onConflict: "school_id,dedupe_key", ignoreDuplicates: true, count: "exact" });
     if (error) return json({ error: error.message }, 500);
     return json({ created: count ?? alerts.length, flagged: flagged.length });
   } catch (e) {
