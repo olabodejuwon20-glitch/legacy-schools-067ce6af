@@ -221,6 +221,15 @@ export function MessagesPanel() {
       >
         {!active ? <EmptyState icon={MessagesSquare} title="Pick a conversation" desc="Choose someone on the left to start chatting." /> :
           <>
+            {summary && (
+              <div className="mb-2 rounded-lg border bg-muted/50 p-3 text-xs">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-medium flex items-center gap-1"><FileText className="size-3"/> Thread summary</span>
+                  <button onClick={() => setSummary(null)} className="text-muted-foreground hover:text-foreground">✕</button>
+                </div>
+                <div className="whitespace-pre-wrap text-foreground/90">{summary}</div>
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {thread.length === 0 ? <div className="text-sm text-muted-foreground text-center py-10">Say hi 👋</div> :
                 thread.map(m => {
