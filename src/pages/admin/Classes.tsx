@@ -16,6 +16,7 @@ export default function AdminClasses() {
   const [rows, setRows] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ code: "", name: "", subject: "", grade_level: "", teacher_id: "" });
 
   async function load() {
@@ -33,11 +34,29 @@ export default function AdminClasses() {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     if (!school) return;
-    const { error } = await supabase.from("classes").insert({ ...form, teacher_id: form.teacher_id || null, school_id: school.id });
-    if (error) return toast.error(error.message);
-    toast.success("Class created");
-    setOpen(false); setForm({ code: "", name: "", subject: "", grade_level: "", teacher_id: "" });
-    load();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const payload = { ...form, teacher_id: form.teacher_id || null, school_id: school.id };
+      const { error } = await supabase
+        .from("classes")
+        .upsert(payload, { onConflict: "school_id,name", ignoreDuplicates: true });
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("duplicate") || msg.includes("unique")) {
+          toast.info("A class with that name already exists in your school.");
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
+      toast.success("Class created");
+      setOpen(false);
+      setForm({ code: "", name: "", subject: "", grade_level: "", teacher_id: "" });
+      load();
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -60,7 +79,9 @@ export default function AdminClasses() {
                   <SelectContent>{teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.full_name || t.email}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <DialogFooter><Button type="submit">Create</Button></DialogFooter>
+              <DialogFooter>
+                <Button type="submit" disabled={submitting}>{submitting ? "Creating…" : "Create"}</Button>
+              </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>

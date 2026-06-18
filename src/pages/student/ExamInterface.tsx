@@ -80,6 +80,7 @@ export default function ExamInterface() {
   const [violations, setViolations] = useState<number>(0);
   const [violationLimit, setViolationLimit] = useState<number>(3);
   const submittingRef = useRef(false);
+  const [submitting, setSubmitting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -195,16 +196,19 @@ export default function ExamInterface() {
   const submit = useCallback(async (reason?: string) => {
     if (!attemptId || !activeExam || submittingRef.current) return;
     submittingRef.current = true;
+    setSubmitting(true);
     const rows = Object.entries(answers).map(([question_id, selected_index]) => ({
       attempt_id: attemptId, question_id, selected_index, marked_for_review: !!marked[question_id],
     }));
-    if (rows.length) await supabase.from("exam_answers").upsert(rows, { onConflict: "attempt_id,question_id" });
-    const { data: graded, error: gErr } = await supabase.functions.invoke("grade-exam-attempt", { body: { attempt_id: attemptId } });
-    if (gErr) {
-      toast.error(gErr.message || "Submission failed");
-      submittingRef.current = false;
-      return;
-    }
+    try {
+      if (rows.length) {
+        const { error: upErr } = await supabase
+          .from("exam_answers")
+          .upsert(rows, { onConflict: "attempt_id,question_id" });
+        if (upErr) throw upErr;
+      }
+      const { data: graded, error: gErr } = await supabase.functions.invoke("grade-exam-attempt", { body: { attempt_id: attemptId } });
+      if (gErr) throw gErr;
     const score = graded?.score ?? 0;
     const serverBreakdown: Array<{ id: string; correctIdx: number; pickedIdx: number | null; points: number; isCorrect: boolean }> = graded?.breakdown ?? [];
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -226,7 +230,14 @@ export default function ExamInterface() {
     setBreakdown(bd);
     setSummary({ score, answered: Object.keys(answers).length, total: questions.length, durationSec });
     clearLocalDraft(attemptId);
+    } catch (e: any) {
+      toast.error(e?.message || "Submission failed. Please check your connection and try again.");
+      submittingRef.current = false;
+      setSubmitting(false);
+      return;
+    }
     submittingRef.current = false;
+    setSubmitting(false);
   }, [attemptId, activeExam, answers, marked, questions, startedAt]);
 
   async function selectAnswer(questionId: string, idx: number) {
@@ -533,8 +544,8 @@ export default function ExamInterface() {
                     <Maximize2 className="size-3.5 mr-1" /> Fullscreen
                   </Button>
                 )}
-                <Button size="sm" onClick={() => setConfirmOpen(true)}>
-                  <CheckCircle2 className="size-4 mr-1.5" /> Submit Exam
+                <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={submitting}>
+                  <CheckCircle2 className="size-4 mr-1.5" /> {submitting ? "Submitting…" : "Submit Exam"}
                 </Button>
               </div>
             </div>
@@ -721,8 +732,10 @@ export default function ExamInterface() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Keep working</AlertDialogCancel>
-              <AlertDialogAction onClick={() => { setConfirmOpen(false); submit(); }}>Submit now</AlertDialogAction>
+              <AlertDialogCancel disabled={submitting}>Keep working</AlertDialogCancel>
+              <AlertDialogAction disabled={submitting} onClick={() => { setConfirmOpen(false); submit(); }}>
+                {submitting ? "Submitting…" : "Submit now"}
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
