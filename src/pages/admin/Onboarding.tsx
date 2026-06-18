@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, ChevronRight, GraduationCap, Loader2, Plus, School as SchoolIcon, Sparkles, Trash2, BookOpen } from "lucide-react";
+import { Check, ChevronRight, Loader2, Plus, School as SchoolIcon, Trash2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
@@ -27,7 +27,7 @@ const SUGGESTED_SUBJECTS = [
 ];
 
 export default function AdminOnboarding() {
-  const { school, refreshMemberships } = useSchool();
+  const { school, refreshMemberships, refreshSchool } = useSchool();
   const nav = useNavigate();
   const [step, setStep] = useState<Step>(0);
   const [saving, setSaving] = useState(false);
@@ -66,15 +66,19 @@ export default function AdminOnboarding() {
       });
   }, [school?.id]);
 
-  async function saveProfile() {
+  function saveProfile() {
+    if (!profile.name.trim()) return toast.error("Enter your school name");
+    setStep(1);
+  }
+
+  async function saveClassesAndFinish() {
     if (!school) return;
-    if (saving) return; // guard against double-clicks
+    if (selectedClasses.length === 0) return toast.error("Add at least one class");
+    if (saving) return;
     setSaving(true);
     try {
       let logo_url = profile.logo_url;
       if (logoFile) {
-        // Keep onboarding moving even if the logo upload fails (RLS race right
-        // after registration, network blips, etc.) — admins can re-upload later.
         const safeName = logoFile.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
         const path = `${school.id}/logo-${Date.now()}-${safeName}`;
         const { error: upErr } = await supabase.storage
@@ -88,68 +92,37 @@ export default function AdminOnboarding() {
           logo_url = pub.publicUrl;
         }
       }
-      const { error } = await supabase.from("schools").update({
-        name: profile.name,
-        motto: profile.motto || null,
-        address: profile.address || null,
-        phone: profile.phone || null,
-        email: profile.email || null,
-        current_session: profile.current_session || null,
-        current_term: profile.current_term || null,
-        logo_url,
-      }).eq("id", school.id);
-      if (error) throw error;
-      setProfile(p => ({ ...p, logo_url }));
-      setStep(1);
-    } catch (e: any) {
-      const msg = (e?.message ?? "").toLowerCase();
-      if (msg.includes("row-level security") || msg.includes("permission")) {
-        toast.error("Your admin role isn't fully active yet. Please refresh the page and try again.");
-      } else {
-        toast.error(e?.message ?? "Could not save profile");
-      }
-    } finally { setSaving(false); }
-  }
 
-  async function saveClassesAndFinish() {
-    if (!school) return;
-    if (selectedClasses.length === 0) return toast.error("Add at least one class");
-    if (saving) return;
-    setSaving(true);
-    try {
-      // Idempotent: rely on the unique (school_id, lower(name)) index so that
-      // retrying after a network blip cannot create the same class twice.
-      const rows = selectedClasses.map((name, i) => ({
-        school_id: school.id,
-        name,
-        code: name.replace(/\s+/g, "").toUpperCase() + "-" + (i + 1),
-        grade_level: name,
-        subject: selectedSubjects.join(", ") || null,
-      }));
-      if (rows.length) {
-        const { error } = await supabase
-          .from("classes")
-          .upsert(rows, { onConflict: "school_id,name", ignoreDuplicates: true });
-        if (error) throw error;
-      }
-      // mark onboarded — preserve existing settings
-      const { data: s } = await supabase.from("schools").select("settings").eq("id", school.id).maybeSingle();
-      const settings = { ...(s?.settings as any ?? {}), onboarded_at: new Date().toISOString(), default_subjects: selectedSubjects };
-      const { error: updErr } = await supabase.from("schools").update({ settings }).eq("id", school.id);
-      if (updErr) throw updErr;
+      const seen = new Set<string>();
+      const rows = selectedClasses
+        .map((name) => name.trim())
+        .filter((name) => {
+          const key = name.toLowerCase();
+          if (!name || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .map((name, i) => ({
+          name,
+          code: name.replace(/\s+/g, "").toUpperCase() + "-" + (i + 1),
+          grade_level: name,
+          subject: selectedSubjects.map(s => s.trim()).filter(Boolean).join(", ") || null,
+        }));
+
+      const { error } = await (supabase as any).rpc("complete_admin_onboarding", {
+        _school_id: school.id,
+        _profile: { ...profile, name: profile.name.trim(), logo_url },
+        _classes: rows,
+        _default_subjects: selectedSubjects.map(s => s.trim()).filter(Boolean),
+      });
+      if (error) throw error;
+      try { sessionStorage.setItem(`onboarding-complete:${school.id}`, "1"); } catch {}
       await refreshMemberships();
+      await refreshSchool();
       toast.success("Setup complete — welcome aboard!");
-      nav(schoolPath(school.slug, "/app/admin"));
+      nav(schoolPath(school.slug, "/app/admin"), { replace: true });
     } catch (e: any) {
-      const msg = (e?.message ?? "").toLowerCase();
-      if (msg.includes("duplicate") || msg.includes("unique")) {
-        // Treat as success — the rows already exist from a prior attempt.
-        await refreshMemberships();
-        toast.success("Setup complete — welcome aboard!");
-        nav(schoolPath(school.slug, "/app/admin"));
-      } else {
-        toast.error(e?.message ?? "Could not save");
-      }
+      toast.error(e?.message ?? "Could not finish setup");
     } finally { setSaving(false); }
   }
 

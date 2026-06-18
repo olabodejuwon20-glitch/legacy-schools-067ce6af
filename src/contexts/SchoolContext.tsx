@@ -31,6 +31,7 @@ interface Ctx {
   toggleTheme: () => void;
   refreshMemberships: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshSchool: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 const SchoolContext = createContext<Ctx | null>(null);
@@ -54,18 +55,21 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("edusmart-theme", theme);
   }, [theme]);
 
-  // Resolve school from URL once
-  useEffect(() => {
+  const loadSchoolFromContext = useCallback(async () => {
     const slug = detectSlug();
     if (!slug) { setSchool(null); setSchoolLoading(false); return; }
-    supabase.rpc("get_school_by_slug", { _slug: slug })
-      .then(({ data }) => {
-        const row = Array.isArray(data) ? data[0] : null;
-        setSchool(row ?? null);
-        if (row?.slug) storeSchoolSlug(row.slug);
-        setSchoolLoading(false);
-      });
+    setSchoolLoading(true);
+    const { data } = await supabase.rpc("get_school_by_slug", { _slug: slug });
+    const row = Array.isArray(data) ? data[0] : null;
+    setSchool(row ?? null);
+    if (row?.slug) storeSchoolSlug(row.slug);
+    setSchoolLoading(false);
   }, []);
+
+  // Resolve school from URL once
+  useEffect(() => {
+    loadSchoolFromContext();
+  }, [loadSchoolFromContext]);
 
   useEffect(() => {
     if (loading || school || memberships.length === 0 || detectSlug()) return;
@@ -131,6 +135,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
 
   const refreshMemberships = async () => { if (user) await loadMemberships(user.id); };
   const refreshProfile = async () => { if (user) await loadProfile(user.id, user.email ?? ""); };
+  const refreshSchool = async () => { await loadSchoolFromContext(); };
   const signOut = async () => { await supabase.auth.signOut(); };
 
   return (
@@ -138,7 +143,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
       user, session, loading, displayName, email, photoUrl,
       school, schoolLoading, memberships, activeRole,
       theme, toggleTheme: () => setTheme(t => t === "light" ? "dark" : "light"),
-      refreshMemberships, refreshProfile, signOut,
+      refreshMemberships, refreshProfile, refreshSchool, signOut,
     }}>{children}</SchoolContext.Provider>
   );
 }

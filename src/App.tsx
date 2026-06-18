@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SchoolProvider, useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
 import { RequireAuth, RequireSchool, RoleGate } from "@/components/Guards";
+import { OnboardingGate } from "@/components/admin/OnboardingGate";
 import AppLayout from "./layouts/AppLayout";
 import NotFound from "./pages/NotFound";
 import Landing from "./pages/Landing";
@@ -162,6 +163,11 @@ function AppRoot() {
   return <Navigate to={schoolPath(school?.slug, `/app/${activeRole}`)} replace />;
 }
 
+function TenantOnboardingRedirect() {
+  const { school } = useSchool();
+  return <Navigate to={schoolPath(school?.slug, "/onboarding")} replace />;
+}
+
 /** If a user lands on /app/... without a school slug, send them through the
  *  current school (when known) or the landing page. */
 function SluglessAppRedirect() {
@@ -240,7 +246,8 @@ const App = () => (
             <Route path="/:slug/join" element={<Join />} />
             <Route path="/:slug/change-pin" element={<RequireAuth><ChangePin /></RequireAuth>} />
             <Route path="/:slug/bio" element={<RequireAuth><Bio /></RequireAuth>} />
-            <Route path="/:slug/app" element={<RequireSchool><AppLayout /></RequireSchool>}>
+            <Route path="/:slug/onboarding" element={<RequireSchool><RoleGate allow="admin"><AdminOnboarding /></RoleGate></RequireSchool>} />
+            <Route path="/:slug/app" element={<RequireSchool><OnboardingGate><AppLayout /></OnboardingGate></RequireSchool>}>
               <Route index element={<AppRoot />} />
 
               <Route path="admin" element={<RoleGate allow="admin"><AdminDashboard /></RoleGate>} />
@@ -265,7 +272,7 @@ const App = () => (
               <Route path="admin/modules" element={<RoleGate allow="admin"><AdminModules /></RoleGate>} />
               <Route path="admin/inbox" element={<RoleGate allow="admin"><Inbox /></RoleGate>} />
               <Route path="admin/settings" element={<RoleGate allow="admin"><AdminSettings /></RoleGate>} />
-              <Route path="admin/onboarding" element={<RoleGate allow="admin"><AdminOnboarding /></RoleGate>} />
+              <Route path="admin/onboarding" element={<RoleGate allow="admin"><TenantOnboardingRedirect /></RoleGate>} />
               <Route path="admin/parent-alerts" element={<RoleGate allow="admin"><AdminParentAlerts /></RoleGate>} />
               <Route path="admin/ai-activity" element={<RoleGate allow="admin"><AdminAIActivity /></RoleGate>} />
               <Route path="admin/ai-settings" element={<RoleGate allow="admin"><AdminAISettings /></RoleGate>} />

@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
 
-/** Forces newly-registered school admins through the onboarding wizard. */
+/** Forces newly-registered school admins through setup before the app shell loads. */
 export function OnboardingGate({ children }: { children: ReactNode }) {
   const { school, activeRole } = useSchool();
   const location = useLocation();
@@ -13,6 +13,12 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!school || activeRole !== "admin") { setDone(true); return; }
+    try {
+      if (sessionStorage.getItem(`onboarding-complete:${school.id}`) === "1") {
+        setDone(true);
+        return;
+      }
+    } catch {}
     let active = true;
     supabase.from("schools").select("settings").eq("id", school.id).maybeSingle().then(({ data }) => {
       if (!active) return;
@@ -23,10 +29,10 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   }, [school?.id, activeRole]);
 
   if (done === null) {
-    return <div className="min-h-[40vh] grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
+    return <div className="min-h-screen grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   }
-  if (!done && !location.pathname.endsWith("/onboarding") && !location.pathname.endsWith("/help")) {
-    return <Navigate to={schoolPath(school?.slug, "/app/admin/onboarding")} replace />;
+  if (!done) {
+    return <Navigate to={schoolPath(school?.slug, "/onboarding")} replace />;
   }
   return <>{children}</>;
 }

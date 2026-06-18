@@ -37,10 +37,19 @@ export default function AdminClasses() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      const payload = { ...form, teacher_id: form.teacher_id || null, school_id: school.id };
-      const { error } = await supabase
+      const name = form.name.trim();
+      const { data: existing } = await supabase
         .from("classes")
-        .upsert(payload, { onConflict: "school_id,name", ignoreDuplicates: true });
+        .select("id")
+        .eq("school_id", school.id)
+        .ilike("name", name)
+        .maybeSingle();
+      if (existing) {
+        toast.info("A class with that name already exists in your school.");
+        return;
+      }
+      const payload = { ...form, name, teacher_id: form.teacher_id || null, school_id: school.id };
+      const { error } = await supabase.from("classes").insert(payload);
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes("duplicate") || msg.includes("unique")) {

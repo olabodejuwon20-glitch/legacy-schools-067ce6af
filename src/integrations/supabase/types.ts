@@ -5857,6 +5857,15 @@ export type Database = {
         Args: { _class_id: string }
         Returns: undefined
       }
+      complete_admin_onboarding: {
+        Args: {
+          _classes: Json
+          _default_subjects?: string[]
+          _profile: Json
+          _school_id: string
+        }
+        Returns: Json
+      }
       create_subscription_invoice: {
         Args: { _cycle?: string; _plan: string; _school_id: string }
         Returns: string

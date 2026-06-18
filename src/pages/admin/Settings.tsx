@@ -272,7 +272,7 @@ export default function AdminSettings() {
                 </div>
                 <ArrowRight className="size-4 text-muted-foreground mt-1" />
               </button>
-              <button onClick={() => school && nav(schoolPath(school.slug, "/app/admin/onboarding"))}
+              <button onClick={() => school && nav(schoolPath(school.slug, "/onboarding"))}
                 className="text-left rounded-xl border border-border p-4 hover:bg-muted/50 transition flex items-start gap-3">
                 <span className="size-10 rounded-md bg-primary/10 text-primary grid place-items-center shrink-0">
                   <BookOpen className="size-5" />
