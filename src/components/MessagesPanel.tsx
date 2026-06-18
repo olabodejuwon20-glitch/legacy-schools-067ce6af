@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessagesSquare, Search, ArrowLeft, Check, CheckCheck, WifiOff, Sparkles, Loader2 } from "lucide-react";
+import { MessagesSquare, Search, ArrowLeft, Check, CheckCheck, WifiOff, Sparkles, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -35,6 +35,25 @@ export function MessagesPanel() {
   const [aiBusy, setAiBusy] = useState(false);
   const [seedText, setSeedText] = useState<string | undefined>(undefined);
   const [seedNonce, setSeedNonce] = useState(0);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+
+  async function summarizeThread() {
+    if (!school || !thread.length) { toast.error("Nothing to summarize yet"); return; }
+    setSummarizing(true);
+    setSummary(null);
+    const transcript = thread.slice(-50).map((m: any) => {
+      const who = m.sender_id === user!.id ? "Me" : (active?.profile?.full_name || "Them");
+      return `${who}: ${m.body ?? ""}`;
+    }).join("\n");
+    const { data, error } = await supabase.functions.invoke("comms-ai-assist", {
+      body: { school_id: school.id, intent: "summarize", text: transcript },
+    });
+    setSummarizing(false);
+    const err = error?.message ?? (data as any)?.error;
+    if (err) { toast.error(err); return; }
+    setSummary((data as any).text ?? "");
+  }
 
   async function aiAssist(intent: "draft" | "improve") {
     if (!school) return;
@@ -244,6 +263,11 @@ export function MessagesPanel() {
             </div>
             <div className="-mx-4 -mb-4">
               <div className="px-3 pt-2 flex justify-end">
+                <Button type="button" size="sm" variant="ghost" className="h-7 text-xs mr-1"
+                  disabled={summarizing} onClick={summarizeThread}>
+                  {summarizing ? <Loader2 className="size-3 mr-1 animate-spin"/> : <FileText className="size-3 mr-1"/>}
+                  Summarize
+                </Button>
                 <Popover open={aiOpen} onOpenChange={setAiOpen}>
                   <PopoverTrigger asChild>
                     <Button type="button" size="sm" variant="ghost" className="h-7 text-xs">
