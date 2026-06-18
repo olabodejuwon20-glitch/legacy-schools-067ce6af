@@ -34,7 +34,7 @@ export default function Register() {
       const { error: sErr } = await supabase.auth.signInWithPassword({ email, password });
       if (sErr) throw sErr;
       toast.success(`School created — ${buildSchoolUrl(slug, "")}`);
-      window.location.href = schoolPath(slug, "/app");
+      window.location.href = schoolPath(slug, "/onboarding");
     } catch (err) {
       toast.error((err as Error).message);
     } finally { setBusy(false); }
