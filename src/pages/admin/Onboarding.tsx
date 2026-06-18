@@ -27,7 +27,7 @@ const SUGGESTED_SUBJECTS = [
 ];
 
 export default function AdminOnboarding() {
-  const { school, refreshMemberships, refreshSchool } = useSchool();
+  const { school } = useSchool();
   const nav = useNavigate();
   const [step, setStep] = useState<Step>(0);
   const [saving, setSaving] = useState(false);
@@ -122,8 +122,6 @@ export default function AdminOnboarding() {
       });
       if (error) throw error;
       try { sessionStorage.setItem(`onboarding-complete:${school.id}`, "1"); } catch {}
-      refreshMemberships().catch(() => {});
-      refreshSchool().catch(() => {});
       toast.success("Setup complete — welcome aboard!");
       nav(schoolPath(school.slug, "/app/admin"), { replace: true });
     } catch (e: any) {
