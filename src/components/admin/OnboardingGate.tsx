@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
@@ -8,7 +8,6 @@ import { schoolPath } from "@/lib/tenant";
 /** Forces newly-registered school admins through setup before the app shell loads. */
 export function OnboardingGate({ children }: { children: ReactNode }) {
   const { school, activeRole } = useSchool();
-  const location = useLocation();
   const [done, setDone] = useState<boolean | null>(null);
 
   useEffect(() => {
