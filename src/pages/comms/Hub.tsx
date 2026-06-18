@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useParams } from "react-router-dom";
-import { Inbox, MessageSquare, Hash, Megaphone, Radio, LifeBuoy, FileText, Clock, BarChart3, Bell } from "lucide-react";
+import { Inbox, MessageSquare, Hash, Megaphone, Radio, LifeBuoy, FileText, Clock, BarChart3, Bell, HeartHandshake } from "lucide-react";
 import { useSchool } from "@/contexts/SchoolContext";
 import { cn } from "@/lib/utils";
 import SEO from "@/components/SEO";
@@ -16,6 +16,7 @@ const NAV = [
   { to: "channels",      label: "Channels",      icon: Hash,          roles: ["admin", "teacher", "student", "parent"] },
   { to: "announcements", label: "Announcements", icon: Megaphone,     roles: ["admin", "teacher", "student", "parent"] },
   { to: "broadcasts",    label: "Broadcast Center", icon: Radio,      roles: ["admin"] },
+  { to: "parent-alerts", label: "Parent Alerts",  icon: HeartHandshake, roles: ["admin", "teacher"] },
   { to: "tickets",       label: "Support Tickets", icon: LifeBuoy,    roles: ["admin", "teacher", "student", "parent"] },
   { to: "templates",     label: "Templates",     icon: FileText,      roles: ["admin", "teacher"] },
   { to: "scheduled",     label: "Scheduled",     icon: Clock,         roles: ["admin", "teacher"] },
