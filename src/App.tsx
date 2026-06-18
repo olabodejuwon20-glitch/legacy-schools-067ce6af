@@ -74,6 +74,7 @@ import CommsTemplates from "./pages/comms/views/TemplatesView";
 import CommsScheduled from "./pages/comms/views/ScheduledView";
 import CommsNotifications from "./pages/comms/views/NotificationsView";
 import CommsAnalytics from "./pages/comms/views/AnalyticsView";
+import CommsParentAlerts from "./pages/comms/views/ParentAlertsView";
 
 import TeacherDashboard from "./pages/teacher/Dashboard";
 import TeacherClasses from "./pages/teacher/Classes";
@@ -292,6 +293,7 @@ const App = () => (
                   <Route path="channels/:channelId" element={<CommsChannels />} />
                   <Route path="announcements" element={<CommsAnnouncements />} />
                   <Route path="broadcasts" element={<CommsBroadcasts />} />
+                  <Route path="parent-alerts" element={<CommsParentAlerts />} />
                   <Route path="tickets" element={<CommsTickets />} />
                   <Route path="templates" element={<CommsTemplates />} />
                   <Route path="scheduled" element={<CommsScheduled />} />
