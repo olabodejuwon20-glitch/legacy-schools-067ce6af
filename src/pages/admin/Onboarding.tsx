@@ -49,9 +49,14 @@ export default function AdminOnboarding() {
 
   useEffect(() => {
     if (!school) return;
-    supabase.from("schools").select("name,motto,address,phone,email,current_session,current_term,logo_url").eq("id", school.id).maybeSingle()
+    supabase.from("schools").select("name,motto,address,phone,email,current_session,current_term,logo_url,settings").eq("id", school.id).maybeSingle()
       .then(({ data }) => {
         if (!data) return;
+        const settings = (data.settings ?? {}) as any;
+        if (settings.onboarded_at) {
+          nav(schoolPath(school.slug, "/app/admin"), { replace: true });
+          return;
+        }
         setProfile(p => ({
           ...p,
           name: data.name ?? p.name,
@@ -64,7 +69,7 @@ export default function AdminOnboarding() {
           logo_url: data.logo_url ?? null,
         }));
       });
-  }, [school?.id]);
+  }, [school?.id, school?.slug, nav]);
 
   function saveProfile() {
     if (!profile.name.trim()) return toast.error("Enter your school name");
