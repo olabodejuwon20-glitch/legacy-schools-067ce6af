@@ -31,7 +31,6 @@ interface Ctx {
   toggleTheme: () => void;
   refreshMemberships: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  refreshSchool: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 const SchoolContext = createContext<Ctx | null>(null);
@@ -135,7 +134,6 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
 
   const refreshMemberships = async () => { if (user) await loadMemberships(user.id); };
   const refreshProfile = async () => { if (user) await loadProfile(user.id, user.email ?? ""); };
-  const refreshSchool = async () => { await loadSchoolFromContext(); };
   const signOut = async () => { await supabase.auth.signOut(); };
 
   return (
@@ -143,7 +141,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
       user, session, loading, displayName, email, photoUrl,
       school, schoolLoading, memberships, activeRole,
       theme, toggleTheme: () => setTheme(t => t === "light" ? "dark" : "light"),
-      refreshMemberships, refreshProfile, refreshSchool, signOut,
+      refreshMemberships, refreshProfile, signOut,
     }}>{children}</SchoolContext.Provider>
   );
 }
