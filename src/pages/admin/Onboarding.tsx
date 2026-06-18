@@ -117,8 +117,8 @@ export default function AdminOnboarding() {
       });
       if (error) throw error;
       try { sessionStorage.setItem(`onboarding-complete:${school.id}`, "1"); } catch {}
-      await refreshMemberships();
-      await refreshSchool();
+      refreshMemberships().catch(() => {});
+      refreshSchool().catch(() => {});
       toast.success("Setup complete — welcome aboard!");
       nav(schoolPath(school.slug, "/app/admin"), { replace: true });
     } catch (e: any) {
