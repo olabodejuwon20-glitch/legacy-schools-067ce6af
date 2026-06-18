@@ -68,15 +68,25 @@ export default function AdminOnboarding() {
 
   async function saveProfile() {
     if (!school) return;
+    if (saving) return; // guard against double-clicks
     setSaving(true);
     try {
       let logo_url = profile.logo_url;
       if (logoFile) {
-        const path = `${school.id}/logo-${Date.now()}-${logoFile.name}`;
-        const { error: upErr } = await supabase.storage.from("school-logos").upload(path, logoFile, { upsert: true });
-        if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("school-logos").getPublicUrl(path);
-        logo_url = pub.publicUrl;
+        // Keep onboarding moving even if the logo upload fails (RLS race right
+        // after registration, network blips, etc.) — admins can re-upload later.
+        const safeName = logoFile.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
+        const path = `${school.id}/logo-${Date.now()}-${safeName}`;
+        const { error: upErr } = await supabase.storage
+          .from("school-logos")
+          .upload(path, logoFile, { upsert: true, contentType: logoFile.type || undefined });
+        if (upErr) {
+          console.warn("[onboarding] logo upload failed", upErr);
+          toast.warning("We couldn't upload the logo right now — you can add it later from Settings.");
+        } else {
+          const { data: pub } = supabase.storage.from("school-logos").getPublicUrl(path);
+          logo_url = pub.publicUrl;
+        }
       }
       const { error } = await supabase.from("schools").update({
         name: profile.name,
@@ -92,29 +102,34 @@ export default function AdminOnboarding() {
       setProfile(p => ({ ...p, logo_url }));
       setStep(1);
     } catch (e: any) {
-      toast.error(e.message ?? "Could not save profile");
+      const msg = (e?.message ?? "").toLowerCase();
+      if (msg.includes("row-level security") || msg.includes("permission")) {
+        toast.error("Your admin role isn't fully active yet. Please refresh the page and try again.");
+      } else {
+        toast.error(e?.message ?? "Could not save profile");
+      }
     } finally { setSaving(false); }
   }
 
   async function saveClassesAndFinish() {
     if (!school) return;
     if (selectedClasses.length === 0) return toast.error("Add at least one class");
+    if (saving) return;
     setSaving(true);
     try {
-      // existing classes
-      const { data: existing } = await supabase.from("classes").select("name").eq("school_id", school.id);
-      const have = new Set((existing ?? []).map(c => c.name.toLowerCase()));
-      const rows = selectedClasses
-        .filter(n => !have.has(n.toLowerCase()))
-        .map((name, i) => ({
-          school_id: school.id,
-          name,
-          code: name.replace(/\s+/g, "").toUpperCase() + "-" + (i + 1),
-          grade_level: name,
-          subject: selectedSubjects.join(", ") || null,
-        }));
+      // Idempotent: rely on the unique (school_id, lower(name)) index so that
+      // retrying after a network blip cannot create the same class twice.
+      const rows = selectedClasses.map((name, i) => ({
+        school_id: school.id,
+        name,
+        code: name.replace(/\s+/g, "").toUpperCase() + "-" + (i + 1),
+        grade_level: name,
+        subject: selectedSubjects.join(", ") || null,
+      }));
       if (rows.length) {
-        const { error } = await supabase.from("classes").insert(rows);
+        const { error } = await supabase
+          .from("classes")
+          .upsert(rows, { onConflict: "school_id,name", ignoreDuplicates: true });
         if (error) throw error;
       }
       // mark onboarded — preserve existing settings
@@ -126,7 +141,15 @@ export default function AdminOnboarding() {
       toast.success("Setup complete — welcome aboard!");
       nav(schoolPath(school.slug, "/app/admin"));
     } catch (e: any) {
-      toast.error(e.message ?? "Could not save");
+      const msg = (e?.message ?? "").toLowerCase();
+      if (msg.includes("duplicate") || msg.includes("unique")) {
+        // Treat as success — the rows already exist from a prior attempt.
+        await refreshMemberships();
+        toast.success("Setup complete — welcome aboard!");
+        nav(schoolPath(school.slug, "/app/admin"));
+      } else {
+        toast.error(e?.message ?? "Could not save");
+      }
     } finally { setSaving(false); }
   }
 
