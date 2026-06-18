@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessagesSquare, Search, ArrowLeft, Check, CheckCheck, WifiOff, Sparkles, Loader2 } from "lucide-react";
+import { MessagesSquare, Search, ArrowLeft, Check, CheckCheck, WifiOff, Sparkles, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -35,6 +35,25 @@ export function MessagesPanel() {
   const [aiBusy, setAiBusy] = useState(false);
   const [seedText, setSeedText] = useState<string | undefined>(undefined);
   const [seedNonce, setSeedNonce] = useState(0);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+
+  async function summarizeThread() {
+    if (!school || !thread.length) { toast.error("Nothing to summarize yet"); return; }
+    setSummarizing(true);
+    setSummary(null);
+    const transcript = thread.slice(-50).map((m: any) => {
+      const who = m.sender_id === user!.id ? "Me" : (active?.profile?.full_name || "Them");
+      return `${who}: ${m.body ?? ""}`;
+    }).join("\n");
+    const { data, error } = await supabase.functions.invoke("comms-ai-assist", {
+      body: { school_id: school.id, intent: "summarize", text: transcript },
+    });
+    setSummarizing(false);
+    const err = error?.message ?? (data as any)?.error;
+    if (err) { toast.error(err); return; }
+    setSummary((data as any).text ?? "");
+  }
 
   async function aiAssist(intent: "draft" | "improve") {
     if (!school) return;
@@ -202,6 +221,15 @@ export function MessagesPanel() {
       >
         {!active ? <EmptyState icon={MessagesSquare} title="Pick a conversation" desc="Choose someone on the left to start chatting." /> :
           <>
+            {summary && (
+              <div className="mb-2 rounded-lg border bg-muted/50 p-3 text-xs">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-medium flex items-center gap-1"><FileText className="size-3"/> Thread summary</span>
+                  <button onClick={() => setSummary(null)} className="text-muted-foreground hover:text-foreground">✕</button>
+                </div>
+                <div className="whitespace-pre-wrap text-foreground/90">{summary}</div>
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {thread.length === 0 ? <div className="text-sm text-muted-foreground text-center py-10">Say hi 👋</div> :
                 thread.map(m => {
@@ -244,6 +272,11 @@ export function MessagesPanel() {
             </div>
             <div className="-mx-4 -mb-4">
               <div className="px-3 pt-2 flex justify-end">
+                <Button type="button" size="sm" variant="ghost" className="h-7 text-xs mr-1"
+                  disabled={summarizing} onClick={summarizeThread}>
+                  {summarizing ? <Loader2 className="size-3 mr-1 animate-spin"/> : <FileText className="size-3 mr-1"/>}
+                  Summarize
+                </Button>
                 <Popover open={aiOpen} onOpenChange={setAiOpen}>
                   <PopoverTrigger asChild>
                     <Button type="button" size="sm" variant="ghost" className="h-7 text-xs">
