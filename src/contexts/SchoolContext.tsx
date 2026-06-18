@@ -54,18 +54,21 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("edusmart-theme", theme);
   }, [theme]);
 
-  // Resolve school from URL once
-  useEffect(() => {
+  const loadSchoolFromContext = useCallback(async () => {
     const slug = detectSlug();
     if (!slug) { setSchool(null); setSchoolLoading(false); return; }
-    supabase.rpc("get_school_by_slug", { _slug: slug })
-      .then(({ data }) => {
-        const row = Array.isArray(data) ? data[0] : null;
-        setSchool(row ?? null);
-        if (row?.slug) storeSchoolSlug(row.slug);
-        setSchoolLoading(false);
-      });
+    setSchoolLoading(true);
+    const { data } = await supabase.rpc("get_school_by_slug", { _slug: slug });
+    const row = Array.isArray(data) ? data[0] : null;
+    setSchool(row ?? null);
+    if (row?.slug) storeSchoolSlug(row.slug);
+    setSchoolLoading(false);
   }, []);
+
+  // Resolve school from URL once
+  useEffect(() => {
+    loadSchoolFromContext();
+  }, [loadSchoolFromContext]);
 
   useEffect(() => {
     if (loading || school || memberships.length === 0 || detectSlug()) return;

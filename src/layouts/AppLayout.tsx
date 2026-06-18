@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/comms/NotificationBell";
 import { RealtimeNotifier } from "@/components/comms/RealtimeNotifier";
-import { OnboardingGate } from "@/components/admin/OnboardingGate";
 import { HelpCircle, CreditCard } from "lucide-react";
 import { warmSchoolCache } from "@/lib/dataCache";
 import { useAdminPermissions } from "@/lib/adminPermissions";
@@ -403,10 +402,8 @@ export default function AppLayout() {
         </header>
 
         <main className="flex-1 min-w-0 overflow-x-hidden px-3 sm:px-4 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-6 animate-fade-in">
-          <OnboardingGate>
-            <AdminPermissionGuard />
-            <Outlet />
-          </OnboardingGate>
+          <AdminPermissionGuard />
+          <Outlet />
         </main>
       </div>
 
