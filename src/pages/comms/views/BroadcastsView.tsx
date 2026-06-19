@@ -34,10 +34,10 @@ export default function BroadcastsView() {
     if (!school) return;
     setLoading(true);
     const [jobsR, tplR] = await Promise.all([
-      (supabase as any).from("broadcast_jobs")
+      supabase.from("broadcast_jobs")
         .select("id,title,body,status,scheduled_for,sent_at,audience,channels,created_at,stats")
         .eq("school_id", school.id).order("created_at", { ascending: false }).limit(50),
-      (supabase as any).from("comms_templates")
+      supabase.from("comms_templates")
         .select("id,name,subject,body").eq("school_id", school.id).order("name"),
     ]);
     setJobs((jobsR.data ?? []) as Job[]);
@@ -50,7 +50,7 @@ export default function BroadcastsView() {
     if (!school || !user || !title.trim() || !body.trim()) return;
     const audience = { roles: roles.split(",").map((r) => r.trim()).filter(Boolean) };
     const status = scheduledFor ? "scheduled" : "draft";
-    const { error } = await (supabase as any).from("broadcast_jobs").insert({
+    const { error } = await supabase.from("broadcast_jobs").insert({
       school_id: school.id, created_by: user.id, title, body, audience, status,
       scheduled_for: scheduledFor || null,
     });

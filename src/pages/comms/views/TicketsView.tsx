@@ -33,11 +33,11 @@ export default function TicketsView() {
 
   const refresh = async () => {
     if (!school || !user) return;
-    const baseSel = (supabase as any).from("support_tickets")
+    const baseSel = supabase.from("support_tickets")
       .select("id,subject,status,priority,created_at,opened_by").eq("school_id", school.id);
     const filtered = isAdmin ? baseSel : baseSel.eq("opened_by", user.id);
     const [c, t] = await Promise.all([
-      (supabase as any).from("support_ticket_categories").select("id,name,slug").eq("school_id", school.id).eq("is_active", true),
+      supabase.from("support_ticket_categories").select("id,name,slug").eq("school_id", school.id).eq("is_active", true),
       filtered.order("created_at", { ascending: false }).limit(100),
     ]);
     setCats((c.data ?? []) as Cat[]);

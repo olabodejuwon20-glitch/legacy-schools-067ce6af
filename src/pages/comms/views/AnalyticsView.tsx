@@ -15,7 +15,7 @@ export default function AnalyticsView() {
     (async () => {
       const [m, b, c, t] = await Promise.all([
         supabase.from("conversation_messages").select("id", { head: true, count: "exact" }).eq("school_id", school.id),
-        (supabase as any).from("broadcast_jobs").select("id", { head: true, count: "exact" }).eq("school_id", school.id),
+        supabase.from("broadcast_jobs").select("id", { head: true, count: "exact" }).eq("school_id", school.id),
         supabase.from("conversations").select("id", { head: true, count: "exact" }).eq("school_id", school.id).in("channel_type", ["class", "subject", "group"]),
         supabase.from("support_tickets").select("id", { head: true, count: "exact" }),
       ]);
@@ -27,7 +27,7 @@ export default function AnalyticsView() {
       });
       const since = new Date(Date.now() - 13 * 86400_000);
       since.setHours(0, 0, 0, 0);
-      const { data: deliv } = await (supabase as any).from("broadcast_deliveries")
+      const { data: deliv } = await supabase.from("broadcast_deliveries")
         .select("status,created_at").eq("school_id", school.id).gte("created_at", since.toISOString());
       const bucket = new Map<string, { sent: number; delivered: number; failed: number }>();
       for (let i = 0; i < 14; i++) {
