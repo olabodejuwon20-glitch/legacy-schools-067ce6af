@@ -258,7 +258,7 @@ const App = () => (
               <Route path="admin/attendance" element={<RoleGate allow="admin"><AdminAttendance /></RoleGate>} />
               <Route path="admin/classes" element={<RoleGate allow="admin"><AdminClasses /></RoleGate>} />
               <Route path="admin/enrollments" element={<RoleGate allow="admin"><AdminEnrollments /></RoleGate>} />
-              <Route path="admin/reports" element={<RoleGate allow="admin"><AdminReports /></RoleGate>} />
+              <Route path="admin/reports" element={<RoleGate allow="admin"><PremiumGate feature="Advanced Reports & Analytics" description="Whole-school performance dashboards, custom drilldowns and bulk result slips."><AdminReports /></PremiumGate></RoleGate>} />
               <Route path="admin/invites" element={<RoleGate allow="admin"><AdminInvites /></RoleGate>} />
               <Route path="admin/bulk" element={<RoleGate allow="admin"><AdminBulkUpload /></RoleGate>} />
               <Route path="admin/timetable" element={<RoleGate allow="admin"><AdminTimetable /></RoleGate>} />
@@ -269,7 +269,7 @@ const App = () => (
               <Route path="admin/library" element={<RoleGate allow="admin"><LibraryManager /></RoleGate>} />
               <Route path="admin/lesson-notes" element={<RoleGate allow="admin"><AdminLessonNotes /></RoleGate>} />
               <Route path="admin/question-bank" element={<RoleGate allow="admin"><AdminQuestionBank /></RoleGate>} />
-              <Route path="admin/proctoring" element={<RoleGate allow="admin"><AdminProctoring /></RoleGate>} />
+              <Route path="admin/proctoring" element={<RoleGate allow="admin"><PremiumGate feature="CBT Pro · Proctoring" description="Live exam proctoring, lockdown mode, and violation analytics."><AdminProctoring /></PremiumGate></RoleGate>} />
               <Route path="admin/modules" element={<RoleGate allow="admin"><AdminModules /></RoleGate>} />
               <Route path="admin/inbox" element={<RoleGate allow="admin"><Inbox /></RoleGate>} />
               <Route path="admin/settings" element={<RoleGate allow="admin"><AdminSettings /></RoleGate>} />
