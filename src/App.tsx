@@ -7,6 +7,7 @@ import { SchoolProvider, useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
 import { RequireAuth, RequireSchool, RoleGate } from "@/components/Guards";
 import { OnboardingGate } from "@/components/admin/OnboardingGate";
+import { PremiumGate } from "@/components/pilot/PremiumGate";
 import AppLayout from "./layouts/AppLayout";
 import NotFound from "./pages/NotFound";
 import Landing from "./pages/Landing";
@@ -276,7 +277,7 @@ const App = () => (
               <Route path="admin/parent-alerts" element={<RoleGate allow="admin"><AdminParentAlerts /></RoleGate>} />
               <Route path="admin/ai-activity" element={<RoleGate allow="admin"><AdminAIActivity /></RoleGate>} />
               <Route path="admin/ai-settings" element={<RoleGate allow="admin"><AdminAISettings /></RoleGate>} />
-              <Route path="admin/copilot" element={<RoleGate allow="admin"><AdminCopilot /></RoleGate>} />
+              <Route path="admin/copilot" element={<RoleGate allow="admin"><PremiumGate feature="Principal AI Copilot" description="Ask anything about your school — attendance, fees, weak topics. Unlocked with any paid plan."><AdminCopilot /></PremiumGate></RoleGate>} />
               <Route path="admin/knowledge" element={<RoleGate allow="admin"><AdminKnowledge /></RoleGate>} />
               <Route path="admin/subscription" element={<RoleGate allow="admin"><AdminSubscription /></RoleGate>} />
               <Route path="admin/roles" element={<RoleGate allow="admin"><AdminRoles /></RoleGate>} />
@@ -338,9 +339,9 @@ const App = () => (
               <Route path="teacher/behavior" element={<RoleGate allow="teacher"><TeacherBehavior /></RoleGate>} />
               <Route path="teacher/parent-comms" element={<RoleGate allow="teacher"><TeacherParentComms /></RoleGate>} />
               <Route path="teacher/inbox" element={<RoleGate allow="teacher"><Inbox /></RoleGate>} />
-              <Route path="teacher/ai-tutor" element={<RoleGate allow="teacher"><TeacherAITutor /></RoleGate>} />
-              <Route path="teacher/ai-marking" element={<RoleGate allow="teacher"><TeacherAIMarking /></RoleGate>} />
-              <Route path="teacher/copilot" element={<RoleGate allow="teacher"><AdminCopilot /></RoleGate>} />
+              <Route path="teacher/ai-tutor" element={<RoleGate allow="teacher"><PremiumGate feature="AI Tutor"><TeacherAITutor /></PremiumGate></RoleGate>} />
+              <Route path="teacher/ai-marking" element={<RoleGate allow="teacher"><PremiumGate feature="AI Marking" description="Auto-mark theory answers with AI feedback."><TeacherAIMarking /></PremiumGate></RoleGate>} />
+              <Route path="teacher/copilot" element={<RoleGate allow="teacher"><PremiumGate feature="Teaching Copilot"><AdminCopilot /></PremiumGate></RoleGate>} />
 
               <Route path="student" element={<RoleGate allow="student"><StudentDashboard /></RoleGate>} />
               <Route path="student/classes" element={<RoleGate allow="student"><StudentClasses /></RoleGate>} />
@@ -354,7 +355,7 @@ const App = () => (
               <Route path="student/results" element={<RoleGate allow="student"><StudentResults /></RoleGate>} />
               <Route path="student/library" element={<RoleGate allow="student"><Library /></RoleGate>} />
               <Route path="student/lesson-notes" element={<RoleGate allow="student"><StudentLessonNotes /></RoleGate>} />
-              <Route path="student/ai-tutor" element={<RoleGate allow="student"><AITutor /></RoleGate>} />
+              <Route path="student/ai-tutor" element={<RoleGate allow="student"><PremiumGate feature="AI Tutor"><AITutor /></PremiumGate></RoleGate>} />
               <Route path="student/review" element={<RoleGate allow="student"><StudentExamReview /></RoleGate>} />
               <Route path="student/calendar" element={<RoleGate allow="student"><StudentCalendar /></RoleGate>} />
               <Route path="student/assignments" element={<RoleGate allow="student"><StudentAssignments /></RoleGate>} />
@@ -367,7 +368,7 @@ const App = () => (
               <Route path="student/trad-exams/:examId" element={<RoleGate allow="student"><StudentTradExamRunner /></RoleGate>} />
               <Route path="student/trad-exams/:attemptId/result" element={<RoleGate allow="student"><StudentTradExamResult /></RoleGate>} />
               <Route path="student/inbox" element={<RoleGate allow="student"><Inbox /></RoleGate>} />
-              <Route path="student/copilot" element={<RoleGate allow="student"><AdminCopilot /></RoleGate>} />
+              <Route path="student/copilot" element={<RoleGate allow="student"><PremiumGate feature="Study Copilot"><AdminCopilot /></PremiumGate></RoleGate>} />
 
               <Route path="parent" element={<RoleGate allow="parent"><ParentDashboard /></RoleGate>} />
               <Route path="parent/children" element={<RoleGate allow="parent"><ParentChildren /></RoleGate>} />
@@ -380,7 +381,7 @@ const App = () => (
               <Route path="parent/behavior" element={<RoleGate allow="parent"><ParentBehavior /></RoleGate>} />
               <Route path="parent/teacher-comms" element={<RoleGate allow="parent"><ParentTeacherComms /></RoleGate>} />
               <Route path="parent/inbox" element={<RoleGate allow="parent"><Inbox /></RoleGate>} />
-              <Route path="parent/copilot" element={<RoleGate allow="parent"><AdminCopilot /></RoleGate>} />
+              <Route path="parent/copilot" element={<RoleGate allow="parent"><PremiumGate feature="Parent Copilot"><AdminCopilot /></PremiumGate></RoleGate>} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
