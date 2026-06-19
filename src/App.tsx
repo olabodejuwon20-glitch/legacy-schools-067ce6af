@@ -300,13 +300,13 @@ const App = () => (
                   <Route path="channels" element={<CommsChannels />} />
                   <Route path="channels/:channelId" element={<CommsChannels />} />
                   <Route path="announcements" element={<CommsAnnouncements />} />
-                  <Route path="broadcasts" element={<CommsBroadcasts />} />
-                  <Route path="parent-alerts" element={<CommsParentAlerts />} />
+                  <Route path="broadcasts" element={<PremiumGate feature="Broadcasts" description="Multi-channel SMS/Email/Push broadcasts with templates and scheduling." soft><CommsBroadcasts /></PremiumGate>} />
+                  <Route path="parent-alerts" element={<PremiumGate feature="AI Parent Alerts" description="AI-drafted alerts for absence, low scores and behaviour." soft><CommsParentAlerts /></PremiumGate>} />
                   <Route path="tickets" element={<CommsTickets />} />
                   <Route path="templates" element={<CommsTemplates />} />
                   <Route path="scheduled" element={<CommsScheduled />} />
                   <Route path="notifications" element={<CommsNotifications />} />
-                  <Route path="analytics" element={<CommsAnalytics />} />
+                  <Route path="analytics" element={<PremiumGate feature="Communications Analytics" soft><CommsAnalytics /></PremiumGate>} />
                 </Route>
               ))}
 
