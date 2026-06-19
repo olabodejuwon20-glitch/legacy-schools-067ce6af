@@ -262,6 +262,15 @@ export default function AdminSettings() {
 
         <TabsContent value="help" className="space-y-4">
           <SectionCard title="Platform guide" description="Step-by-step walkthroughs, FAQs and tips for every role.">
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="pilot" className="space-y-4">
+          <PilotDetailsCard />
+        </TabsContent>
+
+        <TabsContent value="help-extra" className="hidden">
+          <SectionCard title="Platform guide" description="Step-by-step walkthroughs, FAQs and tips for every role.">
             <div className="grid sm:grid-cols-2 gap-3">
               <button onClick={() => school && nav(schoolPath(school.slug, "/app/help"))}
                 className="text-left rounded-xl border border-border p-4 hover:bg-muted/50 transition flex items-start gap-3">
