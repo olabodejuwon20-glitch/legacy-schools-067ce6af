@@ -14,6 +14,7 @@ import { Copy, Upload, Loader2, Image as ImageIcon, Plus, Trash2, Eye, Download,
 import { useNavigate } from "react-router-dom";
 import { schoolPath } from "@/lib/tenant";
 import { GradingWeightsCard } from "@/components/admin/GradingWeightsCard";
+import { PilotDetailsCard } from "@/components/pilot/PilotDetailsCard";
 
 export default function AdminSettings() {
   const { school } = useSchool();
@@ -149,6 +150,7 @@ export default function AdminSettings() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="academic">Academic</TabsTrigger>
           <TabsTrigger value="neco">Exams & NECO</TabsTrigger>
+          <TabsTrigger value="pilot">Pilot</TabsTrigger>
           <TabsTrigger value="help">Help & Guide</TabsTrigger>
         </TabsList>
 
@@ -285,6 +287,10 @@ export default function AdminSettings() {
               </button>
             </div>
           </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="pilot" className="space-y-4">
+          <PilotDetailsCard />
         </TabsContent>
       </Tabs>
 
