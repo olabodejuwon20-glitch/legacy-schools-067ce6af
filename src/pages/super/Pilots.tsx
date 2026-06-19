@@ -58,15 +58,14 @@ export default function SuperPilots() {
       <PageHeader
         title="60-Day Pilot Program"
         description="Track founding-school pilots, conversion rate, and manage trial extensions."
-        icon={Rocket}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <MetricCard label="Total pilots" value={totals?.total ?? 0} icon={Rocket} />
-        <MetricCard label="Active" value={totals?.active ?? 0} icon={Clock} tone="info" />
-        <MetricCard label="Expired" value={totals?.expired ?? 0} icon={AlertCircle} tone="warn" />
-        <MetricCard label="Converted" value={totals?.converted ?? 0} icon={CheckCircle2} tone="success" />
-        <MetricCard label="Conversion rate" value={`${totals?.conversion_rate ?? 0}%`} icon={TrendingUp} tone="success" />
+        <MetricCard label="Total pilots" value={totals?.total ?? 0} icon={<Rocket className="size-4" />} />
+        <MetricCard label="Active" value={totals?.active ?? 0} icon={<Clock className="size-4" />} />
+        <MetricCard label="Expired" value={totals?.expired ?? 0} icon={<AlertCircle className="size-4" />} />
+        <MetricCard label="Converted" value={totals?.converted ?? 0} icon={<CheckCircle2 className="size-4" />} />
+        <MetricCard label="Conversion rate" value={`${totals?.conversion_rate ?? 0}%`} icon={<TrendingUp className="size-4" />} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -98,7 +97,7 @@ export default function SuperPilots() {
               <TableRow key={i}><TableCell colSpan={8}><Skel className="h-6 w-full" /></TableCell></TableRow>
             ))}
             {rows !== null && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={8}><EmptyState icon={Rocket} title="No pilot schools" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={8}><EmptyState icon={<Rocket className="size-5" />} title="No pilot schools" /></TableCell></TableRow>
             )}
             {filtered.map(r => (
               <TableRow key={r.id}>
