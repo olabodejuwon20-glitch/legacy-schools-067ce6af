@@ -17,6 +17,24 @@ const PAGE_SIZE = 25;
 const PLANS = ["trial", "basic", "standard", "premium", "enterprise"];
 const STATUSES = ["trial", "active", "suspended", "expired"];
 
+function renderPilotCell(s: { pilot_status: string | null; pilot_ends_at: string | null }) {
+  const status = s.pilot_status ?? "none";
+  if (status === "none") return <span className="text-xs text-muted-foreground">—</span>;
+  const days = s.pilot_ends_at
+    ? Math.max(0, Math.ceil((new Date(s.pilot_ends_at).getTime() - Date.now()) / 86400_000))
+    : null;
+  const cls =
+    status === "converted" ? "bg-success/15 text-success border-success/30" :
+    status === "expired"   ? "bg-destructive/15 text-destructive border-destructive/30" :
+    days != null && days <= 7  ? "bg-destructive/15 text-destructive border-destructive/30" :
+    days != null && days <= 14 ? "bg-warning/15 text-warning border-warning/30" :
+    "bg-primary/15 text-primary border-primary/30";
+  const label = status === "active"
+    ? (days != null ? `Pilot · ${days}d` : "Pilot")
+    : status.charAt(0).toUpperCase() + status.slice(1);
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border ${cls}`}>{label}</span>;
+}
+
 type School = {
   id: string; name: string; slug: string; logo_url: string | null;
   plan: string; status: string;
