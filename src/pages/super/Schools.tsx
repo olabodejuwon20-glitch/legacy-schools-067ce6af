@@ -22,6 +22,8 @@ type School = {
   plan: string; status: string;
   plan_expires_at: string | null; created_at: string;
   suspended_reason: string | null;
+  pilot_status: string | null;
+  pilot_ends_at: string | null;
 };
 
 export default function SuperSchools() {
@@ -40,7 +42,7 @@ export default function SuperSchools() {
 
   async function load() {
     setRows(null);
-    let q = supabase.from("schools").select("id,name,slug,logo_url,plan,status,plan_expires_at,created_at,suspended_reason", { count: "exact" });
+    let q = supabase.from("schools").select("id,name,slug,logo_url,plan,status,plan_expires_at,created_at,suspended_reason,pilot_status,pilot_ends_at", { count: "exact" });
     if (debounced) q = q.or(`name.ilike.%${debounced}%,slug.ilike.%${debounced}%,email.ilike.%${debounced}%`);
     if (planFilter !== "all") q = q.eq("plan", planFilter as any);
     if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
@@ -148,6 +150,7 @@ export default function SuperSchools() {
               <TableHead>School</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Pilot</TableHead>
               <TableHead>Expires</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="w-[60px]" />
@@ -159,6 +162,7 @@ export default function SuperSchools() {
                 <TableCell><div className="flex items-center gap-3"><Skel className="size-8 rounded-md" /><Skel className="h-4 w-40" /></div></TableCell>
                 <TableCell><Skel className="h-5 w-16" /></TableCell>
                 <TableCell><Skel className="h-5 w-20" /></TableCell>
+                <TableCell><Skel className="h-5 w-16" /></TableCell>
                 <TableCell><Skel className="h-4 w-20" /></TableCell>
                 <TableCell><Skel className="h-4 w-24" /></TableCell>
                 <TableCell><Skel className="h-6 w-6" /></TableCell>
@@ -184,6 +188,7 @@ export default function SuperSchools() {
                     {s.suspended_reason && <ShieldAlert className="size-3 text-destructive" />}
                   </div>
                 </TableCell>
+                <TableCell>{renderPilotCell(s)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{s.plan_expires_at ? new Date(s.plan_expires_at).toLocaleDateString() : "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{timeAgo(s.created_at)}</TableCell>
                 <TableCell>
