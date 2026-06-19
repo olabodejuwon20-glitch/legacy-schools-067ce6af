@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSchool } from "@/contexts/SchoolContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronLeft, ChevronRight, Search, LogOut } from "lucide-react";
+import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronLeft, ChevronRight, Search, LogOut, Rocket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ const NAV = [
   ]},
   { group: "Tenants", items: [
     { to: "/super/schools", icon: Building2, label: "Schools" },
+    { to: "/super/pilots", icon: Rocket, label: "Pilot Program" },
     { to: "/super/users", icon: Users, label: "Users & Roles" },
   ]},
   { group: "Catalog", items: [

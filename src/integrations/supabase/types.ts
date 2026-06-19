@@ -4225,6 +4225,12 @@ export type Database = {
           name: string
           neco_subject_codes: Json
           phone: string | null
+          pilot_alerts_sent: Json
+          pilot_converted_at: string | null
+          pilot_ends_at: string | null
+          pilot_premium_until: string | null
+          pilot_started_at: string | null
+          pilot_status: string
           plan: Database["public"]["Enums"]["school_plan"]
           plan_expires_at: string | null
           plan_started_at: string
@@ -4261,6 +4267,12 @@ export type Database = {
           name: string
           neco_subject_codes?: Json
           phone?: string | null
+          pilot_alerts_sent?: Json
+          pilot_converted_at?: string | null
+          pilot_ends_at?: string | null
+          pilot_premium_until?: string | null
+          pilot_started_at?: string | null
+          pilot_status?: string
           plan?: Database["public"]["Enums"]["school_plan"]
           plan_expires_at?: string | null
           plan_started_at?: string
@@ -4297,6 +4309,12 @@ export type Database = {
           name?: string
           neco_subject_codes?: Json
           phone?: string | null
+          pilot_alerts_sent?: Json
+          pilot_converted_at?: string | null
+          pilot_ends_at?: string | null
+          pilot_premium_until?: string | null
+          pilot_started_at?: string | null
+          pilot_status?: string
           plan?: Database["public"]["Enums"]["school_plan"]
           plan_expires_at?: string | null
           plan_started_at?: string
@@ -6027,6 +6045,16 @@ export type Database = {
           visibility: string
         }[]
       }
+      pilot_convert_manual: {
+        Args: { _plan?: string; _school_id: string }
+        Returns: Json
+      }
+      pilot_extend_days: {
+        Args: { _days: number; _school_id: string }
+        Returns: Json
+      }
+      pilot_my_status: { Args: { _school_id: string }; Returns: Json }
+      pilot_super_overview: { Args: never; Returns: Json }
       publish_assessment: {
         Args: { _assessment_id: string }
         Returns: undefined
@@ -6052,6 +6080,10 @@ export type Database = {
         Returns: number
       }
       redeem_invite: { Args: { _code: string }; Returns: string }
+      school_is_pilot_writable: {
+        Args: { _school_id: string }
+        Returns: boolean
+      }
       seed_mock_bank: { Args: { _school: string }; Returns: undefined }
       set_subscription_status: {
         Args: { _action: string; _school_id: string }

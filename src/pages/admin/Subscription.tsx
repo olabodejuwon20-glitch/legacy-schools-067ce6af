@@ -18,6 +18,7 @@ import {
   startSubscriptionCheckout, payInvoice,
   type PlanTier, type SubInvoice,
 } from "@/lib/subscription";
+import { PilotWidget } from "@/components/pilot/PilotWidget";
 
 type SchoolRow = {
   id: string; name: string; plan: string; status: string;
@@ -118,6 +119,8 @@ export default function AdminSubscription() {
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
       <PageHeader title="Subscription & Billing" description="Manage your school's plan, students-on-roll pricing and pay invoices online." />
+
+      <PilotWidget />
 
       <Card className={`p-5 border ${toneClasses}`}>
         <div className="flex flex-wrap items-start gap-4 justify-between">
