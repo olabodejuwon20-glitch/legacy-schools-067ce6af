@@ -58,8 +58,8 @@ Deno.serve(async (req) => {
       let uid: string | undefined = created?.user?.id;
       if (cErr) {
         if (/already/i.test(cErr.message)) {
-          const { data: list } = await admin.auth.admin.listUsers();
-          uid = list?.users?.find((x) => x.email === email)?.id;
+          const { data: existing } = await admin.rpc("auth_user_id_by_email", { _email: email });
+          uid = existing ?? undefined;
         }
         if (!uid) { results.push({ phone, ok: false, error: cErr.message }); continue; }
       }

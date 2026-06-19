@@ -5843,6 +5843,7 @@ export type Database = {
         Args: { _invoice_id: string; _method?: string; _reference: string }
         Returns: Json
       }
+      auth_user_id_by_email: { Args: { _email: string }; Returns: string }
       bump_ai_quota: {
         Args: { _cost: number; _school_id: string; _tokens: number }
         Returns: undefined
@@ -6095,6 +6096,7 @@ export type Database = {
       }
       start_assessment: { Args: { _assessment_id: string }; Returns: string }
       submit_assessment: { Args: { _attempt_id: string }; Returns: Json }
+      super_admin_exists: { Args: never; Returns: boolean }
       super_ai_cache_stats: { Args: never; Returns: Json }
       super_recent_auth_events: {
         Args: { _event?: string; _limit?: number; _since?: string }
