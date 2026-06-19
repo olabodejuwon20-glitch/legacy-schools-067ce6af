@@ -142,6 +142,7 @@ import SuperDashboard from "./pages/super/Dashboard";
 import SuperClaim from "./pages/super/Claim";
 import SuperSchools from "./pages/super/Schools";
 import SuperSchoolDetail from "./pages/super/SchoolDetail";
+import SuperPilots from "./pages/super/Pilots";
 import SuperModules from "./pages/super/Modules";
 import SuperMarketplace from "./pages/super/Marketplace";
 import SuperAnalytics from "./pages/super/Analytics";
@@ -225,6 +226,7 @@ const App = () => (
             <Route index element={<SuperDashboard />} />
             <Route path="schools" element={<SuperSchools />} />
             <Route path="schools/:id" element={<SuperSchoolDetail />} />
+            <Route path="pilots" element={<SuperPilots />} />
             <Route path="analytics" element={<SuperAnalytics />} />
             <Route path="users" element={<SuperUsers />} />
             <Route path="modules" element={<SuperModules />} />
