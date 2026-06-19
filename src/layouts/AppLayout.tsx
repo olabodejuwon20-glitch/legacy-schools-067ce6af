@@ -25,6 +25,7 @@ import { HelpCircle, CreditCard } from "lucide-react";
 import { warmSchoolCache } from "@/lib/dataCache";
 import { useAdminPermissions } from "@/lib/adminPermissions";
 import { ShieldCheck } from "lucide-react";
+import { PilotReadOnlyBanner } from "@/components/pilot/PilotReadOnlyBanner";
 
 // Group every sidebar destination into a labelled section.
 // Keys are the `to` field used by NAV / module manifests.
@@ -403,6 +404,7 @@ export default function AppLayout() {
 
         <main className="flex-1 min-w-0 overflow-x-hidden px-3 sm:px-4 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-6 animate-fade-in">
           <AdminPermissionGuard />
+          <PilotReadOnlyBanner />
           <Outlet />
         </main>
       </div>
