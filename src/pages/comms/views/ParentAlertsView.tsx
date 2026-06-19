@@ -29,7 +29,7 @@ export default function ParentAlertsView() {
   const load = async () => {
     if (!school) return;
     setLoading(true);
-    const { data } = await (supabase as any).from("parent_alerts")
+    const { data } = await supabase.from("parent_alerts")
       .select("id,kind,severity,status,draft_message,signal,student_id,parent_id,created_at,sent_at")
       .eq("school_id", school.id).order("created_at", { ascending: false }).limit(100);
     setAlerts((data ?? []) as Alert[]);
@@ -56,7 +56,7 @@ export default function ParentAlertsView() {
       body: a.draft_message ?? "Notice from school", attachments: [] as any,
     });
     if (mErr) { toast.error(mErr.message); setSendingId(null); return; }
-    await (supabase as any).from("parent_alerts")
+    await supabase.from("parent_alerts")
       .update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", a.id);
     setSendingId(null);
     toast.success("Alert delivered to parent");

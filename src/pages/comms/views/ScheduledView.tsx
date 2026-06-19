@@ -11,7 +11,7 @@ export default function ScheduledView() {
   useEffect(() => {
     if (!school) return;
     (async () => {
-      const { data } = await (supabase as any).from("broadcast_jobs")
+      const { data } = await supabase.from("broadcast_jobs")
         .select("id,title,body,status,scheduled_for").eq("school_id", school.id)
         .in("status", ["scheduled", "sending"]).order("scheduled_for", { ascending: true });
       setItems((data ?? []) as any[]);

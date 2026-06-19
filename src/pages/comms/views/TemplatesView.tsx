@@ -22,7 +22,7 @@ export default function TemplatesView() {
 
   const refresh = async () => {
     if (!school) return;
-    const { data } = await (supabase as any).from("comms_templates")
+    const { data } = await supabase.from("comms_templates")
       .select("id,name,category,subject,body").eq("school_id", school.id).order("name");
     setTpls((data ?? []) as Tpl[]);
   };
@@ -30,7 +30,7 @@ export default function TemplatesView() {
 
   const create = async () => {
     if (!school || !user || !name.trim() || !body.trim()) return;
-    const { error } = await (supabase as any).from("comms_templates").insert({
+    const { error } = await supabase.from("comms_templates").insert({
       school_id: school.id, created_by: user.id, name, category, body,
     });
     if (error) return toast.error(error.message);
@@ -39,7 +39,7 @@ export default function TemplatesView() {
 
   const remove = async (id: string) => {
     if (!confirm("Delete this template?")) return;
-    await (supabase as any).from("comms_templates").delete().eq("id", id);
+    await supabase.from("comms_templates").delete().eq("id", id);
     refresh();
   };
 

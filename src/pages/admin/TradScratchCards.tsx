@@ -23,7 +23,7 @@ export default function TradScratchCards() {
 
   async function load() {
     if (!school) return;
-    const { data } = await (supabase as any).from("trad_scratch_batches")
+    const { data } = await supabase.from("trad_scratch_batches")
       .select("*").eq("school_id", school.id).order("created_at", { ascending: false });
     setRows((data ?? []) as Batch[]);
   }
