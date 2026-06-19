@@ -41,7 +41,10 @@ export function PremiumGate({ feature, description, children, soft }: Props) {
             Upgrade <ArrowRight className="size-3.5" />
           </Link>
         </div>
-        {description && <p className="text-sm text-muted-foreground mt-3">{description}</p>}
+        <p className="text-sm text-muted-foreground mt-3">
+          Upgrade your school subscription to unlock this feature.
+          {description ? <span className="block mt-1 text-muted-foreground/80">{description}</span> : null}
+        </p>
       </div>
     );
   }
@@ -55,8 +58,11 @@ export function PremiumGate({ feature, description, children, soft }: Props) {
         <div className="text-xs font-semibold uppercase tracking-widest text-primary mb-2">Premium Feature</div>
         <h2 className="font-display text-2xl font-bold">{feature}</h2>
         <p className="text-sm text-muted-foreground mt-2">
-          {description ?? "Upgrade your school subscription to unlock this feature."}
+          Upgrade your school subscription to unlock this feature.
         </p>
+        {description && (
+          <p className="text-xs text-muted-foreground/80 mt-2">{description}</p>
+        )}
         {pilot.days_remaining != null && pilot.pilot_status === "active" && (
           <div className="mt-4 inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-background border border-border">
             <Lock className="size-3" />
