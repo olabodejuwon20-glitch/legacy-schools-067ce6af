@@ -34,16 +34,16 @@ Deno.serve(async (req) => {
     if (!school) return json(GENERIC, 400);
 
     const email = fakeEmail(phone, school.slug);
-    const { data: list } = await admin.auth.admin.listUsers();
-    const u = list?.users?.find((x) => x.email === email);
-    if (!u) return json(GENERIC, 400);
+    // O(1) lookup via SECURITY DEFINER helper; avoids paginating all auth users.
+    const { data: uid } = await admin.rpc("auth_user_id_by_email", { _email: email });
+    if (!uid) return json(GENERIC, 400);
 
     const { data: mem } = await admin.from("memberships")
-      .select("must_change_pin").eq("user_id", u.id).eq("school_id", school.id).eq("status", "active").maybeSingle();
+      .select("must_change_pin").eq("user_id", uid).eq("school_id", school.id).eq("status", "active").maybeSingle();
     if (!mem) return json(GENERIC, 400);
 
     if (fullName) {
-      const { data: prof } = await admin.from("profiles").select("full_name").eq("id", u.id).maybeSingle();
+      const { data: prof } = await admin.from("profiles").select("full_name").eq("id", uid).maybeSingle();
       if (prof?.full_name && prof.full_name.trim().toLowerCase() !== fullName) {
         return json(GENERIC, 400);
       }

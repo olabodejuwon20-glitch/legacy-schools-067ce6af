@@ -22,6 +22,24 @@ Deno.serve(async (req) => {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(url, service, { auth: { persistSession: false } });
 
+    // Auth gate: shared cron secret OR a super-admin JWT.
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const incoming = req.headers.get("x-cron-secret");
+    let authorized = !!cronSecret && incoming === cronSecret;
+    if (!authorized) {
+      const authHeader = req.headers.get("Authorization");
+      if (authHeader?.startsWith("Bearer ")) {
+        const token = authHeader.replace("Bearer ", "");
+        const { data: claims } = await admin.auth.getClaims(token);
+        const uid = claims?.claims?.sub as string | undefined;
+        if (uid) {
+          const { data: isSuper } = await admin.rpc("is_super_admin", { _user: uid });
+          if (isSuper === true) authorized = true;
+        }
+      }
+    }
+    if (!authorized) return json({ error: "Unauthorized" }, 401);
+
     // 1. Expire any past-due pilots
     const { data: expired } = await admin
       .from("schools")

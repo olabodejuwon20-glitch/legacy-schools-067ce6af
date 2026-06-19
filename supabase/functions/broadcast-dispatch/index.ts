@@ -112,11 +112,15 @@ Deno.serve(async (req) => {
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
 
-    // Cron / scheduled-sweep path. Idempotent and only dispatches jobs whose
-    // scheduled_for <= now(), so requiring just the project apikey is safe —
-    // anyone triggering early only fires jobs already due. (verify_jwt is off
-    // on this function; the gateway still requires a valid apikey header.)
+    // Cron / scheduled-sweep path. Requires the shared CRON_SECRET header so
+    // anonymous callers with only the public apikey cannot fire scheduled
+    // broadcasts early across every school.
     if (!body.job_id) {
+      const cronSecret = Deno.env.get("CRON_SECRET");
+      const incoming = req.headers.get("x-cron-secret");
+      if (!cronSecret || incoming !== cronSecret) {
+        return json({ error: "Unauthorized" }, 401);
+      }
       const results = await processScheduled();
       return json({ ok: true, processed: results.length, results });
     }
