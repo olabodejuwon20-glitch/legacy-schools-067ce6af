@@ -8,6 +8,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { EmptyState } from "@/components/EmptyState";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { PilotWidget } from "@/components/pilot/PilotWidget";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -102,6 +103,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      <PilotWidget />
       <Link
         to={schoolPath(school?.slug, `/app/admin/copilot`)}
         className="block group relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 sm:p-6 hover:border-primary/40 transition-all"
