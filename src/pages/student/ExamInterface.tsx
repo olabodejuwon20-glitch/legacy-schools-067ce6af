@@ -87,7 +87,7 @@ export default function ExamInterface() {
   const streamRef = useRef<MediaStream | null>(null);
   const snapTimerRef = useRef<number | null>(null);
   const faceTimerRef = useRef<number | null>(null);
-  const snapNowRef = useRef<(() => Promise<void>) | null>(null);
+  const snapNowRef = useRef<(() => Promise<string | null>) | null>(null);
   const [proctorOn, setProctorOn] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
