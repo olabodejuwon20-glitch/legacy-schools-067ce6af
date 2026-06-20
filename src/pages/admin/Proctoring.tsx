@@ -60,17 +60,26 @@ export default function Proctoring() {
 
   async function review(a: AttemptRow) {
     setOpen(a); setSnapshots([]); setViolations([]);
-    const [{ data: vlist }, { data: files }] = await Promise.all([
-      supabase.from("exam_violations").select("type,detail,created_at").eq("attempt_id", a.id).order("created_at"),
-      supabase.storage.from("proctor-snapshots").list(`${a.exam_id}/${a.id}`, { limit: 200, sortBy: { column: "name", order: "asc" } }),
-    ]);
-    setViolations(vlist ?? []);
-    const items = files ?? [];
-    if (items.length) {
-      const paths = items.map(f => `${a.exam_id}/${a.id}/${f.name}`);
-      const { data: signed } = await supabase.storage.from("proctor-snapshots").createSignedUrls(paths, 60 * 30);
-      setSnapshots((signed ?? []).map((s, i) => ({ name: items[i].name, url: s.signedUrl })));
-    }
+      const { data: vlist } = await supabase
+        .from("exam_violations")
+        .select("type,detail,created_at,risk_score,evidence_path")
+        .eq("attempt_id", a.id).order("created_at");
+      setViolations(vlist ?? []);
+      // Pull signed URLs for any evidence paths recorded with violations
+      const paths = (vlist ?? []).map((v: any) => v.evidence_path).filter(Boolean) as string[];
+      if (paths.length) {
+        const { data: signed } = await supabase.storage.from("proctor-evidence").createSignedUrls(paths, 60 * 30);
+        setSnapshots((signed ?? []).map((s, i) => ({ name: paths[i].split("/").pop() ?? "snap", url: s.signedUrl })));
+      } else {
+        // Fallback to legacy proctor-snapshots bucket if older attempt
+        const { data: files } = await supabase.storage.from("proctor-snapshots").list(`${a.exam_id}/${a.id}`, { limit: 200 });
+        const items = files ?? [];
+        if (items.length) {
+          const legacyPaths = items.map(f => `${a.exam_id}/${a.id}/${f.name}`);
+          const { data: signed } = await supabase.storage.from("proctor-snapshots").createSignedUrls(legacyPaths, 60 * 30);
+          setSnapshots((signed ?? []).map((s, i) => ({ name: items[i].name, url: s.signedUrl })));
+        }
+      }
   }
 
   // Live realtime feed of violations across the school
