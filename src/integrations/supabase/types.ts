@@ -5803,11 +5803,14 @@ export type Database = {
       trad_exam_timetable: {
         Row: {
           class_id: string
+          coordinator_name: string | null
           created_at: string
           created_by: string | null
           duration_minutes: number
           exam_date: string
           id: string
+          invigilator_name: string | null
+          notes: string | null
           school_id: string
           session_id: string
           start_time: string
@@ -5819,11 +5822,14 @@ export type Database = {
         }
         Insert: {
           class_id: string
+          coordinator_name?: string | null
           created_at?: string
           created_by?: string | null
           duration_minutes?: number
           exam_date: string
           id?: string
+          invigilator_name?: string | null
+          notes?: string | null
           school_id: string
           session_id: string
           start_time: string
@@ -5835,11 +5841,14 @@ export type Database = {
         }
         Update: {
           class_id?: string
+          coordinator_name?: string | null
           created_at?: string
           created_by?: string | null
           duration_minutes?: number
           exam_date?: string
           id?: string
+          invigilator_name?: string | null
+          notes?: string | null
           school_id?: string
           session_id?: string
           start_time?: string

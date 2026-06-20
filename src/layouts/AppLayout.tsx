@@ -49,6 +49,7 @@ const SECTION_OF: Record<string, string> = {
   "exams": "Assessments", "results": "Assessments", "mock": "Assessments",
   "practice": "Assessments", "proctoring": "Assessments", "trad-exams": "Assessments",
   "trad-exams-approvals": "Assessments", "trad-exams-results": "Assessments", "trad-exams-grading": "Assessments",
+  "exam-committee": "Assessments",
   // Copilot (all AI features grouped here)
   "ai-tutor": "Copilot", "ai-marking": "Copilot", "parent-alerts": "Copilot",
   "copilot": "Copilot", "knowledge": "Copilot", "ai-activity": "Copilot",
@@ -122,6 +123,7 @@ const NAV: Record<Role, { label: string; to: string; icon: any }[]> = {
     { label: "AI Settings", to: "ai-settings", icon: Sparkles },
     { label: "Custom Roles", to: "roles", icon: ShieldCheck },
     { label: "Academic Setup", to: "academic-setup", icon: Gauge },
+    { label: "Exam Committee", to: "exam-committee", icon: ClipboardList },
     { label: "Exam Appeals", to: "exam-appeals", icon: ShieldCheck },
     { label: "Settings",  to: "settings",  icon: Settings },
     { label: "Help",      to: "/app/help", icon: HelpCircle },
