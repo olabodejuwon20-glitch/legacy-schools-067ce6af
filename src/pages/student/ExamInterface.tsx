@@ -303,7 +303,7 @@ export default function ExamInterface() {
         toast.error(`Violation limit reached (${next}/${violationLimit}). Your examiner has been alerted.`);
       } else {
         const tail = action === "auto_submit" ? "Further violations will auto-submit your exam." : "Your examiner has been alerted.";
-        speakWarning(`Warning ${next} of ${violationLimit}. ${type.replaceAll("_", " ")}.`);
+        speakWarning(`Warning ${next} of ${violationLimit}. ${type.split("_").join(" ")}.`);
         toast.warning(`Warning ${next}/${violationLimit}: ${type}. ${tail}`);
       }
       return next;
