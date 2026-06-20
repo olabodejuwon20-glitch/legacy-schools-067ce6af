@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Eye, ShieldAlert } from "lucide-react";
+import { Eye, ShieldAlert, Radio } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 type AttemptRow = {
   id: string;
@@ -26,6 +27,7 @@ export default function Proctoring() {
   const [open, setOpen] = useState<AttemptRow | null>(null);
   const [snapshots, setSnapshots] = useState<{ name: string; url: string }[]>([]);
   const [violations, setViolations] = useState<any[]>([]);
+  const [liveFeed, setLiveFeed] = useState<Array<{ id: string; type: string; detail: string | null; created_at: string; attempt_id: string }>>([]);
 
   useEffect(() => {
     (async () => {
@@ -71,8 +73,44 @@ export default function Proctoring() {
     }
   }
 
+  // Live realtime feed of violations across the school
+  useEffect(() => {
+    if (!school) return;
+    const channel = supabase
+      .channel(`proctor-live-${school.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "exam_violations", filter: `school_id=eq.${school.id}` },
+        (payload) => {
+          const v = payload.new as any;
+          setLiveFeed((prev) => [{ id: v.id, type: v.type, detail: v.detail, created_at: v.created_at, attempt_id: v.attempt_id }, ...prev].slice(0, 30));
+          // Bump attempt's violation count in the table without a full refetch
+          setRows((prev) => prev.map((r) => r.id === v.attempt_id ? { ...r, violation_count: (r.violation_count ?? 0) + 1 } : r));
+          toast.warning(`Live violation: ${v.type}`, { id: `live-${v.id}` });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [school]);
+
   return (
     <SectionCard title="Proctoring review">
+      {liveFeed.length > 0 && (
+        <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-destructive mb-2">
+            <Radio className="size-3.5 animate-pulse" /> Live violations
+          </div>
+          <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
+            {liveFeed.map((v) => (
+              <li key={v.id} className="flex items-center gap-2">
+                <span className="text-muted-foreground">{new Date(v.created_at).toLocaleTimeString()}</span>
+                <span className="px-1.5 py-0.5 rounded bg-destructive/15 text-destructive">{v.type}</span>
+                {v.detail && <span className="text-muted-foreground">{v.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {loading ? <div className="text-sm text-muted-foreground">Loading…</div>
        : rows.length === 0 ? <EmptyState icon={ShieldAlert} title="No exam attempts yet" />
        : (
