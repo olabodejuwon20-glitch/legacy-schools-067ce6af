@@ -32,6 +32,8 @@ export default function TestBuilder() {
   const [randomize, setRandomize] = useState(true);
   const [proctored, setProctored] = useState(true);
   const [violationLimit, setViolationLimit] = useState(3);
+  const [proctorAction, setProctorAction] = useState<"warn" | "auto_submit">("auto_submit");
+  const [snapshotIntervalSec, setSnapshotIntervalSec] = useState(60);
   const [mode, setMode] = useState<ExamMode>("school");
   const [showAnswersAfterEach, setShowAnswersAfterEach] = useState(true);
   const [questions, setQuestions] = useState<Q[]>([{ prompt: "", options: ["", "", "", ""], correct_index: 0 }]);
@@ -44,7 +46,7 @@ export default function TestBuilder() {
 
   // Apply mode-specific defaults when mode changes
   useEffect(() => {
-    if (mode === "neco_sim") { setProctored(true); setRandomize(true); setViolationLimit(3); }
+    if (mode === "neco_sim") { setProctored(true); setRandomize(true); setViolationLimit(3); setProctorAction("auto_submit"); }
     else if (mode === "practice") { setProctored(false); setRandomize(false); }
   }, [mode]);
 
@@ -61,6 +63,8 @@ export default function TestBuilder() {
       randomize: mode === "practice" ? false : randomize,
       proctored: mode === "practice" ? false : proctored,
       violation_limit: violationLimit,
+      proctor_action: mode === "practice" ? "warn" : proctorAction,
+      proctor_snapshot_interval_sec: snapshotIntervalSec,
       mode,
       counts_to_results: mode !== "practice",
       show_answers_after_each: mode === "practice" ? showAnswersAfterEach : false,
@@ -116,6 +120,25 @@ export default function TestBuilder() {
           <div><Label>Duration (min)</Label><Input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} /></div>
           {mode !== "practice" && (
             <div><Label>Violation limit</Label><Input type="number" value={violationLimit} onChange={e => setViolationLimit(Number(e.target.value))} /></div>
+          )}
+          {mode !== "practice" && proctored && (
+            <>
+              <div>
+                <Label>On threshold reached</Label>
+                <select
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  value={proctorAction}
+                  onChange={e => setProctorAction(e.target.value as "warn" | "auto_submit")}
+                >
+                  <option value="auto_submit">Auto-submit the exam</option>
+                  <option value="warn">Warn student &amp; alert examiner</option>
+                </select>
+              </div>
+              <div>
+                <Label>Snapshot interval (sec)</Label>
+                <Input type="number" min={10} max={600} value={snapshotIntervalSec} onChange={e => setSnapshotIntervalSec(Number(e.target.value))} />
+              </div>
+            </>
           )}
           <div className="flex items-end gap-3 sm:col-span-2 flex-wrap">
             {mode !== "practice" && (
