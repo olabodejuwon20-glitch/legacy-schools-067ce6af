@@ -60,6 +60,8 @@ import AdminTradExamPaper from "./pages/admin/TradExamPaper";
 import AdminTradExamApprovals from "./pages/admin/TradExamApprovals";
 import AdminTradExamResults from "./pages/admin/TradExamResults";
 import AdminTradScratchCards from "./pages/admin/TradScratchCards";
+import AdminAcademicSetup from "./pages/admin/AcademicSetup";
+import AdminExamAppeals from "./pages/admin/ExamAppeals";
 import TradUnlockResult from "./pages/shared/TradUnlockResult";
 import SubscriptionCallback from "./pages/SubscriptionCallback";
 import HelpPage from "./pages/Help";
@@ -125,6 +127,7 @@ import StudentAttendance from "./pages/student/Attendance";
 import StudentTradExams from "./pages/student/TradExams";
 import StudentTradExamRunner from "./pages/student/TradExamRunner";
 import StudentTradExamResult from "./pages/student/TradExamResult";
+import StudentAppealForm from "./pages/student/AppealForm";
 
 import ParentDashboard from "./pages/parent/Dashboard";
 import ParentChildren from "./pages/parent/Children";
@@ -156,6 +159,7 @@ import SuperTickets from "./pages/super/Tickets";
 import SuperSecurity from "./pages/super/Security";
 import SuperLogs from "./pages/super/Logs";
 import SuperSettings from "./pages/super/Settings";
+import SuperAcademicDefaults from "./pages/super/AcademicDefaults";
 import ComingSoon from "./pages/super/_ComingSoon";
 
 const queryClient = new QueryClient();
@@ -240,6 +244,7 @@ const App = () => (
             <Route path="security" element={<SuperSecurity />} />
             <Route path="logs" element={<SuperLogs />} />
             <Route path="settings" element={<SuperSettings />} />
+            <Route path="academic-defaults" element={<SuperAcademicDefaults />} />
           </Route>
 
             {/* School-scoped routes: /:slug/... */}
@@ -289,6 +294,8 @@ const App = () => (
               <Route path="admin/trad-exams-approvals" element={<RoleGate allow="admin"><AdminTradExamApprovals /></RoleGate>} />
               <Route path="admin/trad-exams-results" element={<RoleGate allow="admin"><AdminTradExamResults /></RoleGate>} />
               <Route path="admin/trad-cards" element={<RoleGate allow="admin"><AdminTradScratchCards /></RoleGate>} />
+              <Route path="admin/academic-setup" element={<RoleGate allow="admin"><AdminAcademicSetup /></RoleGate>} />
+              <Route path="admin/exam-appeals" element={<RoleGate allow="admin"><AdminExamAppeals /></RoleGate>} />
               <Route path="trad-unlock/:resultId" element={<TradUnlockResult />} />
               <Route path="help" element={<HelpPage />} />
 
@@ -369,6 +376,7 @@ const App = () => (
               <Route path="student/trad-exams" element={<RoleGate allow="student"><StudentTradExams /></RoleGate>} />
               <Route path="student/trad-exams/:examId" element={<RoleGate allow="student"><StudentTradExamRunner /></RoleGate>} />
               <Route path="student/trad-exams/:attemptId/result" element={<RoleGate allow="student"><StudentTradExamResult /></RoleGate>} />
+              <Route path="student/exam-appeal/:attemptId" element={<RoleGate allow="student"><StudentAppealForm /></RoleGate>} />
               <Route path="student/inbox" element={<RoleGate allow="student"><Inbox /></RoleGate>} />
               <Route path="student/copilot" element={<RoleGate allow="student"><PremiumGate feature="Study Copilot"><AdminCopilot /></PremiumGate></RoleGate>} />
 

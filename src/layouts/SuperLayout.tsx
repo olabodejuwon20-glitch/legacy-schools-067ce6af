@@ -21,6 +21,7 @@ const NAV = [
     { to: "/super/modules", icon: Package, label: "Modules & Plugins" },
     { to: "/super/licensing", icon: KeyRound, label: "Feature Licensing" },
     { to: "/super/configurations", icon: Settings2, label: "Tenant Config" },
+    { to: "/super/academic-defaults", icon: Settings2, label: "Academic Defaults" },
     { to: "/super/marketplace", icon: ShoppingBag, label: "Marketplace" },
   ]},
   { group: "Revenue", items: [

@@ -60,17 +60,26 @@ export default function Proctoring() {
 
   async function review(a: AttemptRow) {
     setOpen(a); setSnapshots([]); setViolations([]);
-    const [{ data: vlist }, { data: files }] = await Promise.all([
-      supabase.from("exam_violations").select("type,detail,created_at").eq("attempt_id", a.id).order("created_at"),
-      supabase.storage.from("proctor-snapshots").list(`${a.exam_id}/${a.id}`, { limit: 200, sortBy: { column: "name", order: "asc" } }),
-    ]);
-    setViolations(vlist ?? []);
-    const items = files ?? [];
-    if (items.length) {
-      const paths = items.map(f => `${a.exam_id}/${a.id}/${f.name}`);
-      const { data: signed } = await supabase.storage.from("proctor-snapshots").createSignedUrls(paths, 60 * 30);
-      setSnapshots((signed ?? []).map((s, i) => ({ name: items[i].name, url: s.signedUrl })));
-    }
+      const { data: vlist } = await supabase
+        .from("exam_violations")
+        .select("type,detail,created_at,risk_score,evidence_path")
+        .eq("attempt_id", a.id).order("created_at");
+      setViolations(vlist ?? []);
+      // Pull signed URLs for any evidence paths recorded with violations
+      const paths = (vlist ?? []).map((v: any) => v.evidence_path).filter(Boolean) as string[];
+      if (paths.length) {
+        const { data: signed } = await supabase.storage.from("proctor-evidence").createSignedUrls(paths, 60 * 30);
+        setSnapshots((signed ?? []).map((s, i) => ({ name: paths[i].split("/").pop() ?? "snap", url: s.signedUrl })));
+      } else {
+        // Fallback to legacy proctor-snapshots bucket if older attempt
+        const { data: files } = await supabase.storage.from("proctor-snapshots").list(`${a.exam_id}/${a.id}`, { limit: 200 });
+        const items = files ?? [];
+        if (items.length) {
+          const legacyPaths = items.map(f => `${a.exam_id}/${a.id}/${f.name}`);
+          const { data: signed } = await supabase.storage.from("proctor-snapshots").createSignedUrls(legacyPaths, 60 * 30);
+          setSnapshots((signed ?? []).map((s, i) => ({ name: items[i].name, url: s.signedUrl })));
+        }
+      }
   }
 
   // Live realtime feed of violations across the school
@@ -162,12 +171,25 @@ export default function Proctoring() {
           <div className="space-y-4">
             <div>
               <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Violations ({violations.length})</h4>
+              {(() => {
+                const total = violations.reduce((s: number, v: any) => s + (v.risk_score ?? 0), 0);
+                const level = total <= 20 ? "Normal" : total <= 50 ? "Review" : total <= 80 ? "High" : "Critical";
+                const tone = total <= 20 ? "bg-success/10 text-success" : total <= 50 ? "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200" : "bg-destructive/15 text-destructive";
+                return (
+                  <div className={`mb-2 inline-flex items-center gap-2 px-2 py-1 rounded text-xs ${tone}`}>
+                    Risk score {total} · {level}
+                  </div>
+                );
+              })()}
               {violations.length === 0 ? <div className="text-sm text-muted-foreground">None recorded.</div> : (
                 <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
-                  {violations.map((v, i) => (
+                 {violations.map((v, i) => (
                     <li key={i} className="flex items-center gap-2">
                       <span className="text-muted-foreground">{new Date(v.created_at).toLocaleTimeString()}</span>
                       <span className="px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">{v.type}</span>
+                      {typeof v.risk_score === "number" && v.risk_score > 0 && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200 text-[10px]">+{v.risk_score}</span>
+                      )}
                       {v.detail && <span className="text-muted-foreground">{v.detail}</span>}
                     </li>
                   ))}

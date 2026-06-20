@@ -87,7 +87,7 @@ export default function ExamInterface() {
   const streamRef = useRef<MediaStream | null>(null);
   const snapTimerRef = useRef<number | null>(null);
   const faceTimerRef = useRef<number | null>(null);
-  const snapNowRef = useRef<(() => Promise<void>) | null>(null);
+  const snapNowRef = useRef<(() => Promise<string | null>) | null>(null);
   const [proctorOn, setProctorOn] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
@@ -169,17 +169,20 @@ export default function ExamInterface() {
       streamRef.current = stream;
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play().catch(() => {}); }
       setProctorOn(true);
-      const snap = async () => {
+      const snap = async (): Promise<string | null> => {
         try {
-          const v = videoRef.current; if (!v || v.readyState < 2) return;
+          const v = videoRef.current; if (!v || v.readyState < 2) return null;
           const c = document.createElement("canvas");
           c.width = 320; c.height = 240;
           c.getContext("2d")!.drawImage(v, 0, 0, 320, 240);
           const blob: Blob | null = await new Promise(res => c.toBlob(res, "image/jpeg", 0.6));
-          if (!blob) return;
-          const path = `${examId}/${attempt}/${Date.now()}.jpg`;
-          await supabase.storage.from("proctor-snapshots").upload(path, blob, { contentType: "image/jpeg", upsert: false });
-        } catch {/* ignore */}
+          if (!blob) return null;
+          // Evidence bucket path: schoolId/attemptId/ts.jpg (matches storage RLS)
+          const path = `${school?.id ?? "_"}/${attempt}/${Date.now()}.jpg`;
+          const { error } = await supabase.storage.from("proctor-evidence").upload(path, blob, { contentType: "image/jpeg", upsert: false });
+          if (error) return null;
+          return path;
+        } catch { return null; }
       };
       snapNowRef.current = snap;
       snap();
@@ -289,9 +292,20 @@ export default function ExamInterface() {
   const logViolation = useCallback(async (type: string, detail?: string) => {
     if (!attemptId || !school || !activeExam || submittingRef.current) return;
     if (activeExam.mode === "practice") return;
-    await supabase.from("exam_violations").insert({ attempt_id: attemptId, school_id: school.id, type, detail: detail ?? null });
-    // Capture a snapshot tied to the violation moment (best-effort)
-    snapNowRef.current?.().catch(() => {});
+    // Risk score table (kept simple client-side; admin can override server-side)
+    const RISK: Record<string, number> = {
+      tab_switch: 10, fullscreen_exit: 10, copy_attempt: 5, paste_attempt: 5,
+      context_menu: 3, devtools: 20, no_face_detected: 15,
+      multiple_faces_detected: 30, camera_off: 30, webcam_denied: 30,
+    };
+    const risk_score = RISK[type] ?? 1;
+    // Capture snapshot in parallel to insert (best-effort)
+    const evidencePromise = snapNowRef.current?.() ?? Promise.resolve(null);
+    const evidence_path = await evidencePromise.catch(() => null);
+    await supabase.from("exam_violations").insert({
+      attempt_id: attemptId, school_id: school.id, type, detail: detail ?? null,
+      risk_score, evidence_path: evidence_path ?? null,
+    } as any);
     setViolations(v => {
       const next = v + 1;
       const action = (activeExam.proctor_action as "warn" | "auto_submit") ?? "auto_submit";

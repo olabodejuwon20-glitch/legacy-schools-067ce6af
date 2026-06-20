@@ -14,6 +14,140 @@ export type Database = {
   }
   public: {
     Tables: {
+      academic_calendar: {
+        Row: {
+          created_at: string
+          id: string
+          is_current: boolean
+          kind: string
+          periods: Json
+          school_id: string
+          session: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          kind?: string
+          periods?: Json
+          school_id: string
+          session: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          kind?: string
+          periods?: Json
+          school_id?: string
+          session?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_calendar_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_calendar_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_calendar_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      academic_policies: {
+        Row: {
+          body: Json
+          created_at: string
+          id: string
+          policy_kind: string
+          school_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body?: Json
+          created_at?: string
+          id?: string
+          policy_kind: string
+          school_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: Json
+          created_at?: string
+          id?: string
+          policy_kind?: string
+          school_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_policies_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_policies_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_policies_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      academic_policy_defaults: {
+        Row: {
+          body: Json
+          created_at: string
+          id: string
+          policy_kind: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body?: Json
+          created_at?: string
+          id?: string
+          policy_kind: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: Json
+          created_at?: string
+          id?: string
+          policy_kind?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       admin_role_slots: {
         Row: {
           created_at: string
@@ -726,6 +860,58 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "student_assessments_v"
             referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      assessment_structures: {
+        Row: {
+          components: Json
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          components?: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          components?: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_structures_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_structures_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_structures_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1615,6 +1801,131 @@ export type Database = {
           },
         ]
       }
+      exam_appeals: {
+        Row: {
+          attempt_id: string
+          created_at: string
+          exam_kind: string
+          id: string
+          reason: string
+          recalculation: Json | null
+          school_id: string
+          stage_notes: Json
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_id: string
+          created_at?: string
+          exam_kind?: string
+          id?: string
+          reason: string
+          recalculation?: Json | null
+          school_id: string
+          stage_notes?: Json
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_id?: string
+          created_at?: string
+          exam_kind?: string
+          id?: string
+          reason?: string
+          recalculation?: Json | null
+          school_id?: string
+          stage_notes?: Json
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_appeals_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_appeals_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_appeals_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_approvals: {
+        Row: {
+          acted_at: string | null
+          actor_id: string | null
+          created_at: string
+          exam_id: string
+          exam_kind: string
+          id: string
+          note: string | null
+          school_id: string
+          stage: string
+          status: string
+        }
+        Insert: {
+          acted_at?: string | null
+          actor_id?: string | null
+          created_at?: string
+          exam_id: string
+          exam_kind?: string
+          id?: string
+          note?: string | null
+          school_id: string
+          stage: string
+          status?: string
+        }
+        Update: {
+          acted_at?: string | null
+          actor_id?: string | null
+          created_at?: string
+          exam_id?: string
+          exam_kind?: string
+          id?: string
+          note?: string | null
+          school_id?: string
+          stage?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_approvals_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_approvals_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_approvals_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_attempts: {
         Row: {
           exam_id: string
@@ -1667,6 +1978,61 @@ export type Database = {
           },
           {
             foreignKeyName: "exam_attempts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_audit_entries: {
+        Row: {
+          attempt_id: string
+          correct_answer: Json | null
+          id: string
+          question_id: string
+          recorded_at: string
+          school_id: string
+          score_awarded: number | null
+          student_answer: Json | null
+        }
+        Insert: {
+          attempt_id: string
+          correct_answer?: Json | null
+          id?: string
+          question_id: string
+          recorded_at?: string
+          school_id: string
+          score_awarded?: number | null
+          student_answer?: Json | null
+        }
+        Update: {
+          attempt_id?: string
+          correct_answer?: Json | null
+          id?: string
+          question_id?: string
+          recorded_at?: string
+          school_id?: string
+          score_awarded?: number | null
+          student_answer?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_audit_entries_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_audit_entries_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_audit_entries_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools_public"
@@ -1741,31 +2107,52 @@ export type Database = {
           attempt_id: string
           created_at: string
           detail: string | null
+          evidence_path: string | null
           id: string
+          reviewed_at: string | null
+          reviewer_decision: string | null
+          reviewer_id: string | null
+          risk_score: number
           school_id: string
+          student_explanation: Json | null
           type: string
         }
         Insert: {
           attempt_id: string
           created_at?: string
           detail?: string | null
+          evidence_path?: string | null
           id?: string
+          reviewed_at?: string | null
+          reviewer_decision?: string | null
+          reviewer_id?: string | null
+          risk_score?: number
           school_id: string
+          student_explanation?: Json | null
           type: string
         }
         Update: {
           attempt_id?: string
           created_at?: string
           detail?: string | null
+          evidence_path?: string | null
           id?: string
+          reviewed_at?: string | null
+          reviewer_decision?: string | null
+          reviewer_id?: string | null
+          risk_score?: number
           school_id?: string
+          student_explanation?: Json | null
           type?: string
         }
         Relationships: []
       }
       exams: {
         Row: {
+          auto_close_at: string | null
+          auto_publish_at: string | null
           class_id: string | null
+          class_restrictions: string[]
           counts_to_results: boolean
           created_at: string
           created_by: string
@@ -1786,7 +2173,10 @@ export type Database = {
           violation_limit: number
         }
         Insert: {
+          auto_close_at?: string | null
+          auto_publish_at?: string | null
           class_id?: string | null
+          class_restrictions?: string[]
           counts_to_results?: boolean
           created_at?: string
           created_by: string
@@ -1807,7 +2197,10 @@ export type Database = {
           violation_limit?: number
         }
         Update: {
+          auto_close_at?: string | null
+          auto_publish_at?: string | null
           class_id?: string | null
+          class_restrictions?: string[]
           counts_to_results?: boolean
           created_at?: string
           created_by?: string
@@ -1960,6 +2353,58 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      grading_scales: {
+        Row: {
+          bands: Json
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          bands?: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          bands?: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grading_scales_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grading_scales_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grading_scales_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hostels: {
         Row: {
@@ -3516,9 +3961,65 @@ export type Database = {
         }
         Relationships: []
       }
+      promotion_rules: {
+        Row: {
+          core_subjects: string[]
+          created_at: string
+          extra: Json
+          id: string
+          min_attendance_pct: number
+          min_average: number
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          core_subjects?: string[]
+          created_at?: string
+          extra?: Json
+          id?: string
+          min_attendance_pct?: number
+          min_average?: number
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          core_subjects?: string[]
+          created_at?: string
+          extra?: Json
+          id?: string
+          min_attendance_pct?: number
+          min_average?: number
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_rules_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_rules_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_rules_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       question_bank: {
         Row: {
           answer: Json | null
+          approval_status: string
           body: string
           created_at: string
           created_by: string
@@ -3526,14 +4027,17 @@ export type Database = {
           explanation: string | null
           id: string
           options: Json
+          parent_id: string | null
           school_id: string
           subject: string
           topic: string | null
           type: string
           updated_at: string
+          version: number
         }
         Insert: {
           answer?: Json | null
+          approval_status?: string
           body: string
           created_at?: string
           created_by: string
@@ -3541,14 +4045,17 @@ export type Database = {
           explanation?: string | null
           id?: string
           options?: Json
+          parent_id?: string | null
           school_id: string
           subject: string
           topic?: string | null
           type?: string
           updated_at?: string
+          version?: number
         }
         Update: {
           answer?: Json | null
+          approval_status?: string
           body?: string
           created_at?: string
           created_by?: string
@@ -3556,13 +4063,67 @@ export type Database = {
           explanation?: string | null
           id?: string
           options?: Json
+          parent_id?: string | null
           school_id?: string
           subject?: string
           topic?: string | null
           type?: string
           updated_at?: string
+          version?: number
         }
         Relationships: []
+      }
+      question_bank_versions: {
+        Row: {
+          created_at: string
+          edited_by: string | null
+          id: string
+          question_id: string
+          school_id: string
+          snapshot: Json
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          edited_by?: string | null
+          id?: string
+          question_id: string
+          school_id: string
+          snapshot: Json
+          version: number
+        }
+        Update: {
+          created_at?: string
+          edited_by?: string | null
+          id?: string
+          question_id?: string
+          school_id?: string
+          snapshot?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_bank_versions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_bank_versions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_bank_versions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       question_banks: {
         Row: {
@@ -3759,6 +4320,67 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      result_release_rules: {
+        Row: {
+          approval_chain: string[]
+          auto_release_at: string | null
+          created_at: string
+          id: string
+          pin_price_kobo: number
+          pin_required: boolean
+          requires_approval: boolean
+          school_id: string
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          approval_chain?: string[]
+          auto_release_at?: string | null
+          created_at?: string
+          id?: string
+          pin_price_kobo?: number
+          pin_required?: boolean
+          requires_approval?: boolean
+          school_id: string
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approval_chain?: string[]
+          auto_release_at?: string | null
+          created_at?: string
+          id?: string
+          pin_price_kobo?: number
+          pin_required?: boolean
+          requires_approval?: boolean
+          school_id?: string
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_release_rules_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_release_rules_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_release_rules_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       result_verifications: {
         Row: {
@@ -5891,6 +6513,13 @@ export type Database = {
         }
         Returns: Json
       }
+      compute_grade: {
+        Args: { _school: string; _score: number }
+        Returns: {
+          grade: string
+          remark: string
+        }[]
+      }
       create_subscription_invoice: {
         Args: { _cycle?: string; _plan: string; _school_id: string }
         Returns: string
@@ -6087,6 +6716,10 @@ export type Database = {
         Returns: number
       }
       redeem_invite: { Args: { _code: string }; Returns: string }
+      resolve_academic_policy: {
+        Args: { _kind: string; _school: string }
+        Returns: Json
+      }
       school_is_pilot_writable: {
         Args: { _school_id: string }
         Returns: boolean

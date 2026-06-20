@@ -65,6 +65,7 @@ const SECTION_OF: Record<string, string> = {
   "reports": "Reports",
   // System
   "settings": "System", "modules": "System", "roles": "System", "/app/help": "System",
+  "academic-setup": "System", "exam-appeals": "Assessments",
 };
 
 const SECTION_ORDER = [
@@ -120,6 +121,8 @@ const NAV: Record<Role, { label: string; to: string; icon: any }[]> = {
     { label: "AI Activity", to: "ai-activity", icon: Activity },
     { label: "AI Settings", to: "ai-settings", icon: Sparkles },
     { label: "Custom Roles", to: "roles", icon: ShieldCheck },
+    { label: "Academic Setup", to: "academic-setup", icon: Gauge },
+    { label: "Exam Appeals", to: "exam-appeals", icon: ShieldCheck },
     { label: "Settings",  to: "settings",  icon: Settings },
     { label: "Help",      to: "/app/help", icon: HelpCircle },
   ],
