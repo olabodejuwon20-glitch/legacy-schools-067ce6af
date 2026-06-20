@@ -32,6 +32,9 @@ export interface TradTimetableRow {
   duration_minutes: number;
   venue: string | null;
   status: TradTimetableStatus;
+  invigilator_name?: string | null;
+  coordinator_name?: string | null;
+  notes?: string | null;
 }
 
 export interface TradExam {
