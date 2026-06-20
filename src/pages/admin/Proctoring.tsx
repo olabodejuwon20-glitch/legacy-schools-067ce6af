@@ -173,10 +173,13 @@ export default function Proctoring() {
               <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Violations ({violations.length})</h4>
               {violations.length === 0 ? <div className="text-sm text-muted-foreground">None recorded.</div> : (
                 <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
-                  {violations.map((v, i) => (
+                 {violations.map((v, i) => (
                     <li key={i} className="flex items-center gap-2">
                       <span className="text-muted-foreground">{new Date(v.created_at).toLocaleTimeString()}</span>
                       <span className="px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">{v.type}</span>
+                      {typeof v.risk_score === "number" && v.risk_score > 0 && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200 text-[10px]">+{v.risk_score}</span>
+                      )}
                       {v.detail && <span className="text-muted-foreground">{v.detail}</span>}
                     </li>
                   ))}
