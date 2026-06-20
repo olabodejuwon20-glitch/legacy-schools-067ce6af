@@ -169,17 +169,20 @@ export default function ExamInterface() {
       streamRef.current = stream;
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play().catch(() => {}); }
       setProctorOn(true);
-      const snap = async () => {
+      const snap = async (): Promise<string | null> => {
         try {
-          const v = videoRef.current; if (!v || v.readyState < 2) return;
+          const v = videoRef.current; if (!v || v.readyState < 2) return null;
           const c = document.createElement("canvas");
           c.width = 320; c.height = 240;
           c.getContext("2d")!.drawImage(v, 0, 0, 320, 240);
           const blob: Blob | null = await new Promise(res => c.toBlob(res, "image/jpeg", 0.6));
-          if (!blob) return;
-          const path = `${examId}/${attempt}/${Date.now()}.jpg`;
-          await supabase.storage.from("proctor-snapshots").upload(path, blob, { contentType: "image/jpeg", upsert: false });
-        } catch {/* ignore */}
+          if (!blob) return null;
+          // Evidence bucket path: schoolId/attemptId/ts.jpg (matches storage RLS)
+          const path = `${school?.id ?? "_"}/${attempt}/${Date.now()}.jpg`;
+          const { error } = await supabase.storage.from("proctor-evidence").upload(path, blob, { contentType: "image/jpeg", upsert: false });
+          if (error) return null;
+          return path;
+        } catch { return null; }
       };
       snapNowRef.current = snap;
       snap();
