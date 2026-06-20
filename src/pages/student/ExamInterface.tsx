@@ -292,9 +292,20 @@ export default function ExamInterface() {
   const logViolation = useCallback(async (type: string, detail?: string) => {
     if (!attemptId || !school || !activeExam || submittingRef.current) return;
     if (activeExam.mode === "practice") return;
-    await supabase.from("exam_violations").insert({ attempt_id: attemptId, school_id: school.id, type, detail: detail ?? null });
-    // Capture a snapshot tied to the violation moment (best-effort)
-    snapNowRef.current?.().catch(() => {});
+    // Risk score table (kept simple client-side; admin can override server-side)
+    const RISK: Record<string, number> = {
+      tab_switch: 10, fullscreen_exit: 10, copy_attempt: 5, paste_attempt: 5,
+      context_menu: 3, devtools: 20, no_face_detected: 15,
+      multiple_faces_detected: 30, camera_off: 30, webcam_denied: 30,
+    };
+    const risk_score = RISK[type] ?? 1;
+    // Capture snapshot in parallel to insert (best-effort)
+    const evidencePromise = snapNowRef.current?.() ?? Promise.resolve(null);
+    const evidence_path = await evidencePromise.catch(() => null);
+    await supabase.from("exam_violations").insert({
+      attempt_id: attemptId, school_id: school.id, type, detail: detail ?? null,
+      risk_score, evidence_path: evidence_path ?? null,
+    } as any);
     setViolations(v => {
       const next = v + 1;
       const action = (activeExam.proctor_action as "warn" | "auto_submit") ?? "auto_submit";
