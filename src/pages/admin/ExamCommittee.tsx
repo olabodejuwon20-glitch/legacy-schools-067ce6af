@@ -160,7 +160,7 @@ export default function ExamCommittee() {
   async function createSession(e: React.FormEvent) {
     e.preventDefault();
     if (!school || !user) return;
-    const { data, error } = await supabase.from("trad_exam_sessions" as any).insert({
+    const { data, error } = await (supabase.from("trad_exam_sessions" as any).insert({
       school_id: school.id,
       name: sessionForm.name,
       term: sessionForm.term || null,
@@ -168,7 +168,7 @@ export default function ExamCommittee() {
       start_date: sessionForm.start_date || null,
       end_date: sessionForm.end_date || null,
       created_by: user.id,
-    }).select().single();
+    }).select().single() as any);
     if (error) return toast.error(error.message);
     toast.success("Exam session created");
     setSessionOpen(false);
@@ -353,9 +353,9 @@ export default function ExamCommittee() {
               <StatCard label="Scheduled papers" value={rows.length} icon={ClipboardList} />
               <StatCard label="Papers built" value={`${papersBuilt}/${rows.length}`} icon={FileCheck2} />
               <StatCard label="Coordinator gaps" value={missingCoordinators.length} icon={Users2}
-                tone={missingCoordinators.length ? "warning" : "default"} />
+                tone={missingCoordinators.length ? "warning" : "info"} />
               <StatCard label="Scheduling conflicts" value={conflicts.size} icon={AlertTriangle}
-                tone={conflicts.size ? "danger" : "default"} />
+                tone={conflicts.size ? "warning" : "info"} />
             </div>
           </div>
         ) : null}
