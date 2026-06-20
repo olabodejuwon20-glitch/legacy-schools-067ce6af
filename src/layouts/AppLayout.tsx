@@ -65,6 +65,7 @@ const SECTION_OF: Record<string, string> = {
   "reports": "Reports",
   // System
   "settings": "System", "modules": "System", "roles": "System", "/app/help": "System",
+  "academic-setup": "System", "exam-appeals": "Assessments",
 };
 
 const SECTION_ORDER = [
