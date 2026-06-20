@@ -127,6 +127,7 @@ import StudentAttendance from "./pages/student/Attendance";
 import StudentTradExams from "./pages/student/TradExams";
 import StudentTradExamRunner from "./pages/student/TradExamRunner";
 import StudentTradExamResult from "./pages/student/TradExamResult";
+import StudentAppealForm from "./pages/student/AppealForm";
 
 import ParentDashboard from "./pages/parent/Dashboard";
 import ParentChildren from "./pages/parent/Children";
@@ -375,6 +376,7 @@ const App = () => (
               <Route path="student/trad-exams" element={<RoleGate allow="student"><StudentTradExams /></RoleGate>} />
               <Route path="student/trad-exams/:examId" element={<RoleGate allow="student"><StudentTradExamRunner /></RoleGate>} />
               <Route path="student/trad-exams/:attemptId/result" element={<RoleGate allow="student"><StudentTradExamResult /></RoleGate>} />
+              <Route path="student/exam-appeal/:attemptId" element={<RoleGate allow="student"><StudentAppealForm /></RoleGate>} />
               <Route path="student/inbox" element={<RoleGate allow="student"><Inbox /></RoleGate>} />
               <Route path="student/copilot" element={<RoleGate allow="student"><PremiumGate feature="Study Copilot"><AdminCopilot /></PremiumGate></RoleGate>} />
 
