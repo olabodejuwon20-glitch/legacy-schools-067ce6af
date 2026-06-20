@@ -55,6 +55,7 @@ import AdminParents from "./pages/admin/Parents";
 import AdminAttendance from "./pages/admin/Attendance";
 import AdminRoles from "./pages/admin/Roles";
 import AdminTradExams from "./pages/admin/TradExams";
+import AdminExamCommittee from "./pages/admin/ExamCommittee";
 import AdminTradExamSession from "./pages/admin/TradExamSession";
 import AdminTradExamPaper from "./pages/admin/TradExamPaper";
 import AdminTradExamApprovals from "./pages/admin/TradExamApprovals";
