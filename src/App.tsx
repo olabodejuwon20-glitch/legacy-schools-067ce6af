@@ -60,6 +60,8 @@ import AdminTradExamPaper from "./pages/admin/TradExamPaper";
 import AdminTradExamApprovals from "./pages/admin/TradExamApprovals";
 import AdminTradExamResults from "./pages/admin/TradExamResults";
 import AdminTradScratchCards from "./pages/admin/TradScratchCards";
+import AdminAcademicSetup from "./pages/admin/AcademicSetup";
+import AdminExamAppeals from "./pages/admin/ExamAppeals";
 import TradUnlockResult from "./pages/shared/TradUnlockResult";
 import SubscriptionCallback from "./pages/SubscriptionCallback";
 import HelpPage from "./pages/Help";
@@ -156,6 +158,7 @@ import SuperTickets from "./pages/super/Tickets";
 import SuperSecurity from "./pages/super/Security";
 import SuperLogs from "./pages/super/Logs";
 import SuperSettings from "./pages/super/Settings";
+import SuperAcademicDefaults from "./pages/super/AcademicDefaults";
 import ComingSoon from "./pages/super/_ComingSoon";
 
 const queryClient = new QueryClient();
@@ -240,6 +243,7 @@ const App = () => (
             <Route path="security" element={<SuperSecurity />} />
             <Route path="logs" element={<SuperLogs />} />
             <Route path="settings" element={<SuperSettings />} />
+            <Route path="academic-defaults" element={<SuperAcademicDefaults />} />
           </Route>
 
             {/* School-scoped routes: /:slug/... */}
@@ -289,6 +293,8 @@ const App = () => (
               <Route path="admin/trad-exams-approvals" element={<RoleGate allow="admin"><AdminTradExamApprovals /></RoleGate>} />
               <Route path="admin/trad-exams-results" element={<RoleGate allow="admin"><AdminTradExamResults /></RoleGate>} />
               <Route path="admin/trad-cards" element={<RoleGate allow="admin"><AdminTradScratchCards /></RoleGate>} />
+              <Route path="admin/academic-setup" element={<RoleGate allow="admin"><AdminAcademicSetup /></RoleGate>} />
+              <Route path="admin/exam-appeals" element={<RoleGate allow="admin"><AdminExamAppeals /></RoleGate>} />
               <Route path="trad-unlock/:resultId" element={<TradUnlockResult />} />
               <Route path="help" element={<HelpPage />} />
 
