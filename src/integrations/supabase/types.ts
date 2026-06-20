@@ -1773,6 +1773,8 @@ export type Database = {
           duration_minutes: number
           id: string
           mode: Database["public"]["Enums"]["exam_mode"]
+          proctor_action: string
+          proctor_snapshot_interval_sec: number
           proctored: boolean
           randomize: boolean
           scheduled_at: string | null
@@ -1792,6 +1794,8 @@ export type Database = {
           duration_minutes?: number
           id?: string
           mode?: Database["public"]["Enums"]["exam_mode"]
+          proctor_action?: string
+          proctor_snapshot_interval_sec?: number
           proctored?: boolean
           randomize?: boolean
           scheduled_at?: string | null
@@ -1811,6 +1815,8 @@ export type Database = {
           duration_minutes?: number
           id?: string
           mode?: Database["public"]["Enums"]["exam_mode"]
+          proctor_action?: string
+          proctor_snapshot_interval_sec?: number
           proctored?: boolean
           randomize?: boolean
           scheduled_at?: string | null

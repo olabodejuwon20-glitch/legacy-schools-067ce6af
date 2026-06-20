@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { countFaces, faceDetectorAvailable, speakWarning } from "@/lib/proctorVision";
 import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
 import { EmptyState } from "@/components/EmptyState";
@@ -85,6 +86,8 @@ export default function ExamInterface() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const snapTimerRef = useRef<number | null>(null);
+  const faceTimerRef = useRef<number | null>(null);
+  const snapNowRef = useRef<(() => Promise<void>) | null>(null);
   const [proctorOn, setProctorOn] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
@@ -156,11 +159,11 @@ export default function ExamInterface() {
     if (exam.mode !== "practice") {
       setTimeout(() => { containerRef.current?.requestFullscreen?.().catch(() => {}); }, 50);
       const proctorRequested = exam.proctored ?? cfg.webcamProctoring ?? false;
-      if (proctorRequested) startProctor(exam.id, attempt.id);
+      if (proctorRequested) startProctor(exam.id, attempt.id, exam.proctor_snapshot_interval_sec ?? 60);
     }
   }
 
-  async function startProctor(examId: string, attempt: string) {
+  async function startProctor(examId: string, attempt: string, intervalSec: number) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: false });
       streamRef.current = stream;
@@ -178,8 +181,30 @@ export default function ExamInterface() {
           await supabase.storage.from("proctor-snapshots").upload(path, blob, { contentType: "image/jpeg", upsert: false });
         } catch {/* ignore */}
       };
+      snapNowRef.current = snap;
       snap();
-      snapTimerRef.current = window.setInterval(snap, 30_000);
+      const ms = Math.max(10, intervalSec) * 1000;
+      snapTimerRef.current = window.setInterval(snap, ms);
+
+      // Face-presence monitor (Chromium browsers only — graceful no-op elsewhere)
+      if (faceDetectorAvailable()) {
+        let consecutiveBad = 0;
+        faceTimerRef.current = window.setInterval(async () => {
+          const v = videoRef.current;
+          if (!v) return;
+          const n = await countFaces(v);
+          if (n === null) return;
+          if (n === 0) {
+            consecutiveBad += 1;
+            if (consecutiveBad >= 2) { consecutiveBad = 0; logViolation("no_face_detected"); }
+          } else if (n > 1) {
+            consecutiveBad = 0;
+            logViolation("multiple_faces_detected", `count=${n}`);
+          } else {
+            consecutiveBad = 0;
+          }
+        }, 10_000);
+      }
     } catch {
       toast.error("Webcam access denied — this exam requires proctoring.");
       logViolation("webcam_denied");
@@ -188,6 +213,8 @@ export default function ExamInterface() {
 
   function stopProctor() {
     if (snapTimerRef.current) { clearInterval(snapTimerRef.current); snapTimerRef.current = null; }
+    if (faceTimerRef.current) { clearInterval(faceTimerRef.current); faceTimerRef.current = null; }
+    snapNowRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     setProctorOn(false);
@@ -263,12 +290,21 @@ export default function ExamInterface() {
     if (!attemptId || !school || !activeExam || submittingRef.current) return;
     if (activeExam.mode === "practice") return;
     await supabase.from("exam_violations").insert({ attempt_id: attemptId, school_id: school.id, type, detail: detail ?? null });
+    // Capture a snapshot tied to the violation moment (best-effort)
+    snapNowRef.current?.().catch(() => {});
     setViolations(v => {
       const next = v + 1;
-      if (next >= violationLimit) {
+      const action = (activeExam.proctor_action as "warn" | "auto_submit") ?? "auto_submit";
+      if (next >= violationLimit && action === "auto_submit") {
+        speakWarning("You have exceeded the allowed violations. Your exam is being submitted.");
         submit(`Auto-submitted after ${next} violations`);
+      } else if (next >= violationLimit) {
+        speakWarning("Warning. You have exceeded the allowed violations. Your examiner has been notified.");
+        toast.error(`Violation limit reached (${next}/${violationLimit}). Your examiner has been alerted.`);
       } else {
-        toast.warning(`Warning ${next}/${violationLimit}: ${type}. Further violations will auto-submit your exam.`);
+        const tail = action === "auto_submit" ? "Further violations will auto-submit your exam." : "Your examiner has been alerted.";
+        speakWarning(`Warning ${next} of ${violationLimit}. ${type.split("_").join(" ")}.`);
+        toast.warning(`Warning ${next}/${violationLimit}: ${type}. ${tail}`);
       }
       return next;
     });
