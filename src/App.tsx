@@ -63,6 +63,10 @@ import AdminTradExamResults from "./pages/admin/TradExamResults";
 import AdminTradScratchCards from "./pages/admin/TradScratchCards";
 import AdminAcademicSetup from "./pages/admin/AcademicSetup";
 import AdminExamAppeals from "./pages/admin/ExamAppeals";
+import AdminAdmissionHub from "./pages/admin/AdmissionHub";
+import AdminAssessmentsHub from "./pages/admin/AssessmentsHub";
+import AdminAIOpsHub from "./pages/admin/AIOpsHub";
+import AdminWorkspace from "./pages/admin/Workspace";
 import TradUnlockResult from "./pages/shared/TradUnlockResult";
 import SubscriptionCallback from "./pages/SubscriptionCallback";
 import HelpPage from "./pages/Help";
@@ -298,6 +302,10 @@ const App = () => (
               <Route path="admin/trad-cards" element={<RoleGate allow="admin"><AdminTradScratchCards /></RoleGate>} />
               <Route path="admin/academic-setup" element={<RoleGate allow="admin"><AdminAcademicSetup /></RoleGate>} />
               <Route path="admin/exam-appeals" element={<RoleGate allow="admin"><AdminExamAppeals /></RoleGate>} />
+              <Route path="admin/admission" element={<RoleGate allow="admin"><AdminAdmissionHub /></RoleGate>} />
+              <Route path="admin/assessments" element={<RoleGate allow="admin"><AdminAssessmentsHub /></RoleGate>} />
+              <Route path="admin/ai-ops" element={<RoleGate allow="admin"><AdminAIOpsHub /></RoleGate>} />
+              <Route path="admin/workspace" element={<RoleGate allow="admin"><AdminWorkspace /></RoleGate>} />
               <Route path="trad-unlock/:resultId" element={<TradUnlockResult />} />
               <Route path="help" element={<HelpPage />} />
 

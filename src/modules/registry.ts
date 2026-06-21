@@ -6,6 +6,7 @@ import {
   Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine,
   ScrollText, Inbox as InboxIcon,
 } from "lucide-react";
+import { UserPlus, Workflow } from "lucide-react";
 import { ModuleManifest } from "./types";
 
 /**
@@ -31,9 +32,34 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
       { label: "Parents",   to: "parents",   icon: UserSquare2,   roles: ["admin"] },
       { label: "Teachers",  to: "teachers",  icon: GraduationCap, roles: ["admin"] },
       { label: "Classes",   to: "classes",   icon: BookOpen,      roles: ["admin"] },
-      { label: "Enrollments", to: "enrollments", icon: ClipboardCheck, roles: ["admin"] },
-      { label: "Invites",   to: "invites",   icon: Ticket,        roles: ["admin"] },
-      { label: "Bulk Upload", to: "bulk",    icon: Upload,        roles: ["admin"] },
+    ],
+  },
+  // ---- Admission hub (single parent nav grouping enrollments/invites/bulk) ----
+  {
+    slug: "admission-hub", name: "Admission", category: "operations", icon: UserPlus, core: true,
+    sidebar: [
+      { label: "Admission", to: "admission", icon: UserPlus, roles: ["admin"] },
+    ],
+  },
+  // ---- Assessments hub (single parent nav grouping exams, proctoring, approvals, results) ----
+  {
+    slug: "assessments-hub", name: "Assessments", category: "academics", icon: ClipboardList, core: true,
+    sidebar: [
+      { label: "Assessments", to: "assessments", icon: ClipboardList, roles: ["admin"] },
+    ],
+  },
+  // ---- AI Operation Center hub (Copilot, Parent Alerts, Knowledge, AI Activity, AI Settings) ----
+  {
+    slug: "ai-ops-hub", name: "AI Operation Center", category: "intelligence", icon: Brain, core: true,
+    sidebar: [
+      { label: "AI Operation Center", to: "ai-ops", icon: Brain, roles: ["admin"] },
+    ],
+  },
+  // ---- Workspace (collaborator invites for staff with admin access) ----
+  {
+    slug: "workspace", name: "Workspace", category: "operations", icon: Workflow, core: true,
+    sidebar: [
+      { label: "Workspace", to: "workspace", icon: Workflow, roles: ["admin"] },
     ],
   },
   {
@@ -50,7 +76,7 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
   },
   {
     slug: "announcements", name: "Announcements", category: "communication", icon: Megaphone, core: true,
-    sidebar: [{ label: "Announcements", to: "announcements", icon: Megaphone, roles: ["admin"] }],
+    sidebar: [],
   },
 
   // ---- Academics ----
@@ -135,12 +161,11 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
   },
   {
     slug: "parent-alerts", name: "Parent Risk Alerts", category: "intelligence", icon: ShieldAlert, core: true,
-    sidebar: [{ label: "Parent Alerts", to: "parent-alerts", icon: ShieldAlert, roles: ["admin"] }],
+    sidebar: [],
   },
   {
     slug: "principal-copilot", name: "Principal Copilot", category: "intelligence", icon: Brain, core: true,
     sidebar: [
-      { label: "AI OPERATION CENTER", to: "copilot", icon: Brain, roles: ["admin"] },
       { label: "Help & AI OPERATION CENTER", to: "copilot", icon: Brain, roles: ["teacher"] },
       { label: "Help & AI OPERATION CENTER", to: "copilot", icon: Brain, roles: ["student"] },
       { label: "Help & AI OPERATION CENTER", to: "copilot", icon: Brain, roles: ["parent"] },
@@ -148,14 +173,11 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
   },
   {
     slug: "knowledge-base", name: "Knowledge Base", category: "intelligence", icon: BookMarked, core: true,
-    sidebar: [{ label: "Knowledge", to: "knowledge", icon: BookMarked, roles: ["admin"] }],
+    sidebar: [],
   },
   {
     slug: "ai-governance", name: "AI Governance", category: "intelligence", icon: Gauge, core: true,
-    sidebar: [
-      { label: "AI Activity", to: "ai-activity", icon: Activity, roles: ["admin"] },
-      { label: "AI Settings", to: "ai-settings", icon: Settings, roles: ["admin"] },
-    ],
+    sidebar: [],
   },
 
   // ---- Finance ----
@@ -225,14 +247,11 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
   },
   {
     slug: "proctoring", name: "Exam Proctoring", category: "academics", icon: ClipboardCheck,
-    sidebar: [{ label: "Proctoring", to: "proctoring", icon: ClipboardCheck, roles: ["admin"] }],
+    sidebar: [],
   },
   {
     slug: "traditional-exams", name: "Exams", category: "academics", icon: ScrollText, core: true,
     sidebar: [
-      { label: "Exams", to: "trad-exams", icon: ScrollText, roles: ["admin"] },
-      { label: "Approvals",         to: "trad-exams-approvals", icon: ScrollText, roles: ["admin"] },
-      { label: "Results",      to: "trad-exams-results",   icon: ScrollText, roles: ["admin"] },
       { label: "Exam Papers", to: "trad-exams", icon: ScrollText, roles: ["teacher"] },
       { label: "Grading Queue", to: "trad-exams-grading", icon: ScrollText, roles: ["teacher"] },
       { label: "Exams",       to: "trad-exams", icon: ScrollText, roles: ["student"] },

@@ -145,46 +145,16 @@ export default function AdminSettings() {
         </div>
       )}
 
-      <Tabs defaultValue="general" className="space-y-4">
+      <Tabs defaultValue="academic" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="academic">Academic</TabsTrigger>
           <TabsTrigger value="neco">Exams & NECO</TabsTrigger>
           <TabsTrigger value="pilot">Pilot</TabsTrigger>
           <TabsTrigger value="help">Help & Guide</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general">
-          <SectionCard title="School Information">
-        <form className="grid grid-cols-1 sm:grid-cols-2 gap-4" onSubmit={saveInfo}>
-          <div><Label>School Name</Label><Input value={info.name} onChange={e => setInfo({ ...info, name: e.target.value })} placeholder="School Name" /></div>
-          <div><Label>Address</Label><Input value={info.address} onChange={e => setInfo({ ...info, address: e.target.value })} placeholder="Address" /></div>
-          <div><Label>Phone</Label><Input value={info.phone} onChange={e => setInfo({ ...info, phone: e.target.value })} placeholder="Phone" /></div>
-          <div><Label>Email</Label><Input type="email" value={info.email} onChange={e => setInfo({ ...info, email: e.target.value })} placeholder="Email" /></div>
-
-          <div className="sm:col-span-1">
-            <Label>School Logo</Label>
-            <div className="mt-1.5 flex items-center gap-4">
-              <div className="size-16 rounded-lg border border-border bg-muted/40 grid place-items-center overflow-hidden shrink-0">
-                {logoUrl ? <img src={logoUrl} alt="School logo" className="w-full h-full object-contain" /> : <ImageIcon className="size-5 text-muted-foreground" />}
-              </div>
-              <div className="flex-1">
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onLogoChange} />
-                <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                  {uploading ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Upload className="size-3.5 mr-1.5" />}
-                  {logoUrl ? "Replace logo" : "Upload logo"}
-                </Button>
-                <p className="text-[11px] text-muted-foreground mt-1.5">PNG/JPG up to 2MB. Shown on the school portal sign-in page.</p>
-              </div>
-            </div>
-          </div>
-
-          <div><Label>Motto</Label><Input value={info.motto} onChange={e => setInfo({ ...info, motto: e.target.value })} placeholder="Motto" /></div>
-
-          <div className="sm:col-span-2 flex justify-end"><Button type="submit">Save changes</Button></div>
-        </form>
-          </SectionCard>
-        </TabsContent>
+        {/* General school info now lives on the admin Profile page so the admin
+            sees the same fields in one place. Edit it from My Profile. */}
 
         <TabsContent value="academic">
           <SectionCard title="Academic Settings">

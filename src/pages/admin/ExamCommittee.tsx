@@ -444,8 +444,14 @@ export default function ExamCommittee() {
                                     )}
                                   </td>
                                   <td className="px-3 py-2 text-right whitespace-nowrap">
-                                    <Button size="icon" variant="ghost" onClick={() => openEditSlot(r)}><Pencil className="size-4" /></Button>
-                                    <Button size="icon" variant="ghost" onClick={() => deleteSlot(r.id)}><Trash2 className="size-4 text-destructive" /></Button>
+                                    {activeSession?.status === "planning" ? (
+                                      <>
+                                        <Button size="icon" variant="ghost" onClick={() => openEditSlot(r)} title="Edit or reschedule"><Pencil className="size-4" /></Button>
+                                        <Button size="icon" variant="ghost" onClick={() => deleteSlot(r.id)} title="Delete"><Trash2 className="size-4 text-destructive" /></Button>
+                                      </>
+                                    ) : (
+                                      <span className="text-[11px] text-muted-foreground">Locked</span>
+                                    )}
                                   </td>
                                 </tr>
                               );

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2, Save } from "lucide-react";
+import { Camera, Loader2, Save, Upload, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -11,11 +11,19 @@ import { toast } from "sonner";
 import { publicEmail, publicInitials } from "@/lib/identity";
 
 export default function ProfilePage() {
-  const { user, photoUrl, displayName, email, refreshProfile } = useSchool();
+  const { user, school, activeRole, photoUrl, displayName, email, refreshProfile } = useSchool();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ full_name: "", phone: "", address: "", gender: "", dob: "" });
+
+  // Admin-only: school "General" info (mirrors Settings → General)
+  const isAdmin = activeRole === "admin";
+  const logoFileRef = useRef<HTMLInputElement>(null);
+  const [schoolForm, setSchoolForm] = useState({ name: "", email: "", phone: "", address: "", motto: "" });
+  const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
+  const [schoolSaving, setSchoolSaving] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -28,6 +36,19 @@ export default function ProfilePage() {
         dob: data.dob || "",
       }));
   }, [user]);
+
+  useEffect(() => {
+    if (!isAdmin || !school) return;
+    supabase.from("schools").select("name,email,phone,address,motto,logo_url").eq("id", school.id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setSchoolForm({
+          name: data.name || "", email: data.email || "", phone: data.phone || "",
+          address: data.address || "", motto: data.motto || "",
+        });
+        setSchoolLogo(data.logo_url || null);
+      });
+  }, [isAdmin, school?.id]);
 
   async function uploadPhoto(file: File) {
     if (!user) return;
@@ -58,6 +79,35 @@ export default function ProfilePage() {
     if (error) return toast.error(error.message);
     await refreshProfile();
     toast.success("Profile saved");
+  }
+
+  async function saveSchool() {
+    if (!school) return;
+    setSchoolSaving(true);
+    const { error } = await supabase.from("schools").update(schoolForm).eq("id", school.id);
+    setSchoolSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("School information saved");
+  }
+
+  async function uploadSchoolLogo(file: File) {
+    if (!school) return;
+    if (file.size > 2 * 1024 * 1024) return toast.error("Logo must be under 2MB");
+    setLogoUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${school.id}/logo-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("school-logos").upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("school-logos").getPublicUrl(path);
+      const url = pub.publicUrl;
+      const { error: dbErr } = await supabase.from("schools").update({ logo_url: url }).eq("id", school.id);
+      if (dbErr) throw dbErr;
+      setSchoolLogo(url);
+      toast.success("School logo updated");
+    } catch (e: any) {
+      toast.error(e.message || "Upload failed");
+    } finally { setLogoUploading(false); }
   }
 
   const initials = publicInitials({ full_name: displayName, email });
@@ -98,6 +148,38 @@ export default function ProfilePage() {
           <Button onClick={save} disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin mr-2" /> : <Save className="size-4 mr-2" />}Save changes</Button>
         </div>
       </SectionCard>
+
+      {isAdmin && school && (
+        <SectionCard title="School information" description="Shown to staff, students and parents. This is the same data as Settings → General.">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="School name" value={schoolForm.name} onChange={v => setSchoolForm({ ...schoolForm, name: v })} />
+            <Field label="Email" type="email" value={schoolForm.email} onChange={v => setSchoolForm({ ...schoolForm, email: v })} />
+            <Field label="Phone" value={schoolForm.phone} onChange={v => setSchoolForm({ ...schoolForm, phone: v })} />
+            <Field label="Motto" value={schoolForm.motto} onChange={v => setSchoolForm({ ...schoolForm, motto: v })} />
+            <div className="sm:col-span-2"><Field label="Address" value={schoolForm.address} onChange={v => setSchoolForm({ ...schoolForm, address: v })} /></div>
+            <div className="sm:col-span-2">
+              <Label className="text-xs">School logo</Label>
+              <div className="mt-1.5 flex items-center gap-4">
+                <div className="size-16 rounded-lg border border-border bg-muted/40 grid place-items-center overflow-hidden shrink-0">
+                  {schoolLogo ? <img src={schoolLogo} alt="School logo" className="w-full h-full object-contain" /> : <ImageIcon className="size-5 text-muted-foreground" />}
+                </div>
+                <input ref={logoFileRef} type="file" accept="image/*" hidden
+                  onChange={e => e.target.files?.[0] && uploadSchoolLogo(e.target.files[0])} />
+                <Button type="button" variant="outline" size="sm" onClick={() => logoFileRef.current?.click()} disabled={logoUploading}>
+                  {logoUploading ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Upload className="size-3.5 mr-1.5" />}
+                  {schoolLogo ? "Replace logo" : "Upload logo"}
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div className="mt-5 flex justify-end">
+            <Button onClick={saveSchool} disabled={schoolSaving}>
+              {schoolSaving ? <Loader2 className="size-4 animate-spin mr-2" /> : <Save className="size-4 mr-2" />}
+              Save school info
+            </Button>
+          </div>
+        </SectionCard>
+      )}
     </div>
   );
 }
