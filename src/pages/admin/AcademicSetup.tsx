@@ -292,15 +292,27 @@ export default function AcademicSetup() {
         </div>
 
         <div className="space-y-4">
-          <SectionCard title="Live Preview" description="Enter a score to see how rules apply.">
-            <Label className="text-xs">Sample score</Label>
-            <Input type="number" value={previewScore} onChange={e=>setPreviewScore(Number(e.target.value))} />
-            <div className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span>Grade</span><Badge>{previewGrade.grade}</Badge></div>
-              <div className="flex justify-between"><span>Remark</span><span className="text-muted-foreground">{previewGrade.remark}</span></div>
-              <div className="flex justify-between"><span>Promotion verdict</span><Badge variant={previewPromoted ? "default" : "destructive"}>{previewPromoted ? "Promoted" : "Not promoted"}</Badge></div>
-              <div className="flex justify-between"><span>Weights sum</span><span className={Math.round(weightSum)===100 ? "text-success" : "text-destructive"}>{weightSum}%</span></div>
-              <div className="flex justify-between"><span>Calendar periods</span><span>{periods.length}</span></div>
+          <SectionCard title="Live Preview" description="Single source of truth — every policy is computed against this sample score.">
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Sample score (%)</Label>
+                <Input type="number" min={0} max={100} value={previewScore} onChange={e=>setPreviewScore(Number(e.target.value))} />
+                <input type="range" min={0} max={100} value={previewScore} onChange={e=>setPreviewScore(Number(e.target.value))} className="w-full mt-2 accent-primary" />
+              </div>
+              <div className="rounded-lg border border-border divide-y divide-border text-sm">
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Grade</span><Badge className="text-base px-3">{previewGrade.grade}</Badge></div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Remark</span><span className="font-medium">{previewGrade.remark}</span></div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Promotion</span><Badge variant={previewPromoted ? "default" : "destructive"}>{previewPromoted ? "Promoted" : "Not promoted"}</Badge></div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Min avg required</span><span className="tabular-nums">{minAvg}%</span></div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Calendar periods</span><span className="tabular-nums">{periods.length}</span></div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Assessment weights</span>
+                  <span className={"tabular-nums " + (Math.round(weightSum)===100 ? "text-success" : "text-destructive")}>{weightSum}%</span>
+                </div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Grading bands</span>
+                  <span className={bandsValid.ok ? "text-success" : "text-destructive"}>{bandsValid.msg}</span>
+                </div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Approval chain</span><span className="text-xs">{approvalChain}</span></div>
+              </div>
             </div>
           </SectionCard>
         </div>
