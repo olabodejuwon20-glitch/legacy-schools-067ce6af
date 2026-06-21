@@ -22,8 +22,12 @@ Deno.serve(async (req) => {
     // Verify membership
     const { data: mem } = await admin
       .from("memberships")
-      .select("id").eq("school_id", school_id).eq("user_id", user.id).eq("status", "active").maybeSingle();
+      .select("id, role").eq("school_id", school_id).eq("user_id", user.id).eq("status", "active").maybeSingle();
     if (!mem) return jsonResponse({ error: "not a member of this school" }, 403);
+
+    // Students can only query their own private docs; ignore any client-supplied student_id.
+    const effectiveStudentId =
+      mem.role === "student" ? user.id : (student_id ?? null);
 
     const vec = await embedOne(query);
     const { data, error } = await admin.rpc("match_knowledge_chunks", {
@@ -31,7 +35,7 @@ Deno.serve(async (req) => {
       _query_embedding: vec as any,
       _match_count: Math.min(Math.max(k, 1), 20),
       _class_id: class_id,
-      _student_id: student_id,
+      _student_id: effectiveStudentId,
     });
     if (error) throw error;
 
