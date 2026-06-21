@@ -161,12 +161,11 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
   },
   {
     slug: "parent-alerts", name: "Parent Risk Alerts", category: "intelligence", icon: ShieldAlert, core: true,
-    sidebar: [{ label: "Parent Alerts", to: "parent-alerts", icon: ShieldAlert, roles: ["admin"] }],
+    sidebar: [],
   },
   {
     slug: "principal-copilot", name: "Principal Copilot", category: "intelligence", icon: Brain, core: true,
     sidebar: [
-      { label: "AI OPERATION CENTER", to: "copilot", icon: Brain, roles: ["admin"] },
       { label: "Help & AI OPERATION CENTER", to: "copilot", icon: Brain, roles: ["teacher"] },
       { label: "Help & AI OPERATION CENTER", to: "copilot", icon: Brain, roles: ["student"] },
       { label: "Help & AI OPERATION CENTER", to: "copilot", icon: Brain, roles: ["parent"] },
@@ -174,14 +173,11 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
   },
   {
     slug: "knowledge-base", name: "Knowledge Base", category: "intelligence", icon: BookMarked, core: true,
-    sidebar: [{ label: "Knowledge", to: "knowledge", icon: BookMarked, roles: ["admin"] }],
+    sidebar: [],
   },
   {
     slug: "ai-governance", name: "AI Governance", category: "intelligence", icon: Gauge, core: true,
-    sidebar: [
-      { label: "AI Activity", to: "ai-activity", icon: Activity, roles: ["admin"] },
-      { label: "AI Settings", to: "ai-settings", icon: Settings, roles: ["admin"] },
-    ],
+    sidebar: [],
   },
 
   // ---- Finance ----
