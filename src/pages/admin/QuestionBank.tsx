@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, Upload, Search, BookOpenCheck } from "lucide-react";
+import { Plus, Trash2, Upload, Search, BookOpenCheck, History, ShieldCheck, Send, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 type QRow = {
@@ -22,9 +23,23 @@ type QRow = {
   options: string[];
   answer: any;
   explanation: string | null;
+  approval_status?: string | null;
+  version?: number | null;
 };
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
+const STATUS_TONE: Record<string, string> = {
+  draft: "bg-muted text-foreground",
+  pending_hod: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  pending_admin: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  approved: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  rejected: "bg-destructive/15 text-destructive",
+};
+const NEXT_STAGE: Record<string, { next: string; label: string }> = {
+  draft:         { next: "pending_hod",   label: "Submit to HOD" },
+  pending_hod:   { next: "pending_admin", label: "HOD approve →" },
+  pending_admin: { next: "approved",      label: "Admin approve ✓" },
+};
 
 export default function QuestionBank() {
   const { school, user } = useSchool();
@@ -34,7 +49,11 @@ export default function QuestionBank() {
   const [q, setQ] = useState("");
   const [subject, setSubject] = useState<string>("all");
   const [difficulty, setDifficulty] = useState<string>("all");
+  const [status, setStatus] = useState<string>("all");
   const [open, setOpen] = useState(false);
+  const [historyFor, setHistoryFor] = useState<QRow | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<QRow>>({ subject: "", topic: "", difficulty: "medium", type: "mcq", body: "", options: ["", "", "", ""], answer: 0, explanation: "" });
 
   async function load() {
@@ -50,6 +69,7 @@ export default function QuestionBank() {
   const filtered = rows.filter(r =>
     (subject === "all" || r.subject === subject) &&
     (difficulty === "all" || r.difficulty === difficulty) &&
+    (status === "all" || (r.approval_status ?? "draft") === status) &&
     (q === "" || r.body.toLowerCase().includes(q.toLowerCase()) || (r.topic ?? "").toLowerCase().includes(q.toLowerCase()))
   );
 
@@ -68,12 +88,51 @@ export default function QuestionBank() {
       explanation: draft.explanation || null,
       created_by: user.id,
     };
-    const { error } = await supabase.from("question_bank").insert(payload);
-    if (error) return toast.error(error.message);
-    toast.success("Question added");
+    if (editingId) {
+      const { error } = await supabase.from("question_bank").update(payload).eq("id", editingId);
+      if (error) return toast.error(error.message);
+      toast.success("Question updated · new version snapshotted");
+    } else {
+      const { error } = await supabase.from("question_bank").insert(payload);
+      if (error) return toast.error(error.message);
+      toast.success("Question added");
+    }
     setOpen(false);
+    setEditingId(null);
     setDraft({ subject: draft.subject, topic: "", difficulty: "medium", type: "mcq", body: "", options: ["", "", "", ""], answer: 0, explanation: "" });
     load();
+  }
+
+  function openEdit(r: QRow) {
+    setEditingId(r.id);
+    setDraft({ ...r, options: r.options ?? ["", "", "", ""] });
+    setOpen(true);
+  }
+
+  async function advanceStatus(r: QRow) {
+    const cur = (r.approval_status ?? "draft") as keyof typeof NEXT_STAGE;
+    const step = NEXT_STAGE[cur];
+    if (!step) return;
+    const { error } = await supabase.from("question_bank").update({ approval_status: step.next } as any).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    toast.success(`Moved to ${step.next.replace("_", " ")}`);
+    load();
+  }
+
+  async function rejectQuestion(r: QRow) {
+    const reason = prompt("Reason for rejection?");
+    if (reason == null) return;
+    const { error } = await supabase.from("question_bank").update({ approval_status: "rejected" } as any).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    toast.success("Question rejected and returned to author");
+    load();
+  }
+
+  async function openHistory(r: QRow) {
+    setHistoryFor(r);
+    const { data } = await supabase.from("question_bank_versions" as any)
+      .select("*").eq("question_id", r.id).order("version", { ascending: false });
+    setHistory((data ?? []) as any);
   }
 
   async function remove(id: string) {
