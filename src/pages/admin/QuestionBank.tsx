@@ -220,6 +220,17 @@ export default function QuestionBank() {
               {DIFFICULTIES.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-[170px]"><SelectValue placeholder="Approval status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="pending_hod">Pending HOD</SelectItem>
+              <SelectItem value="pending_admin">Pending Admin</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {loading ? <div className="text-sm text-muted-foreground">Loading…</div>
@@ -236,9 +247,26 @@ export default function QuestionBank() {
                       {r.topic && <span className="px-1.5 py-0.5 rounded bg-secondary">{r.topic}</span>}
                       <span className="px-1.5 py-0.5 rounded bg-secondary capitalize">{r.difficulty}</span>
                       <span className="px-1.5 py-0.5 rounded bg-muted">{(r.options ?? []).length} options</span>
+                      <Badge variant="outline" className={STATUS_TONE[r.approval_status ?? "draft"]}>
+                        {(r.approval_status ?? "draft").replace("_", " ")}
+                      </Badge>
+                      {r.version && r.version > 1 && <span className="px-1.5 py-0.5 rounded bg-muted">v{r.version}</span>}
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => remove(r.id)}><Trash2 className="size-4 text-destructive" /></Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {NEXT_STAGE[r.approval_status ?? "draft"] && (
+                      <Button variant="outline" size="sm" onClick={() => advanceStatus(r)}>
+                        {(r.approval_status ?? "draft") === "draft" ? <Send className="size-3.5 mr-1" /> : <ShieldCheck className="size-3.5 mr-1" />}
+                        {NEXT_STAGE[r.approval_status ?? "draft"].label}
+                      </Button>
+                    )}
+                    {(r.approval_status === "pending_hod" || r.approval_status === "pending_admin") && (
+                      <Button variant="ghost" size="sm" onClick={() => rejectQuestion(r)}>Reject</Button>
+                    )}
+                    <Button variant="ghost" size="icon" onClick={() => openHistory(r)} title="Version history"><History className="size-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(r)} title="Edit"><Pencil className="size-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => remove(r.id)}><Trash2 className="size-4 text-destructive" /></Button>
+                  </div>
                 </div>
               </li>
             ))}
@@ -252,7 +280,7 @@ export default function QuestionBank() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Add question</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Edit question (creates new version)" : "Add question"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
               <div><Label>Subject</Label><Input value={draft.subject ?? ""} onChange={e => setDraft({ ...draft, subject: e.target.value })} placeholder="Mathematics" /></div>
@@ -279,9 +307,31 @@ export default function QuestionBank() {
             <div><Label>Explanation (optional)</Label><Textarea rows={2} value={draft.explanation ?? ""} onChange={e => setDraft({ ...draft, explanation: e.target.value })} /></div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={save}>Save question</Button>
+            <Button variant="ghost" onClick={() => { setOpen(false); setEditingId(null); }}>Cancel</Button>
+            <Button onClick={save}>{editingId ? "Save new version" : "Save question"}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!historyFor} onOpenChange={(o) => !o && setHistoryFor(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Version history</DialogTitle></DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-2">
+            {history.length === 0 && <p className="text-sm text-muted-foreground">No prior versions yet. Every edit will snapshot here.</p>}
+            {history.map((h: any) => (
+              <div key={h.id} className="p-3 rounded-lg border border-border">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span>v{h.version}</span>
+                  <span>{new Date(h.created_at).toLocaleString()}</span>
+                </div>
+                <div className="text-sm font-medium line-clamp-2">{h.snapshot?.body}</div>
+                <div className="mt-1 flex gap-1.5 text-[11px]">
+                  <Badge variant="outline" className={STATUS_TONE[h.snapshot?.approval_status ?? "draft"]}>{(h.snapshot?.approval_status ?? "draft").replace("_"," ")}</Badge>
+                  {h.snapshot?.difficulty && <span className="px-1.5 py-0.5 rounded bg-secondary capitalize">{h.snapshot.difficulty}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
