@@ -6,6 +6,7 @@ import {
   Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine,
   ScrollText, Inbox as InboxIcon,
 } from "lucide-react";
+import { UserPlus, Workflow } from "lucide-react";
 import { ModuleManifest } from "./types";
 
 /**
