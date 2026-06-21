@@ -692,3 +692,107 @@ function toMinutes(t: string) {
   const [h, m] = (t ?? "00:00").split(":").map(Number);
   return (h || 0) * 60 + (m || 0);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Drag-and-drop schedule board: rows = time slots, columns = venues, grouped by date.
+const BOARD_SLOTS = ["08:00", "10:00", "12:00", "14:00"];
+function ScheduleBoard({
+  rows, classMap, conflicts, venues, onMove,
+}: {
+  rows: TradTimetableRow[];
+  classMap: Map<string, ClassRow>;
+  conflicts: Set<string>;
+  venues: string[];
+  onMove: (id: string, patch: Partial<TradTimetableRow>) => void;
+}) {
+  const dates = Array.from(new Set(rows.map(r => r.exam_date))).sort();
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
+
+  function onDragStart(e: React.DragEvent, id: string) {
+    setDragId(id);
+    e.dataTransfer.setData("text/plain", id);
+    e.dataTransfer.effectAllowed = "move";
+  }
+  function onDrop(e: React.DragEvent, date: string, time: string, venue: string) {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain") || dragId;
+    setDragId(null); setHover(null);
+    if (!id) return;
+    onMove(id, { exam_date: date, start_time: `${time}:00`, venue });
+  }
+  return (
+    <div className="space-y-6">
+      {dates.map(date => (
+        <div key={date}>
+          <div className="flex items-center gap-2 mb-2">
+            <CalendarDays className="size-4 text-primary" />
+            <span className="font-semibold">{new Date(date).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-muted/40">
+                  <th className="text-left p-2 w-20">Time</th>
+                  {venues.map(v => <th key={v} className="text-left p-2 border-l border-border">{v}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {BOARD_SLOTS.map(time => (
+                  <tr key={time} className="border-t border-border align-top">
+                    <td className="p-2 tabular-nums text-muted-foreground">{time}</td>
+                    {venues.map(venue => {
+                      const cellKey = `${date}|${time}|${venue}`;
+                      const items = rows.filter(r =>
+                        r.exam_date === date && (r.start_time?.slice(0, 5) === time) && (r.venue ?? "") === venue
+                      );
+                      const isHover = hover === cellKey;
+                      const hasConflict = items.some(r => conflicts.has(r.id));
+                      return (
+                        <td key={venue}
+                          onDragOver={e => { e.preventDefault(); setHover(cellKey); }}
+                          onDragLeave={() => setHover(h => h === cellKey ? null : h)}
+                          onDrop={e => onDrop(e, date, time, venue)}
+                          className={"p-2 border-l border-border min-h-[60px] transition " +
+                            (isHover ? "bg-primary/10 ring-1 ring-primary/40 " : "") +
+                            (hasConflict ? "bg-destructive/5" : "")}>
+                          <div className="space-y-1.5">
+                            {items.map(r => (
+                              <div key={r.id}
+                                draggable
+                                onDragStart={e => onDragStart(e, r.id)}
+                                className={"cursor-grab active:cursor-grabbing rounded-md border bg-card p-2 hover:border-primary/40 " +
+                                  (conflicts.has(r.id) ? "border-destructive/50" : "border-border")}>
+                                <div className="flex items-start gap-1.5">
+                                  <GripVertical className="size-3 text-muted-foreground mt-0.5 shrink-0" />
+                                  <div className="min-w-0">
+                                    <div className="font-medium truncate">{r.subject_name ?? "—"}</div>
+                                    <div className="text-[10px] text-muted-foreground truncate">
+                                      {classMap.get(r.class_id)?.name ?? "—"} · {r.duration_minutes}m
+                                    </div>
+                                    {conflicts.has(r.id) && (
+                                      <span className="text-[10px] text-destructive inline-flex items-center gap-1 mt-1">
+                                        <AlertTriangle className="size-3" /> Conflict
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+      <p className="text-[11px] text-muted-foreground">
+        Tip: drag a card to a different time-slot or venue cell to reschedule. The system instantly recomputes class-time conflicts.
+      </p>
+    </div>
+  );
+}
