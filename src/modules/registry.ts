@@ -247,14 +247,11 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
   },
   {
     slug: "proctoring", name: "Exam Proctoring", category: "academics", icon: ClipboardCheck,
-    sidebar: [{ label: "Proctoring", to: "proctoring", icon: ClipboardCheck, roles: ["admin"] }],
+    sidebar: [],
   },
   {
     slug: "traditional-exams", name: "Exams", category: "academics", icon: ScrollText, core: true,
     sidebar: [
-      { label: "Exams", to: "trad-exams", icon: ScrollText, roles: ["admin"] },
-      { label: "Approvals",         to: "trad-exams-approvals", icon: ScrollText, roles: ["admin"] },
-      { label: "Results",      to: "trad-exams-results",   icon: ScrollText, roles: ["admin"] },
       { label: "Exam Papers", to: "trad-exams", icon: ScrollText, roles: ["teacher"] },
       { label: "Grading Queue", to: "trad-exams-grading", icon: ScrollText, roles: ["teacher"] },
       { label: "Exams",       to: "trad-exams", icon: ScrollText, roles: ["student"] },
