@@ -32,9 +32,34 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
       { label: "Parents",   to: "parents",   icon: UserSquare2,   roles: ["admin"] },
       { label: "Teachers",  to: "teachers",  icon: GraduationCap, roles: ["admin"] },
       { label: "Classes",   to: "classes",   icon: BookOpen,      roles: ["admin"] },
-      { label: "Enrollments", to: "enrollments", icon: ClipboardCheck, roles: ["admin"] },
-      { label: "Invites",   to: "invites",   icon: Ticket,        roles: ["admin"] },
-      { label: "Bulk Upload", to: "bulk",    icon: Upload,        roles: ["admin"] },
+    ],
+  },
+  // ---- Admission hub (single parent nav grouping enrollments/invites/bulk) ----
+  {
+    slug: "admission-hub", name: "Admission", category: "operations", icon: UserPlus, core: true,
+    sidebar: [
+      { label: "Admission", to: "admission", icon: UserPlus, roles: ["admin"] },
+    ],
+  },
+  // ---- Assessments hub (single parent nav grouping exams, proctoring, approvals, results) ----
+  {
+    slug: "assessments-hub", name: "Assessments", category: "academics", icon: ClipboardList, core: true,
+    sidebar: [
+      { label: "Assessments", to: "assessments", icon: ClipboardList, roles: ["admin"] },
+    ],
+  },
+  // ---- AI Operation Center hub (Copilot, Parent Alerts, Knowledge, AI Activity, AI Settings) ----
+  {
+    slug: "ai-ops-hub", name: "AI Operation Center", category: "intelligence", icon: Brain, core: true,
+    sidebar: [
+      { label: "AI Operation Center", to: "ai-ops", icon: Brain, roles: ["admin"] },
+    ],
+  },
+  // ---- Workspace (collaborator invites for staff with admin access) ----
+  {
+    slug: "workspace", name: "Workspace", category: "operations", icon: Workflow, core: true,
+    sidebar: [
+      { label: "Workspace", to: "workspace", icon: Workflow, roles: ["admin"] },
     ],
   },
   {
