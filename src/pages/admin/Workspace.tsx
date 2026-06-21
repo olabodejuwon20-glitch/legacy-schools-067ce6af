@@ -66,13 +66,14 @@ export default function Workspace() {
     setBusy(true);
     try {
       // Create a workspace invite as a single-use code; the existing /join flow consumes it.
-      const code = Math.random().toString(36).slice(2, 10).toUpperCase();
-      const { error } = await supabase.from("school_invites" as any).insert({
+      const prefix = form.role === "admin" ? "ADM" : "TEA";
+      const code = `${prefix}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      const { error } = await supabase.from("invite_codes").insert({
         school_id: school.id,
         code,
         role: form.role,
-        email: form.email.trim().toLowerCase(),
-      });
+        max_uses: 1,
+      } as any);
       if (error) throw error;
       const url = `${window.location.origin}${schoolPath(school.slug, "/join")}?code=${code}`;
       await navigator.clipboard.writeText(url).catch(() => {});
