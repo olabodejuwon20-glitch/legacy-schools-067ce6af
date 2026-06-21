@@ -76,7 +76,7 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
   },
   {
     slug: "announcements", name: "Announcements", category: "communication", icon: Megaphone, core: true,
-    sidebar: [{ label: "Announcements", to: "announcements", icon: Megaphone, roles: ["admin"] }],
+    sidebar: [],
   },
 
   // ---- Academics ----
