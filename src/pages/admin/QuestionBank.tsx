@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, Upload, Search, BookOpenCheck } from "lucide-react";
+import { Plus, Trash2, Upload, Search, BookOpenCheck, History, ShieldCheck, Send, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 type QRow = {
@@ -22,9 +23,23 @@ type QRow = {
   options: string[];
   answer: any;
   explanation: string | null;
+  approval_status?: string | null;
+  version?: number | null;
 };
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
+const STATUS_TONE: Record<string, string> = {
+  draft: "bg-muted text-foreground",
+  pending_hod: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  pending_admin: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  approved: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  rejected: "bg-destructive/15 text-destructive",
+};
+const NEXT_STAGE: Record<string, { next: string; label: string }> = {
+  draft:         { next: "pending_hod",   label: "Submit to HOD" },
+  pending_hod:   { next: "pending_admin", label: "HOD approve →" },
+  pending_admin: { next: "approved",      label: "Admin approve ✓" },
+};
 
 export default function QuestionBank() {
   const { school, user } = useSchool();
@@ -34,7 +49,11 @@ export default function QuestionBank() {
   const [q, setQ] = useState("");
   const [subject, setSubject] = useState<string>("all");
   const [difficulty, setDifficulty] = useState<string>("all");
+  const [status, setStatus] = useState<string>("all");
   const [open, setOpen] = useState(false);
+  const [historyFor, setHistoryFor] = useState<QRow | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<QRow>>({ subject: "", topic: "", difficulty: "medium", type: "mcq", body: "", options: ["", "", "", ""], answer: 0, explanation: "" });
 
   async function load() {
@@ -50,6 +69,7 @@ export default function QuestionBank() {
   const filtered = rows.filter(r =>
     (subject === "all" || r.subject === subject) &&
     (difficulty === "all" || r.difficulty === difficulty) &&
+    (status === "all" || (r.approval_status ?? "draft") === status) &&
     (q === "" || r.body.toLowerCase().includes(q.toLowerCase()) || (r.topic ?? "").toLowerCase().includes(q.toLowerCase()))
   );
 
@@ -68,12 +88,51 @@ export default function QuestionBank() {
       explanation: draft.explanation || null,
       created_by: user.id,
     };
-    const { error } = await supabase.from("question_bank").insert(payload);
-    if (error) return toast.error(error.message);
-    toast.success("Question added");
+    if (editingId) {
+      const { error } = await supabase.from("question_bank").update(payload).eq("id", editingId);
+      if (error) return toast.error(error.message);
+      toast.success("Question updated · new version snapshotted");
+    } else {
+      const { error } = await supabase.from("question_bank").insert(payload);
+      if (error) return toast.error(error.message);
+      toast.success("Question added");
+    }
     setOpen(false);
+    setEditingId(null);
     setDraft({ subject: draft.subject, topic: "", difficulty: "medium", type: "mcq", body: "", options: ["", "", "", ""], answer: 0, explanation: "" });
     load();
+  }
+
+  function openEdit(r: QRow) {
+    setEditingId(r.id);
+    setDraft({ ...r, options: r.options ?? ["", "", "", ""] });
+    setOpen(true);
+  }
+
+  async function advanceStatus(r: QRow) {
+    const cur = (r.approval_status ?? "draft") as keyof typeof NEXT_STAGE;
+    const step = NEXT_STAGE[cur];
+    if (!step) return;
+    const { error } = await supabase.from("question_bank").update({ approval_status: step.next } as any).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    toast.success(`Moved to ${step.next.replace("_", " ")}`);
+    load();
+  }
+
+  async function rejectQuestion(r: QRow) {
+    const reason = prompt("Reason for rejection?");
+    if (reason == null) return;
+    const { error } = await supabase.from("question_bank").update({ approval_status: "rejected" } as any).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    toast.success("Question rejected and returned to author");
+    load();
+  }
+
+  async function openHistory(r: QRow) {
+    setHistoryFor(r);
+    const { data } = await supabase.from("question_bank_versions" as any)
+      .select("*").eq("question_id", r.id).order("version", { ascending: false });
+    setHistory((data ?? []) as any);
   }
 
   async function remove(id: string) {
@@ -161,6 +220,17 @@ export default function QuestionBank() {
               {DIFFICULTIES.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-[170px]"><SelectValue placeholder="Approval status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="pending_hod">Pending HOD</SelectItem>
+              <SelectItem value="pending_admin">Pending Admin</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {loading ? <div className="text-sm text-muted-foreground">Loading…</div>
@@ -177,9 +247,26 @@ export default function QuestionBank() {
                       {r.topic && <span className="px-1.5 py-0.5 rounded bg-secondary">{r.topic}</span>}
                       <span className="px-1.5 py-0.5 rounded bg-secondary capitalize">{r.difficulty}</span>
                       <span className="px-1.5 py-0.5 rounded bg-muted">{(r.options ?? []).length} options</span>
+                      <Badge variant="outline" className={STATUS_TONE[r.approval_status ?? "draft"]}>
+                        {(r.approval_status ?? "draft").replace("_", " ")}
+                      </Badge>
+                      {r.version && r.version > 1 && <span className="px-1.5 py-0.5 rounded bg-muted">v{r.version}</span>}
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => remove(r.id)}><Trash2 className="size-4 text-destructive" /></Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {NEXT_STAGE[r.approval_status ?? "draft"] && (
+                      <Button variant="outline" size="sm" onClick={() => advanceStatus(r)}>
+                        {(r.approval_status ?? "draft") === "draft" ? <Send className="size-3.5 mr-1" /> : <ShieldCheck className="size-3.5 mr-1" />}
+                        {NEXT_STAGE[r.approval_status ?? "draft"].label}
+                      </Button>
+                    )}
+                    {(r.approval_status === "pending_hod" || r.approval_status === "pending_admin") && (
+                      <Button variant="ghost" size="sm" onClick={() => rejectQuestion(r)}>Reject</Button>
+                    )}
+                    <Button variant="ghost" size="icon" onClick={() => openHistory(r)} title="Version history"><History className="size-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(r)} title="Edit"><Pencil className="size-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => remove(r.id)}><Trash2 className="size-4 text-destructive" /></Button>
+                  </div>
                 </div>
               </li>
             ))}
@@ -193,7 +280,7 @@ export default function QuestionBank() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Add question</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Edit question (creates new version)" : "Add question"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
               <div><Label>Subject</Label><Input value={draft.subject ?? ""} onChange={e => setDraft({ ...draft, subject: e.target.value })} placeholder="Mathematics" /></div>
@@ -220,9 +307,31 @@ export default function QuestionBank() {
             <div><Label>Explanation (optional)</Label><Textarea rows={2} value={draft.explanation ?? ""} onChange={e => setDraft({ ...draft, explanation: e.target.value })} /></div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={save}>Save question</Button>
+            <Button variant="ghost" onClick={() => { setOpen(false); setEditingId(null); }}>Cancel</Button>
+            <Button onClick={save}>{editingId ? "Save new version" : "Save question"}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!historyFor} onOpenChange={(o) => !o && setHistoryFor(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Version history</DialogTitle></DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-2">
+            {history.length === 0 && <p className="text-sm text-muted-foreground">No prior versions yet. Every edit will snapshot here.</p>}
+            {history.map((h: any) => (
+              <div key={h.id} className="p-3 rounded-lg border border-border">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span>v{h.version}</span>
+                  <span>{new Date(h.created_at).toLocaleString()}</span>
+                </div>
+                <div className="text-sm font-medium line-clamp-2">{h.snapshot?.body}</div>
+                <div className="mt-1 flex gap-1.5 text-[11px]">
+                  <Badge variant="outline" className={STATUS_TONE[h.snapshot?.approval_status ?? "draft"]}>{(h.snapshot?.approval_status ?? "draft").replace("_"," ")}</Badge>
+                  {h.snapshot?.difficulty && <span className="px-1.5 py-0.5 rounded bg-secondary capitalize">{h.snapshot.difficulty}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

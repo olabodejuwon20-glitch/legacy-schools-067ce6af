@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 
 type Band = { min: number; max: number; grade: string; remark: string };
 type Comp = { key: string; label: string; weight: number };
@@ -92,6 +93,16 @@ export default function AcademicSetup() {
   }, [sid]);
 
   const weightSum = useMemo(() => comps.reduce((s, c) => s + Number(c.weight || 0), 0), [comps]);
+  const bandsValid = useMemo(() => {
+    // No overlaps, covers 0-100, ordered desc
+    const sorted = [...bands].sort((a, b) => b.min - a.min);
+    for (let i = 0; i < sorted.length; i++) {
+      const b = sorted[i];
+      if (b.min > b.max) return { ok: false, msg: `${b.grade || "?"}: min > max` };
+      if (i > 0 && sorted[i - 1].min <= b.max) return { ok: false, msg: `${b.grade || "?"} overlaps ${sorted[i - 1].grade || "?"}` };
+    }
+    return { ok: true, msg: `${bands.length} bands` };
+  }, [bands]);
   const previewGrade = useMemo(() => {
     const b = bands.find(b => previewScore >= b.min && previewScore <= b.max);
     return b ?? { grade: "F", remark: "Fail" };
@@ -134,9 +145,9 @@ export default function AcademicSetup() {
         <div className="xl:col-span-2 space-y-6">
           <Tabs defaultValue="calendar">
             <TabsList className="flex-wrap h-auto">
-              <TabsTrigger value="calendar">Calendar</TabsTrigger>
-              <TabsTrigger value="assessment">Assessment</TabsTrigger>
-              <TabsTrigger value="grading">Grading</TabsTrigger>
+              <TabsTrigger value="calendar">Calendar <span className="ml-1.5 text-[10px] text-muted-foreground">{periods.length}</span></TabsTrigger>
+              <TabsTrigger value="assessment">Assessment {Math.round(weightSum)===100 ? <CheckCircle2 className="size-3 text-success ml-1.5" /> : <AlertCircle className="size-3 text-destructive ml-1.5" />}</TabsTrigger>
+              <TabsTrigger value="grading">Grading {bandsValid.ok ? <CheckCircle2 className="size-3 text-success ml-1.5" /> : <AlertCircle className="size-3 text-destructive ml-1.5" />}</TabsTrigger>
               <TabsTrigger value="promotion">Promotion</TabsTrigger>
               <TabsTrigger value="result">Result Release</TabsTrigger>
             </TabsList>
@@ -154,34 +165,64 @@ export default function AcademicSetup() {
                     </select>
                   </div>
                 </div>
-                <div className="space-y-2 mt-4">
-                  {periods.map((p, i) => (
-                    <div key={i} className="flex gap-2">
-                      <Input value={p.name} onChange={e => { const n = [...periods]; n[i] = { ...p, name: e.target.value }; setPeriods(n); }} placeholder="Period name" />
-                      <Input type="date" value={p.start ?? ""} onChange={e => { const n = [...periods]; n[i] = { ...p, start: e.target.value }; setPeriods(n); }} />
-                      <Input type="date" value={p.end ?? ""} onChange={e => { const n = [...periods]; n[i] = { ...p, end: e.target.value }; setPeriods(n); }} />
-                      <Button size="icon" variant="ghost" onClick={() => setPeriods(periods.filter((_, j) => j !== i))}><Trash2 className="size-4" /></Button>
-                    </div>
-                  ))}
-                  <Button size="sm" variant="outline" onClick={() => setPeriods([...periods, { name: "" }])}><Plus className="size-3.5 mr-1" />Add period</Button>
+                <div className="mt-4 rounded-lg border border-border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10">#</TableHead>
+                        <TableHead>Period name</TableHead>
+                        <TableHead className="w-44">Start</TableHead>
+                        <TableHead className="w-44">End</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {periods.map((p, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="text-muted-foreground tabular-nums">{i + 1}</TableCell>
+                          <TableCell className="p-2"><Input value={p.name} onChange={e => { const n = [...periods]; n[i] = { ...p, name: e.target.value }; setPeriods(n); }} placeholder="e.g. First Term" /></TableCell>
+                          <TableCell className="p-2"><Input type="date" value={p.start ?? ""} onChange={e => { const n = [...periods]; n[i] = { ...p, start: e.target.value }; setPeriods(n); }} /></TableCell>
+                          <TableCell className="p-2"><Input type="date" value={p.end ?? ""} onChange={e => { const n = [...periods]; n[i] = { ...p, end: e.target.value }; setPeriods(n); }} /></TableCell>
+                          <TableCell className="p-2"><Button size="icon" variant="ghost" onClick={() => setPeriods(periods.filter((_, j) => j !== i))}><Trash2 className="size-4" /></Button></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <div className="p-2 border-t border-border bg-muted/30">
+                    <Button size="sm" variant="outline" onClick={() => setPeriods([...periods, { name: "" }])}><Plus className="size-3.5 mr-1" />Add period</Button>
+                  </div>
                 </div>
               </SectionCard>
             </TabsContent>
 
             <TabsContent value="assessment">
               <SectionCard title="Assessment Structure" description="Components that combine into each subject's term result. Must total 100%.">
-                <div className="space-y-2">
-                  {comps.map((c, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                      <Input className="col-span-3" placeholder="key" value={c.key} onChange={e => { const n=[...comps]; n[i]={...c,key:e.target.value}; setComps(n); }} />
-                      <Input className="col-span-5" placeholder="Label" value={c.label} onChange={e => { const n=[...comps]; n[i]={...c,label:e.target.value}; setComps(n); }} />
-                      <Input className="col-span-3" type="number" placeholder="Weight %" value={c.weight} onChange={e => { const n=[...comps]; n[i]={...c,weight:Number(e.target.value)}; setComps(n); }} />
-                      <Button size="icon" variant="ghost" onClick={() => setComps(comps.filter((_, j) => j !== i))}><Trash2 className="size-4" /></Button>
-                    </div>
-                  ))}
-                  <Button size="sm" variant="outline" onClick={() => setComps([...comps, { key: "", label: "", weight: 0 }])}><Plus className="size-3.5 mr-1" />Add component</Button>
-                  <div className={`text-xs rounded-md px-3 py-2 border ${Math.round(weightSum)===100 ? "border-success/40 bg-success/5 text-success" : "border-destructive/40 bg-destructive/5 text-destructive"}`}>
-                    Total: {weightSum}% — {Math.round(weightSum)===100 ? "valid" : "must equal 100"}
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-32">Key</TableHead>
+                        <TableHead>Label</TableHead>
+                        <TableHead className="w-32">Weight %</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {comps.map((c, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="p-2"><Input placeholder="ca" value={c.key} onChange={e => { const n=[...comps]; n[i]={...c,key:e.target.value}; setComps(n); }} /></TableCell>
+                          <TableCell className="p-2"><Input placeholder="Continuous Assessment" value={c.label} onChange={e => { const n=[...comps]; n[i]={...c,label:e.target.value}; setComps(n); }} /></TableCell>
+                          <TableCell className="p-2"><Input type="number" min={0} max={100} value={c.weight} onChange={e => { const n=[...comps]; n[i]={...c,weight:Number(e.target.value)}; setComps(n); }} /></TableCell>
+                          <TableCell className="p-2"><Button size="icon" variant="ghost" onClick={() => setComps(comps.filter((_, j) => j !== i))}><Trash2 className="size-4" /></Button></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <div className="p-2 border-t border-border bg-muted/30 flex items-center gap-3">
+                    <Button size="sm" variant="outline" onClick={() => setComps([...comps, { key: "", label: "", weight: 0 }])}><Plus className="size-3.5 mr-1" />Add component</Button>
+                    <Badge variant="outline" className={Math.round(weightSum)===100 ? "bg-success/10 text-success border-success/40" : "bg-destructive/10 text-destructive border-destructive/40"}>
+                      Total {weightSum}% {Math.round(weightSum)===100 ? "✓" : `(needs ${100-weightSum})`}
+                    </Badge>
                   </div>
                 </div>
               </SectionCard>
@@ -189,17 +230,38 @@ export default function AcademicSetup() {
 
             <TabsContent value="grading">
               <SectionCard title="Grading Scale" description="Define grade bands and remarks.">
-                <div className="space-y-2">
-                  {bands.map((b, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                      <Input className="col-span-2" type="number" value={b.min} onChange={e=>{const n=[...bands];n[i]={...b,min:Number(e.target.value)};setBands(n);}} />
-                      <Input className="col-span-2" type="number" value={b.max} onChange={e=>{const n=[...bands];n[i]={...b,max:Number(e.target.value)};setBands(n);}} />
-                      <Input className="col-span-2" value={b.grade} onChange={e=>{const n=[...bands];n[i]={...b,grade:e.target.value};setBands(n);}} />
-                      <Input className="col-span-5" value={b.remark} onChange={e=>{const n=[...bands];n[i]={...b,remark:e.target.value};setBands(n);}} />
-                      <Button size="icon" variant="ghost" onClick={()=>setBands(bands.filter((_,j)=>j!==i))}><Trash2 className="size-4" /></Button>
-                    </div>
-                  ))}
-                  <Button size="sm" variant="outline" onClick={()=>setBands([...bands,{min:0,max:0,grade:"",remark:""}])}><Plus className="size-3.5 mr-1" />Add band</Button>
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-24">Min %</TableHead>
+                        <TableHead className="w-24">Max %</TableHead>
+                        <TableHead className="w-24">Grade</TableHead>
+                        <TableHead>Remark</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bands.map((b, i) => {
+                        const rangeOk = b.min <= b.max;
+                        return (
+                          <TableRow key={i} className={!rangeOk ? "bg-destructive/5" : ""}>
+                            <TableCell className="p-2"><Input type="number" min={0} max={100} value={b.min} onChange={e=>{const n=[...bands];n[i]={...b,min:Number(e.target.value)};setBands(n);}} /></TableCell>
+                            <TableCell className="p-2"><Input type="number" min={0} max={100} value={b.max} onChange={e=>{const n=[...bands];n[i]={...b,max:Number(e.target.value)};setBands(n);}} /></TableCell>
+                            <TableCell className="p-2"><Input value={b.grade} onChange={e=>{const n=[...bands];n[i]={...b,grade:e.target.value};setBands(n);}} /></TableCell>
+                            <TableCell className="p-2"><Input value={b.remark} onChange={e=>{const n=[...bands];n[i]={...b,remark:e.target.value};setBands(n);}} /></TableCell>
+                            <TableCell className="p-2"><Button size="icon" variant="ghost" onClick={()=>setBands(bands.filter((_,j)=>j!==i))}><Trash2 className="size-4" /></Button></TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                  <div className="p-2 border-t border-border bg-muted/30 flex items-center gap-3">
+                    <Button size="sm" variant="outline" onClick={()=>setBands([...bands,{min:0,max:0,grade:"",remark:""}])}><Plus className="size-3.5 mr-1" />Add band</Button>
+                    <Badge variant="outline" className={bandsValid.ok ? "bg-success/10 text-success border-success/40" : "bg-destructive/10 text-destructive border-destructive/40"}>
+                      {bandsValid.ok ? `✓ ${bandsValid.msg}` : `⚠ ${bandsValid.msg}`}
+                    </Badge>
+                  </div>
                 </div>
               </SectionCard>
             </TabsContent>
@@ -230,15 +292,27 @@ export default function AcademicSetup() {
         </div>
 
         <div className="space-y-4">
-          <SectionCard title="Live Preview" description="Enter a score to see how rules apply.">
-            <Label className="text-xs">Sample score</Label>
-            <Input type="number" value={previewScore} onChange={e=>setPreviewScore(Number(e.target.value))} />
-            <div className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span>Grade</span><Badge>{previewGrade.grade}</Badge></div>
-              <div className="flex justify-between"><span>Remark</span><span className="text-muted-foreground">{previewGrade.remark}</span></div>
-              <div className="flex justify-between"><span>Promotion verdict</span><Badge variant={previewPromoted ? "default" : "destructive"}>{previewPromoted ? "Promoted" : "Not promoted"}</Badge></div>
-              <div className="flex justify-between"><span>Weights sum</span><span className={Math.round(weightSum)===100 ? "text-success" : "text-destructive"}>{weightSum}%</span></div>
-              <div className="flex justify-between"><span>Calendar periods</span><span>{periods.length}</span></div>
+          <SectionCard title="Live Preview" description="Single source of truth — every policy is computed against this sample score.">
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Sample score (%)</Label>
+                <Input type="number" min={0} max={100} value={previewScore} onChange={e=>setPreviewScore(Number(e.target.value))} />
+                <input type="range" min={0} max={100} value={previewScore} onChange={e=>setPreviewScore(Number(e.target.value))} className="w-full mt-2 accent-primary" />
+              </div>
+              <div className="rounded-lg border border-border divide-y divide-border text-sm">
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Grade</span><Badge className="text-base px-3">{previewGrade.grade}</Badge></div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Remark</span><span className="font-medium">{previewGrade.remark}</span></div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Promotion</span><Badge variant={previewPromoted ? "default" : "destructive"}>{previewPromoted ? "Promoted" : "Not promoted"}</Badge></div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Min avg required</span><span className="tabular-nums">{minAvg}%</span></div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Calendar periods</span><span className="tabular-nums">{periods.length}</span></div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Assessment weights</span>
+                  <span className={"tabular-nums " + (Math.round(weightSum)===100 ? "text-success" : "text-destructive")}>{weightSum}%</span>
+                </div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Grading bands</span>
+                  <span className={bandsValid.ok ? "text-success" : "text-destructive"}>{bandsValid.msg}</span>
+                </div>
+                <div className="flex justify-between p-3"><span className="text-muted-foreground">Approval chain</span><span className="text-xs">{approvalChain}</span></div>
+              </div>
             </div>
           </SectionCard>
         </div>

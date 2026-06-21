@@ -1991,6 +1991,7 @@ export type Database = {
           correct_answer: Json | null
           id: string
           question_id: string
+          question_position: number | null
           recorded_at: string
           school_id: string
           score_awarded: number | null
@@ -2001,6 +2002,7 @@ export type Database = {
           correct_answer?: Json | null
           id?: string
           question_id: string
+          question_position?: number | null
           recorded_at?: string
           school_id: string
           score_awarded?: number | null
@@ -2011,6 +2013,7 @@ export type Database = {
           correct_answer?: Json | null
           id?: string
           question_id?: string
+          question_position?: number | null
           recorded_at?: string
           school_id?: string
           score_awarded?: number | null
