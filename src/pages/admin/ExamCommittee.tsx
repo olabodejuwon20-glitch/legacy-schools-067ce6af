@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays, ClipboardList, Plus, ScrollText, Users2, MapPin, Clock,
-  ChevronRight, AlertTriangle, FileCheck2, Trash2, Pencil,
+  ChevronRight, AlertTriangle, FileCheck2, Trash2, Pencil, GripVertical,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
@@ -365,6 +365,7 @@ export default function ExamCommittee() {
         <Tabs defaultValue="timetable" className="space-y-4">
           <TabsList>
             <TabsTrigger value="timetable">Timetable</TabsTrigger>
+            <TabsTrigger value="board">Schedule board</TabsTrigger>
             <TabsTrigger value="coordinators">Coordinators</TabsTrigger>
             <TabsTrigger value="papers">Papers</TabsTrigger>
             <TabsTrigger value="all-sessions">All sessions</TabsTrigger>
