@@ -460,10 +460,6 @@ export default function ExamCommittee() {
             </SectionCard>
           </TabsContent>
 
-          {/* Coordinators */}
-          <TabsContent value="coordinators">
-          {/* (board tab content rendered just before) */}
-          </TabsContent>
           <TabsContent value="board">
             <SectionCard
               title="Drag-and-drop schedule board"
@@ -488,7 +484,7 @@ export default function ExamCommittee() {
               )}
             </SectionCard>
           </TabsContent>
-          <TabsContent value="coordinators-old" className="hidden">
+          <TabsContent value="coordinators">
             <SectionCard title="Coordination roster"
               description="Every scheduled paper needs a coordinator and invigilator before the session is published.">
               {rows.length === 0 ? (
