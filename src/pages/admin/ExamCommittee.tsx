@@ -462,6 +462,33 @@ export default function ExamCommittee() {
 
           {/* Coordinators */}
           <TabsContent value="coordinators">
+          {/* (board tab content rendered just before) */}
+          </TabsContent>
+          <TabsContent value="board">
+            <SectionCard
+              title="Drag-and-drop schedule board"
+              description="Drag any paper onto a venue + time-slot cell to reschedule. Red cells indicate class-time conflicts."
+            >
+              {rows.length === 0 ? (
+                <EmptyState icon={MapPin} title="Nothing to drag yet" desc="Schedule papers on the Timetable tab first." />
+              ) : (
+                <ScheduleBoard
+                  rows={rows}
+                  classMap={classMap}
+                  conflicts={conflicts}
+                  venues={Array.from(new Set([...NG_VENUES, ...rows.map(r => r.venue).filter(Boolean) as string[]]))}
+                  onMove={async (id, patch) => {
+                    // Optimistic update
+                    setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch } as TradTimetableRow : r));
+                    const { error } = await supabase.from("trad_exam_timetable" as any)
+                      .update(patch).eq("id", id);
+                    if (error) { toast.error(error.message); loadSession(); }
+                  }}
+                />
+              )}
+            </SectionCard>
+          </TabsContent>
+          <TabsContent value="coordinators-old" className="hidden">
             <SectionCard title="Coordination roster"
               description="Every scheduled paper needs a coordinator and invigilator before the session is published.">
               {rows.length === 0 ? (
