@@ -49,7 +49,7 @@ const SECTION_OF: Record<string, string> = {
   "question-bank": "Library", "resources": "Library",
   // Assessments hub (single nav covering exams / proctoring / approvals / results)
   "assessments": "Assessments",
-  "tests": "Assessments", "assessments": "Assessments", "grading": "Assessments",
+  "tests": "Assessments", "grading": "Assessments",
   "exams": "Assessments", "results": "Assessments", "mock": "Assessments",
   "practice": "Assessments", "proctoring": "Assessments", "trad-exams": "Assessments",
   "trad-exams-approvals": "Assessments", "trad-exams-results": "Assessments", "trad-exams-grading": "Assessments",
