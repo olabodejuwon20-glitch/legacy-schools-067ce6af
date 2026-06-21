@@ -34,44 +34,49 @@ const SECTION_OF: Record<string, string> = {
   // People
   "students": "People", "teachers": "People", "children": "People",
   "parents": "People",
-  // Admission (formerly Enrollments) — invites + bulk upload live here too
+  // Admission hub (single nav covering enrollments / invites / bulk upload)
+  "admission": "Admission",
   "enrollments": "Admission", "invites": "Admission", "bulk": "Admission",
   // Academics
   "classes": "Academics", "timetable": "Academics", "calendar": "Academics",
   "attendance": "Academics", "assignments": "Academics", "gradebook": "Academics",
   "behavior": "Academics",
   "register-subjects": "Academics",
+  // Reports + Scratch Cards live inside Academics now
+  "reports": "Academics", "trad-cards": "Academics",
   // Library (groups all reading / lesson-note / question-bank tools)
   "library": "Library", "lesson-notes": "Library",
   "question-bank": "Library", "resources": "Library",
-  // Assessments
+  // Assessments hub (single nav covering exams / proctoring / approvals / results)
+  "assessments": "Assessments",
   "tests": "Assessments", "assessments": "Assessments", "grading": "Assessments",
   "exams": "Assessments", "results": "Assessments", "mock": "Assessments",
   "practice": "Assessments", "proctoring": "Assessments", "trad-exams": "Assessments",
   "trad-exams-approvals": "Assessments", "trad-exams-results": "Assessments", "trad-exams-grading": "Assessments",
   "exam-committee": "Assessments",
-  // Copilot (all AI features grouped here)
-  "ai-tutor": "Copilot", "ai-marking": "Copilot", "parent-alerts": "Copilot",
-  "copilot": "Copilot", "knowledge": "Copilot", "ai-activity": "Copilot",
-  "ai-settings": "Copilot", "lesson-plan": "Copilot",
+  // AI Operation Center hub (admin) + Copilot tools for other roles
+  "ai-ops": "AI Ops",
+  "ai-tutor": "Copilot", "ai-marking": "Copilot", "parent-alerts": "AI Ops",
+  "copilot": "Copilot", "knowledge": "AI Ops", "ai-activity": "AI Ops",
+  "ai-settings": "AI Ops", "lesson-plan": "Copilot",
   // Communication
   "messages": "Communication", "inbox": "Communication",
   "announcements": "Communication", "parent-comms": "Communication",
   "teacher-comms": "Communication", "activity": "Communication",
+  "communication": "Communication",
   // Finance
-  "fees": "Finance",
+  "fees": "Finance", "subscription": "Finance",
   // Operations
   "hostel": "Operations", "transport": "Operations",
-  // Reports
-  "reports": "Reports",
   // System
   "settings": "System", "modules": "System", "roles": "System", "/app/help": "System",
+  "workspace": "System",
   "academic-setup": "System", "exam-appeals": "Assessments",
 };
 
 const SECTION_ORDER = [
   "Overview", "People", "Admission", "Academics", "Library", "Assessments",
-  "Copilot", "Communication", "Finance", "Operations", "Reports", "System",
+  "AI Ops", "Copilot", "Communication", "Finance", "Operations", "System",
 ];
 
 function sectionFor(to: string) {
