@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 
 type Band = { min: number; max: number; grade: string; remark: string };
 type Comp = { key: string; label: string; weight: number };
@@ -92,6 +93,16 @@ export default function AcademicSetup() {
   }, [sid]);
 
   const weightSum = useMemo(() => comps.reduce((s, c) => s + Number(c.weight || 0), 0), [comps]);
+  const bandsValid = useMemo(() => {
+    // No overlaps, covers 0-100, ordered desc
+    const sorted = [...bands].sort((a, b) => b.min - a.min);
+    for (let i = 0; i < sorted.length; i++) {
+      const b = sorted[i];
+      if (b.min > b.max) return { ok: false, msg: `${b.grade || "?"}: min > max` };
+      if (i > 0 && sorted[i - 1].min <= b.max) return { ok: false, msg: `${b.grade || "?"} overlaps ${sorted[i - 1].grade || "?"}` };
+    }
+    return { ok: true, msg: `${bands.length} bands` };
+  }, [bands]);
   const previewGrade = useMemo(() => {
     const b = bands.find(b => previewScore >= b.min && previewScore <= b.max);
     return b ?? { grade: "F", remark: "Fail" };
