@@ -38,7 +38,7 @@ export function sanitizeErrorMessage(input: unknown, fallback = DEFAULT_SAFE_ERR
   if (ALLOW_AS_IS.test(raw)) return raw;
   if (
     raw.length < 160 &&
-    !/[{}<>]|::|\/\w+\/|_[a-z]+_|[a-f0-9]{8}-[a-f0-9]{4}|\bE\d{3}\b|\bPGRST\b|\b[A-Z_]{8,}\b/.test(raw)
+    !/[{}<>]|::|\/\w+\/|\b[a-z]+_[a-z0-9_]+\b|[a-f0-9]{8}-[a-f0-9]{4}|\bE\d{3}\b|\bPGRST\b|\b[A-Z_]{8,}\b/.test(raw)
   ) {
     return raw;
   }
