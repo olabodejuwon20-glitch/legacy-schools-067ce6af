@@ -5,6 +5,7 @@ import { useSchool } from "@/contexts/SchoolContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { friendlyError } from "@/lib/errors";
 
 export default function SubscriptionCallback() {
   const [params] = useSearchParams();
@@ -21,7 +22,7 @@ export default function SubscriptionCallback() {
         if (r.ok && r.status === "paid") { setState("ok"); setMsg("Payment confirmed. Your subscription is active."); }
         else { setState("fail"); setMsg("Payment not completed. You can retry from your subscription page."); }
       })
-      .catch(e => { setState("fail"); setMsg(e?.message ?? "Verification failed"); });
+      .catch(e => { setState("fail"); setMsg(friendlyError(e, "Verification failed. Please try again.")); });
   }, [reference]);
 
   const back = school ? `/${school.slug}/app/admin/subscription` : "/";
