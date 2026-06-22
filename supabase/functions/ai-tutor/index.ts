@@ -166,7 +166,6 @@ Deno.serve(async (req) => {
     const {
       conversation_id,
       school_id,
-      role: portalRole = "student",
       message,
       attachments = [],
       skill = null, // "quiz" | "summarize" | "explain_exam" | "plan_week" | null
@@ -178,6 +177,17 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Derive role from verified membership — never trust client-supplied role.
+    const { data: callerMem } = await admin.from("memberships")
+      .select("role").eq("school_id", school_id).eq("user_id", user.id)
+      .eq("status", "active").maybeSingle();
+    if (!callerMem) {
+      return new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const portalRole = callerMem.role === "teacher" ? "teacher" : "student";
 
     // Verify conversation ownership
     const { data: conv } = await admin
