@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
 
   const raw = await req.text();
   const k = getPaystackKey();
-  if (!k) return new Response("not configured", { status: 503 });
+  if (!k) return new Response("service unavailable", { status: 503 });
 
   const sig = req.headers.get("x-paystack-signature") ?? "";
   const expected = createHmac("sha512", k.key).update(raw).digest("hex");
