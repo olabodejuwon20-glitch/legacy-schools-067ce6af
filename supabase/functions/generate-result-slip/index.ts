@@ -78,10 +78,15 @@ Deno.serve(async (req) => {
     }
     if (!allowed) return json({ error: "Forbidden" }, 403);
 
+    // Students and parents may only see published results. Staff (admin/teacher) may see all.
+    const isStaff = !!(callerMem && (callerMem.role === "admin" || callerMem.role === "teacher"));
+    let resultsQuery = admin.from("results").select("subject,score,term,remarks,published_at")
+      .eq("school_id", schoolId).eq("student_id", student_id);
+    if (!isStaff) resultsQuery = resultsQuery.not("published_at", "is", null);
     const [{ data: school }, { data: profile }, { data: results }] = await Promise.all([
       admin.from("schools").select("name,motto,address,phone,email,logo_url,current_session,current_term").eq("id", schoolId).single(),
       admin.from("profiles").select("full_name,email,dob,gender,phone").eq("id", student_id).maybeSingle(),
-      admin.from("results").select("subject,score,term,remarks").eq("school_id", schoolId).eq("student_id", student_id),
+      resultsQuery,
     ]);
 
     const usedTerm = term || school?.current_term || "Term 1";
