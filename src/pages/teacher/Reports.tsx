@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FileBarChart, Users, Target, TrendingUp, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { downloadCSV, printToPDF, tableHTML } from "@/lib/exporters";
+import { downloadCSV, printToPDF, tableHTML, safeHtml } from "@/lib/exporters";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -45,7 +45,7 @@ export default function TeacherReports() {
       bySubj.map(b => ({ Subject: b.subject, Average: b.avg + "%", "NECO Grade": b.grade, "Credit pass": b.credit + "%" })));
   };
   const exportPDF = () => {
-    const html = `<h1>Class Performance Report</h1><div class="sub">${school?.name || ""}</div>
+    const html = `<h1>Class Performance Report</h1><div class="sub">${safeHtml(school?.name || "")}</div>
       <div class="grid">
         <div class="card"><div class="label">Students graded</div><div class="value">${students}</div></div>
         <div class="card"><div class="label">Class average</div><div class="value">${s.average}% (${s.grade})</div></div>
