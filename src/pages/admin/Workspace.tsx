@@ -184,6 +184,21 @@ export default function Workspace() {
       .update({ status: "removed" }).eq("school_id", school.id).eq("user_id", userId);
     if (error) return toast.error(error.message || "Could not remove");
     toast.success("Collaborator removed");
+    setDrawerOpen(false);
+    setSelectedMember(null);
+    load();
+  }
+
+  async function changeRole(userId: string, newSlot: number | null) {
+    if (!school || roleBusy) return;
+    setRoleBusy(true);
+    const { error } = await supabase.from("memberships")
+      .update({ admin_slot: newSlot })
+      .eq("school_id", school.id)
+      .eq("user_id", userId);
+    setRoleBusy(false);
+    if (error) return toast.error(error.message || "Could not update role");
+    toast.success("Role updated");
     load();
   }
 
