@@ -60,6 +60,7 @@ import AdminTradExamSession from "./pages/admin/TradExamSession";
 import AdminTradExamPaper from "./pages/admin/TradExamPaper";
 import AdminTradExamApprovals from "./pages/admin/TradExamApprovals";
 import AdminTradExamResults from "./pages/admin/TradExamResults";
+import AdminExamResultsRelease from "./pages/admin/ExamResultsRelease";
 import AdminTradScratchCards from "./pages/admin/TradScratchCards";
 import AdminAcademicSetup from "./pages/admin/AcademicSetup";
 import AdminExamAppeals from "./pages/admin/ExamAppeals";
