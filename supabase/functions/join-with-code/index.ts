@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     if (!phone || phone.length < 6) return json({ error: "Invalid phone" }, 400);
     if (!isPin(pin)) return json({ error: "PIN must be 6 digits" }, 400);
     if (!code) return json({ error: "Code is required" }, 400);
-    if (!schoolSlug) return json({ error: "Open this school's portal URL to join." }, 400);
+    if (!schoolSlug) return json({ error: "Open the correct school portal to join." }, 400);
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     const { data: school } = await admin.from("schools").select("id,slug,name").eq("id", invite.school_id).single();
     if (!school) return json({ error: "School not found" }, 400);
     if (school.slug !== schoolSlug) {
-      return json({ error: "This code does not belong to this school portal." }, 403);
+      return json({ error: "Invalid or expired onboarding code." }, 403);
     }
 
     const email = fakeEmail(phone, school.slug);
@@ -50,8 +50,9 @@ Deno.serve(async (req) => {
       user_metadata: { full_name: fullName, phone },
     });
     if (cErr) {
-      if (/already/i.test(cErr.message)) return json({ error: "This phone is already registered for this school. Please sign in instead." }, 400);
-      return json({ error: cErr.message }, 400);
+      if (/already/i.test(cErr.message)) return json({ error: "We couldn't complete your sign-up. Please check your details and try again." }, 400);
+      console.error("[join-with-code] create_user_failed", cErr);
+      return json({ error: "We couldn't complete your sign-up. Please check your details and try again." }, 400);
     }
     const uid = created.user!.id;
 
