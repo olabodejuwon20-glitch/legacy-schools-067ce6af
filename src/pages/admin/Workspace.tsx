@@ -313,12 +313,20 @@ export default function Workspace() {
                     : "bg-primary/10 text-primary";
                   const isPrimary = !r.admin_slot;
                   return (
-                    <tr key={r.user_id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={r.user_id}
+                      className="border-t border-border hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => { setSelectedMember(r); setDrawerOpen(true); }}
+                    >
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className={cn("size-7 rounded-full grid place-items-center text-[11px] font-semibold shrink-0", tone)}>
-                            {initials(r.full_name, r.email)}
-                          </span>
+                          {r.photo_url ? (
+                            <img src={r.photo_url} alt="" className="size-7 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <span className={cn("size-7 rounded-full grid place-items-center text-[11px] font-semibold shrink-0", tone)}>
+                              {initials(r.full_name, r.email)}
+                            </span>
+                          )}
                           <span className="font-medium truncate">{r.full_name || "—"}</span>
                           {isPrimary && (
                             <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary">
@@ -336,12 +344,12 @@ export default function Workspace() {
                       <td className="px-2 py-2.5 text-right">
                         {!isPrimary && (
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <Button size="icon" variant="ghost" className="size-7">
                                 <MoreHorizontal className="size-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuContent align="end" className="w-40" onClick={(e) => e.stopPropagation()}>
                               <DropdownMenuItem asChild>
                                 <Link to={schoolPath(school?.slug, "/app/admin/roles")}>
                                   <Settings2 className="size-3.5 mr-2" /> Change role
