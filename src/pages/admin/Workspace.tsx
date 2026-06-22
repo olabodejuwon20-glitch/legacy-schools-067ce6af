@@ -80,26 +80,49 @@ export default function Workspace() {
   const [busy, setBusy] = useState(false);
   const [lastLink, setLastLink] = useState<string | null>(null);
 
+  // member drawer
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Row | null>(null);
+  const [roleBusy, setRoleBusy] = useState(false);
+
   async function load() {
     if (!school) return;
     setLoading(true);
     const { data: mems } = await supabase
       .from("memberships")
-      .select("user_id, admin_slot")
+      .select("user_id, admin_slot, created_at")
       .eq("school_id", school.id)
       .eq("role", "admin")
       .eq("status", "active");
     const ids = (mems ?? []).map((m: any) => m.user_id);
-    const profiles: Record<string, { full_name: string | null; email: string | null }> = {};
+    const profiles: Record<string, {
+      full_name: string | null; email: string | null;
+      phone: string | null; gender: string | null;
+      address: string | null; photo_url: string | null;
+    }> = {};
     if (ids.length) {
-      const { data: p } = await supabase.from("profiles").select("id,full_name,email").in("id", ids);
-      (p ?? []).forEach((r: any) => { profiles[r.id] = { full_name: r.full_name, email: r.email }; });
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("id,full_name,email,phone,gender,address,photo_url")
+        .in("id", ids);
+      (p ?? []).forEach((r: any) => {
+        profiles[r.id] = {
+          full_name: r.full_name, email: r.email,
+          phone: r.phone, gender: r.gender,
+          address: r.address, photo_url: r.photo_url,
+        };
+      });
     }
     setRows(((mems ?? []) as any).map((m: any) => ({
       user_id: m.user_id,
       admin_slot: m.admin_slot,
       full_name: profiles[m.user_id]?.full_name ?? null,
       email: profiles[m.user_id]?.email ?? null,
+      phone: profiles[m.user_id]?.phone ?? null,
+      gender: profiles[m.user_id]?.gender ?? null,
+      address: profiles[m.user_id]?.address ?? null,
+      photo_url: profiles[m.user_id]?.photo_url ?? null,
+      created_at: m.created_at,
     })));
 
     const { data: s } = await supabase
