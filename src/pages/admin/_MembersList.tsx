@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Users, GraduationCap, Download, FileText, Mail, Phone, MapPin, Cake, BadgeCheck } from "lucide-react";
+import { Search, Users, GraduationCap, FileText, Mail, Phone, MapPin, Cake, BadgeCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
