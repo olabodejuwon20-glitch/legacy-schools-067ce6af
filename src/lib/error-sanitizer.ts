@@ -59,6 +59,6 @@ export function installUserSafeToasts() {
   if (safeToastsInstalled) return;
   safeToastsInstalled = true;
   const originalError = sonnerToast.error.bind(sonnerToast);
-  sonnerToast.error = ((message?: any, options?: any) =>
+  (sonnerToast as any).error = ((message?: any, options?: any) =>
     originalError(sanitizeErrorMessage(message), sanitizeToastOptions(options))) as typeof sonnerToast.error;
 }
