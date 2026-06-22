@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileBarChart, TrendingUp, Award, Target, Download, FileText, GraduationCap } from "lucide-react";
+import { FileBarChart, TrendingUp, Award, Target, FileText, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
