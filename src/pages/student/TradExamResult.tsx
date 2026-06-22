@@ -5,8 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
 import { SectionCard } from "@/components/dashboard/SectionCard";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ResultReleaseBadge } from "@/components/exam/ResultReleaseBadge";
 
 export default function StudentTradExamResult() {
   const { attemptId } = useParams<{ attemptId: string }>();
@@ -38,7 +38,7 @@ export default function StudentTradExamResult() {
             <Stat label="Score" value={`${Number(row.total_score).toFixed(0)} / ${Number(row.max_score).toFixed(0)}`} />
             <Stat label="Percentage" value={`${Number(row.percentage).toFixed(1)}%`} />
             <Stat label="Grade" value={row.grade ?? "-"} highlight />
-            <Stat label="Status" value={<Badge variant="outline">{row.status}</Badge>} />
+            <Stat label="Status" value={<ResultReleaseBadge status={row.status} released_at={row.released_at} scheduled_release_at={row.scheduled_release_at} />} />
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-lg bg-muted/40 p-3"><div className="text-xs text-muted-foreground">MCQ</div>

@@ -12,9 +12,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { ResultReleaseBadge } from "@/components/exam/ResultReleaseBadge";
 
 type Row = {
   answer_id: string;
+  attempt_id?: string;
   text_answer: string | null;
   marks_awarded: number;
   graded_at: string | null;
@@ -29,18 +31,40 @@ type Row = {
   exam_id: string;
 };
 
+type ResultLite = {
+  attempt_id: string;
+  status: string | null;
+  released_at: string | null;
+  scheduled_release_at: string | null;
+};
+
 export default function TeacherTradExamGrading() {
   const { school, user } = useSchool();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<Record<string, { marks: string; feedback: string }>>({});
+  const [resultByAttempt, setResultByAttempt] = useState<Record<string, ResultLite>>({});
 
   async function load() {
     if (!school || !user) return;
     setLoading(true);
     const { data, error } = await supabase.rpc("trad_get_theory_grading_queue" as any, { _school_id: school.id });
     if (error) toast.error(error.message);
-    setRows(((data as any) ?? []) as Row[]);
+    const list = ((data as any) ?? []) as Row[];
+    setRows(list);
+    // Pull lightweight result row per attempt so teachers see release status.
+    const attemptIds = Array.from(new Set(list.map((r: any) => r.attempt_id).filter(Boolean)));
+    if (attemptIds.length) {
+      const { data: results } = await supabase
+        .from("trad_exam_results" as any)
+        .select("attempt_id,status,released_at,scheduled_release_at")
+        .in("attempt_id", attemptIds);
+      const map: Record<string, ResultLite> = {};
+      ((results as any) ?? []).forEach((r: ResultLite) => { map[r.attempt_id] = r; });
+      setResultByAttempt(map);
+    } else {
+      setResultByAttempt({});
+    }
     setLoading(false);
   }
   useEffect(() => { load(); }, [school?.id, user?.id]);
@@ -79,6 +103,16 @@ export default function TeacherTradExamGrading() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="secondary">{max} marks</Badge>
                       <span className="text-xs text-muted-foreground">Student: {r.student_id?.slice(0, 8)}…</span>
+                      {(() => {
+                        const res = resultByAttempt[(r as any).attempt_id];
+                        return res ? (
+                          <ResultReleaseBadge
+                            status={res.status}
+                            released_at={res.released_at}
+                            scheduled_release_at={res.scheduled_release_at}
+                          />
+                        ) : null;
+                      })()}
                     </div>
                     <div>
                       <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Question</div>
