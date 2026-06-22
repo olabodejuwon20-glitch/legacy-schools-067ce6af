@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileBarChart, Users, Target, TrendingUp, Download, FileText } from "lucide-react";
+import { FileBarChart, Users, Target, TrendingUp, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { downloadCSV, printToPDF, tableHTML, safeHtml } from "@/lib/exporters";
+import { exportBrandedPDF } from "@/lib/exporters";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -40,21 +40,26 @@ export default function TeacherReports() {
     return <SectionCard title="Class performance"><EmptyState icon={FileBarChart} title="No results recorded yet" desc="Grade students to see NECO-aligned class analytics." /></SectionCard>;
   }
 
-  const exportCSV = () => {
-    downloadCSV(`${school?.slug || "school"}-class-report.csv`,
-      bySubj.map(b => ({ Subject: b.subject, Average: b.avg + "%", "NECO Grade": b.grade, "Credit pass": b.credit + "%" })));
-  };
   const exportPDF = () => {
-    const html = `<h1>Class Performance Report</h1><div class="sub">${safeHtml(school?.name || "")}</div>
-      <div class="grid">
-        <div class="card"><div class="label">Students graded</div><div class="value">${students}</div></div>
-        <div class="card"><div class="label">Class average</div><div class="value">${s.average}% (${s.grade})</div></div>
-        <div class="card"><div class="label">Credit pass</div><div class="value">${s.credit}%</div></div>
-        <div class="card"><div class="label">Entries</div><div class="value">${s.count}</div></div>
-      </div>
-      <h3>Per-subject breakdown</h3>
-      ${tableHTML(["Subject","Average","NECO","Credit pass"], bySubj.map(b => [b.subject, b.avg+"%", b.grade, b.credit+"%"]))}`;
-    printToPDF(`Class Report – ${school?.name || ""}`, html);
+    exportBrandedPDF({
+      title: "Class Performance Report",
+      subtitle: "NECO-aligned analytics",
+      schoolName: school?.name,
+      schoolLogo: school?.logo_url,
+      stats: [
+        { label: "Students graded", value: students },
+        { label: "Class average", value: `${s.average}%`, hint: `Grade ${s.grade}` },
+        { label: "Credit pass", value: `${s.credit}%` },
+        { label: "Entries", value: s.count },
+      ],
+      sections: [{
+        kind: "table",
+        heading: "Per-subject breakdown",
+        headers: ["Subject", "Average", "NECO", "Credit pass"],
+        rows: bySubj.map(b => [b.subject, b.avg + "%", b.grade, b.credit + "%"]),
+      }],
+      footerNote: "Class performance report",
+    });
   };
 
   return (
@@ -66,7 +71,6 @@ export default function TeacherReports() {
         </div>
         <div className="flex gap-2">
           {school && rs.length > 0 && <ReportCommentDialog schoolId={school.id} results={rs as any} />}
-          <Button size="sm" variant="outline" onClick={exportCSV}><Download className="size-4" /> <span className="hidden sm:inline ml-1">CSV</span></Button>
           <Button size="sm" variant="outline" onClick={exportPDF}><FileText className="size-4" /> <span className="hidden sm:inline ml-1">PDF</span></Button>
         </div>
       </div>

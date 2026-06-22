@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileBarChart, TrendingUp, Award, Target, Download, FileText, GraduationCap } from "lucide-react";
+import { FileBarChart, TrendingUp, Award, Target, FileText, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { downloadCSV, printToPDF, tableHTML, safeHtml } from "@/lib/exporters";
+import { exportBrandedPDF } from "@/lib/exporters";
 import { toast } from "sonner";
 import { ResultSlipButton } from "@/components/results/ResultSlipButton";
 import { SchoolResultCard } from "@/components/results/SchoolResultCard";
@@ -70,22 +70,25 @@ export default function StudentResults() {
         </div>
         <div className="hidden sm:flex gap-2">
           <Button size="sm" variant="outline" disabled={!filtered.length}
-            onClick={() => downloadCSV(`${school?.slug || "school"}-my-results.csv`,
-              filtered.map(r => ({ Subject: r.subject, Score: Math.round(Number(r.score))+"%", Grade: necoGrade(Number(r.score)), Term: r.term, Date: new Date(r.created_at).toLocaleDateString() })))}>
-            <Download className="size-4" /> <span className="hidden sm:inline ml-1">CSV</span>
-          </Button>
-          <Button size="sm" variant="outline" disabled={!filtered.length}
-            onClick={() => {
-              const html = `<h1>Academic Report</h1><div class="sub">${safeHtml(school?.name || "")}</div>
-              <div class="grid">
-                <div class="card"><div class="label">Overall</div><div class="value">${s.average}% (${s.grade})</div></div>
-                <div class="card"><div class="label">Credit pass</div><div class="value">${s.credit}%</div></div>
-                <div class="card"><div class="label">Best</div><div class="value">${s.best}%</div></div>
-                <div class="card"><div class="label">Subjects</div><div class="value">${bySubj.length}</div></div>
-              </div>
-              ${tableHTML(["Subject","Score","NECO","Term","Date"], filtered.map(r => [r.subject, Math.round(Number(r.score))+"%", necoGrade(Number(r.score)), r.term, new Date(r.created_at).toLocaleDateString()]))}`;
-              printToPDF(`My Results – ${school?.name || ""}`, html);
-            }}>
+            onClick={() => exportBrandedPDF({
+              title: "Academic Report",
+              subtitle: "My results",
+              schoolName: school?.name,
+              schoolLogo: school?.logo_url,
+              stats: [
+                { label: "Overall", value: `${s.average}%`, hint: `Grade ${s.grade}` },
+                { label: "Credit pass", value: `${s.credit}%` },
+                { label: "Best", value: `${s.best}%` },
+                { label: "Subjects", value: bySubj.length },
+              ],
+              sections: [{
+                kind: "table",
+                heading: "Result breakdown",
+                headers: ["Subject", "Score", "NECO", "Term", "Date"],
+                rows: filtered.map(r => [r.subject, Math.round(Number(r.score)) + "%", necoGrade(Number(r.score)), r.term, new Date(r.created_at).toLocaleDateString()]),
+              }],
+              footerNote: "Student academic report",
+            })}>
             <FileText className="size-4" /> <span className="hidden sm:inline ml-1">PDF</span>
           </Button>
         </div>

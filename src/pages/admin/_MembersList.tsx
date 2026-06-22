@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Users, GraduationCap, Download, FileText, Mail, Phone, MapPin, Cake, BadgeCheck } from "lucide-react";
+import { Search, Users, GraduationCap, FileText, Mail, Phone, MapPin, Cake, BadgeCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { downloadCSV, printToPDF, tableHTML, safeHtml } from "@/lib/exporters";
+import { exportBrandedPDF } from "@/lib/exporters";
 import { cacheGet, cacheSet } from "@/lib/dataCache";
 import { publicEmail, publicEmailForSearch, publicInitials, publicContact } from "@/lib/identity";
 
@@ -68,21 +68,6 @@ export default function MembersList({ role, tone }: { role: Role; tone: Tone }) 
   const Icon = role === "student" ? Users : GraduationCap;
   const title = role === "student" ? "Students" : "Teachers";
 
-  function exportCSV() {
-    const data = filtered.map(r => ({
-      Name: r.full_name || "",
-      Email: publicEmail(r.email) || "",
-      Phone: r.phone || "",
-      Gender: r.gender || "",
-      DOB: r.dob || "",
-      ...(role === "student"
-        ? { Class: r.profile_data?.grade_level || "", "Parent contact": r.profile_data?.parent_contact || "" }
-        : { Subjects: (r.profile_data?.subjects || []).join("; "), Qualifications: r.profile_data?.qualifications || "" }),
-      Joined: new Date(r.created_at).toLocaleDateString(),
-    }));
-    downloadCSV(`${school?.slug || "school"}-${role}s.csv`, data);
-  }
-
   function exportPDF() {
     const headers = role === "student"
       ? ["Name", "Email", "Class", "Phone", "Joined"]
@@ -91,8 +76,15 @@ export default function MembersList({ role, tone }: { role: Role; tone: Tone }) 
       ? [r.full_name || "—", publicEmail(r.email) || "—", r.profile_data?.grade_level || "—", r.phone || "—", new Date(r.created_at).toLocaleDateString()]
       : [r.full_name || "—", publicEmail(r.email) || "—", (r.profile_data?.subjects || []).join(", ") || "—", r.phone || "—", new Date(r.created_at).toLocaleDateString()]
     );
-    const html = `<h1>${safeHtml(title)}</h1><div class="sub">${safeHtml(school?.name || "")} · ${filtered.length} ${role}${filtered.length === 1 ? "" : "s"}</div>${tableHTML(headers, tableRows)}`;
-    printToPDF(`${title} – ${school?.name || ""}`, html);
+    exportBrandedPDF({
+      title: `${title} Directory`,
+      subtitle: `${filtered.length} ${role}${filtered.length === 1 ? "" : "s"}`,
+      schoolName: school?.name,
+      schoolLogo: school?.logo_url,
+      stats: [{ label: `Total ${role}s`, value: String(filtered.length) }],
+      sections: [{ kind: "table", heading: title, headers, rows: tableRows }],
+      footerNote: `${title} directory · Confidential`,
+    });
   }
 
   return (
@@ -101,9 +93,6 @@ export default function MembersList({ role, tone }: { role: Role; tone: Tone }) 
       description={isLoading ? "Loading…" : `${rows.length} ${role === "student" ? "enrolled" : "active"}`}
       action={
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={exportCSV} disabled={!filtered.length}>
-            <Download className="size-4" /> <span className="hidden sm:inline ml-1">CSV</span>
-          </Button>
           <Button size="sm" variant="outline" onClick={exportPDF} disabled={!filtered.length}>
             <FileText className="size-4" /> <span className="hidden sm:inline ml-1">PDF</span>
           </Button>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileBarChart, TrendingUp, Target, Award, Download, FileText, FileDown } from "lucide-react";
+import { FileBarChart, TrendingUp, Target, Award, FileText, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { downloadCSV, printToPDF, tableHTML, safeHtml } from "@/lib/exporters";
+import { exportBrandedPDF } from "@/lib/exporters";
 import { downloadResultSlip } from "@/lib/slip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,22 +56,27 @@ export default function ParentResults() {
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" disabled={!childRows.length}
-            onClick={() => downloadCSV(`${school?.slug || "school"}-child-results.csv`,
-              childRows.map(r => ({ Subject: r.subject, Score: Math.round(Number(r.score))+"%", Grade: necoGrade(Number(r.score)), Term: r.term, Date: new Date(r.created_at).toLocaleDateString() })))}>
-            <Download className="size-4" /> <span className="hidden sm:inline ml-1">CSV</span>
-          </Button>
-          <Button size="sm" variant="outline" disabled={!childRows.length}
             onClick={() => {
               const childName = kids.find(k => k.id === active)?.name || "Child";
-              const html = `<h1>Academic Report</h1><div class="sub">${safeHtml(childName)} · ${safeHtml(school?.name || "")}</div>
-              <div class="grid">
-                <div class="card"><div class="label">Overall</div><div class="value">${s.average}% (${s.grade})</div></div>
-                <div class="card"><div class="label">Credit pass</div><div class="value">${s.credit}%</div></div>
-                <div class="card"><div class="label">Best</div><div class="value">${s.best}%</div></div>
-                <div class="card"><div class="label">Records</div><div class="value">${s.count}</div></div>
-              </div>
-              ${tableHTML(["Subject","Score","NECO","Term","Date"], childRows.map(r => [r.subject, Math.round(Number(r.score))+"%", necoGrade(Number(r.score)), r.term, new Date(r.created_at).toLocaleDateString()]))}`;
-              printToPDF(`Report – ${childName}`, html);
+              exportBrandedPDF({
+                title: "Academic Report",
+                subtitle: childName,
+                schoolName: school?.name,
+                schoolLogo: school?.logo_url,
+                stats: [
+                  { label: "Overall", value: `${s.average}%`, hint: `Grade ${s.grade}` },
+                  { label: "Credit pass", value: `${s.credit}%` },
+                  { label: "Best", value: `${s.best}%` },
+                  { label: "Records", value: s.count },
+                ],
+                sections: [{
+                  kind: "table",
+                  heading: "Result breakdown",
+                  headers: ["Subject", "Score", "NECO", "Term", "Date"],
+                  rows: childRows.map(r => [r.subject, Math.round(Number(r.score)) + "%", necoGrade(Number(r.score)), r.term, new Date(r.created_at).toLocaleDateString()]),
+                }],
+                footerNote: `Academic report · ${childName}`,
+              });
             }}>
             <FileText className="size-4" /> <span className="hidden sm:inline ml-1">PDF</span>
           </Button>
