@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service, { auth: { persistSession: false } });
 
     // Generic error for all enumeration paths to avoid leaking which phones / schools are registered.
-    const GENERIC = { error: "Invalid credentials" };
+    const GENERIC = { error: "We couldn't sign you in with those details." };
 
     const { data: school } = await admin.from("schools").select("id,slug").eq("slug", schoolSlug).maybeSingle();
     if (!school) return json(GENERIC, 400);
