@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Loader2, ShieldCheck, Copy, Settings2, Search, Plus, MoreHorizontal,
-  Link2, Trash2, UserPlus, Users, Check, X,
+  Link2, Trash2, UserPlus, Users, Check, X, Mail, Phone, CalendarDays,
+  MapPin, User, ChevronRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
@@ -10,6 +11,7 @@ import { schoolPath } from "@/lib/tenant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -19,6 +21,9 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import SEO from "@/components/SEO";
 import { cn } from "@/lib/utils";
@@ -28,6 +33,11 @@ type Row = {
   admin_slot: number | null;
   full_name: string | null;
   email: string | null;
+  phone: string | null;
+  gender: string | null;
+  address: string | null;
+  photo_url: string | null;
+  created_at: string | null;
 };
 type Slot = { slot: number; name: string; enabled: boolean };
 type InviteRow = {
