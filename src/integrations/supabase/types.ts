@@ -2167,6 +2167,7 @@ export type Database = {
           proctor_snapshot_interval_sec: number
           proctored: boolean
           randomize: boolean
+          results_release_at: string | null
           scheduled_at: string | null
           school_id: string
           show_answers_after_each: boolean
@@ -2191,6 +2192,7 @@ export type Database = {
           proctor_snapshot_interval_sec?: number
           proctored?: boolean
           randomize?: boolean
+          results_release_at?: string | null
           scheduled_at?: string | null
           school_id: string
           show_answers_after_each?: boolean
@@ -2215,6 +2217,7 @@ export type Database = {
           proctor_snapshot_interval_sec?: number
           proctored?: boolean
           randomize?: boolean
+          results_release_at?: string | null
           scheduled_at?: string | null
           school_id?: string
           show_answers_after_each?: boolean
@@ -5607,12 +5610,15 @@ export type Database = {
           attempt_id: string
           created_at: string
           exam_id: string
+          forwarded_by: string | null
+          forwarded_to_admin_at: string | null
           grade: string | null
           id: string
           max_score: number | null
           mcq_score: number | null
           percentage: number | null
           released_at: string | null
+          scheduled_release_at: string | null
           school_id: string
           status: string
           student_id: string
@@ -5626,12 +5632,15 @@ export type Database = {
           attempt_id: string
           created_at?: string
           exam_id: string
+          forwarded_by?: string | null
+          forwarded_to_admin_at?: string | null
           grade?: string | null
           id?: string
           max_score?: number | null
           mcq_score?: number | null
           percentage?: number | null
           released_at?: string | null
+          scheduled_release_at?: string | null
           school_id: string
           status?: string
           student_id: string
@@ -5645,12 +5654,15 @@ export type Database = {
           attempt_id?: string
           created_at?: string
           exam_id?: string
+          forwarded_by?: string | null
+          forwarded_to_admin_at?: string | null
           grade?: string | null
           id?: string
           max_score?: number | null
           mcq_score?: number | null
           percentage?: number | null
           released_at?: string | null
+          scheduled_release_at?: string | null
           school_id?: string
           status?: string
           student_id?: string
@@ -6761,6 +6773,14 @@ export type Database = {
           session_id: string
           user_id: string
         }[]
+      }
+      trad_admin_schedule_release: {
+        Args: { _attempt_id: string; _release_at: string }
+        Returns: undefined
+      }
+      trad_committee_forward_result: {
+        Args: { _attempt_id: string }
+        Returns: undefined
       }
       trad_finalize_result: {
         Args: { _attempt_id: string }
