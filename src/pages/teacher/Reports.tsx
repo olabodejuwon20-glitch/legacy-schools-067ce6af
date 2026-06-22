@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileBarChart, Users, Target, TrendingUp, Download, FileText } from "lucide-react";
+import { FileBarChart, Users, Target, TrendingUp, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportBrandedPDF } from "@/lib/exporters";
 import { supabase } from "@/integrations/supabase/client";
