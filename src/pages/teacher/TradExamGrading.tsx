@@ -16,6 +16,7 @@ import { ResultReleaseBadge } from "@/components/exam/ResultReleaseBadge";
 
 type Row = {
   answer_id: string;
+  attempt_id?: string;
   text_answer: string | null;
   marks_awarded: number;
   graded_at: string | null;
