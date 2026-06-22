@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const aiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!aiKey) return json({ error: "AI not configured" }, 500);
+    if (!aiKey) return json({ error: "AI analysis is temporarily unavailable. Please try again later." }, 500);
 
     const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
     const admin = createClient(url, service, { auth: { persistSession: false } });
