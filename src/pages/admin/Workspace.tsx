@@ -520,6 +520,147 @@ export default function Workspace() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Member details drawer */}
+      <Sheet open={drawerOpen} onOpenChange={(v) => { setDrawerOpen(v); if (!v) setSelectedMember(null); }}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {selectedMember && (
+            <>
+              <SheetHeader className="text-left pb-4">
+                <div className="flex items-start gap-4">
+                  {selectedMember.photo_url ? (
+                    <img
+                      src={selectedMember.photo_url}
+                      alt={selectedMember.full_name || ""}
+                      className="size-16 rounded-full object-cover border border-border"
+                    />
+                  ) : (
+                    <span className={cn(
+                      "size-16 rounded-full grid place-items-center text-lg font-bold border border-border",
+                      selectedMember.admin_slot
+                        ? TONE_PALETTE[(selectedMember.admin_slot - 1) % TONE_PALETTE.length]
+                        : "bg-primary/10 text-primary",
+                    )}>
+                      {initials(selectedMember.full_name, selectedMember.email)}
+                    </span>
+                  )}
+                  <div className="min-w-0 pt-1">
+                    <SheetTitle className="text-xl truncate">
+                      {selectedMember.full_name || "Unnamed member"}
+                    </SheetTitle>
+                    <SheetDescription className="truncate">
+                      {selectedMember.email || "No email"}
+                    </SheetDescription>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className={cn(
+                        "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium",
+                        selectedMember.admin_slot
+                          ? TONE_PALETTE[(selectedMember.admin_slot - 1) % TONE_PALETTE.length]
+                          : "bg-primary/10 text-primary",
+                      )}>
+                        {selectedMember.admin_slot
+                          ? (slots.find(s => s.slot === selectedMember.admin_slot)?.name || `Slot ${selectedMember.admin_slot}`)
+                          : "Owner"}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                        <span className="size-1.5 rounded-full bg-emerald-500" /> Active
+                      </span>
+                      {!selectedMember.admin_slot && (
+                        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary">
+                          <ShieldCheck className="size-3" /> Primary admin
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              <Separator className="my-4" />
+
+              <div className="space-y-5">
+                {/* Profile info */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Profile</h3>
+                  <div className="space-y-3">
+                    <InfoRow icon={<Mail className="size-4" />} label="Email" value={selectedMember.email || "—"} />
+                    <InfoRow icon={<Phone className="size-4" />} label="Phone" value={selectedMember.phone || "—"} />
+                    <InfoRow icon={<User className="size-4" />} label="Gender" value={selectedMember.gender ? (selectedMember.gender[0].toUpperCase() + selectedMember.gender.slice(1)) : "—"} />
+                    <InfoRow icon={<MapPin className="size-4" />} label="Address" value={selectedMember.address || "—"} />
+                    <InfoRow icon={<CalendarDays className="size-4" />} label="Joined" value={selectedMember.created_at ? new Date(selectedMember.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "—"} />
+                  </div>
+                </div>
+
+                {/* Role management */}
+                {selectedMember.admin_slot !== null && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Role</h4>
+                      <Select
+                        value={String(selectedMember.admin_slot)}
+                        onValueChange={(v) => changeRole(selectedMember.user_id, Number(v))}
+                        disabled={roleBusy}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {enabledSlots.map((s) => (
+                            <SelectItem key={s.slot} value={String(s.slot)}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[11px] text-muted-foreground">
+                        Changing the role updates permissions immediately.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* Status actions */}
+                <Separator />
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Actions</h4>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      className="justify-start"
+                      asChild
+                    >
+                      <Link to={schoolPath(school?.slug, "/app/admin/roles")}>
+                        <Settings2 className="size-4 mr-2" /> Manage roles
+                      </Link>
+                    </Button>
+                    {selectedMember.admin_slot !== null && (
+                      <Button
+                        variant="destructive"
+                        className="justify-start"
+                        onClick={() => revoke(selectedMember.user_id)}
+                      >
+                        <Trash2 className="size-4 mr-2" /> Remove from workspace
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 text-muted-foreground">{icon}</span>
+      <div className="min-w-0">
+        <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</p>
+        <p className="text-sm font-medium truncate">{value}</p>
+      </div>
     </div>
   );
 }
