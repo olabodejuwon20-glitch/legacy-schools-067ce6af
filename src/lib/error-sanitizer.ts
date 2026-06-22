@@ -32,10 +32,10 @@ function rawMessage(input: unknown): string {
 export function sanitizeErrorMessage(input: unknown, fallback = DEFAULT_SAFE_ERROR): string {
   const raw = rawMessage(input).trim();
   if (!raw) return fallback;
-  if (ALLOW_AS_IS.test(raw) || raw.length <= 24) return raw;
   for (const { re, msg } of SENSITIVE_PATTERNS) {
     if (re.test(raw)) return msg || fallback;
   }
+  if (ALLOW_AS_IS.test(raw)) return raw;
   if (
     raw.length < 160 &&
     !/[{}<>]|::|\/\w+\/|_[a-z]+_|[a-f0-9]{8}-[a-f0-9]{4}|\bE\d{3}\b|\bPGRST\b|\b[A-Z_]{8,}\b/.test(raw)
