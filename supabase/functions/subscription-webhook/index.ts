@@ -31,6 +31,9 @@ Deno.serve(async (req) => {
   if (inv.kind !== "subscription") return new Response("ignored");
 
   const { error } = await admin.rpc("apply_subscription_payment", { _invoice_id: inv.id, _reference: reference, _method: "paystack" });
-  if (error) return new Response("apply failed: " + error.message, { status: 500 });
+  if (error) {
+    console.error("[subscription-webhook] apply_failed", error);
+    return new Response("apply failed", { status: 500 });
+  }
   return new Response("ok");
 });
