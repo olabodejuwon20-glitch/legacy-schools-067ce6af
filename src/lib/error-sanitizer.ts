@@ -4,6 +4,8 @@ export const DEFAULT_SAFE_ERROR = "We couldn't complete that just now. Please tr
 const SAFE_SIGN_IN_ERROR = "We couldn't sign you in with those details.";
 const SAFE_SERVICE_ERROR = "This service is temporarily unavailable. Please try again later.";
 
+const ALLOW_AS_IS = /^(fill all fields|title required|subject .*required|invalid score|enter a number|amount too small|exceeds outstanding|nothing to summarize yet|type a few notes first|no linked parent|pin must be 6 digits|pins don't match|code is required|full name is required|invalid phone|missing payment reference|payment not completed|welcome|copied|deleted|saved|generated|uploaded|created|updated|failed)$/i;
+
 const SENSITIVE_PATTERNS: { re: RegExp; msg: string }[] = [
   { re: /invalid login credentials|invalid credentials|password.*(invalid|wrong|incorrect|match)|pin.*(invalid|wrong|incorrect|match)|not .*admin.*school|not .*member.*school|does not belong.*school|isn't .*school/i, msg: SAFE_SIGN_IN_ERROR },
   { re: /jwt expired|invalid (jwt|token)|not authenticated|unauthorized|auth session missing/i, msg: "Your session has expired. Please sign in again." },
@@ -30,6 +32,7 @@ function rawMessage(input: unknown): string {
 export function sanitizeErrorMessage(input: unknown, fallback = DEFAULT_SAFE_ERROR): string {
   const raw = rawMessage(input).trim();
   if (!raw) return fallback;
+  if (ALLOW_AS_IS.test(raw) || raw.length <= 24) return raw;
   for (const { re, msg } of SENSITIVE_PATTERNS) {
     if (re.test(raw)) return msg || fallback;
   }
