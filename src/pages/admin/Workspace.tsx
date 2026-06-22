@@ -293,7 +293,7 @@ export default function Workspace() {
               </Button>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="text-[11px] uppercase tracking-wider text-muted-foreground bg-muted/20">
                 <tr>
                   <th className="text-left font-medium px-4 py-2.5">Name</th>
@@ -370,7 +370,7 @@ export default function Workspace() {
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       ) : (
@@ -391,7 +391,7 @@ export default function Workspace() {
               </Button>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="text-[11px] uppercase tracking-wider text-muted-foreground bg-muted/20">
                 <tr>
                   <th className="text-left font-medium px-4 py-2.5">Code</th>
@@ -444,7 +444,7 @@ export default function Workspace() {
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}

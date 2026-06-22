@@ -155,7 +155,7 @@ export default function SuperSubscriptions() {
           <EmptyState icon={<CreditCard className="size-5" />} title="No subscriptions" />
         ) : (
           <div className="overflow-x-auto -mx-5">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground">
                 <tr className="border-b border-border">
                   <th className="text-left px-5 py-2 font-medium">School</th>
@@ -202,7 +202,7 @@ export default function SuperSubscriptions() {
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           </div>
         )}
       </Section>

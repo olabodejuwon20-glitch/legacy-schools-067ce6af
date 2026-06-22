@@ -60,7 +60,7 @@ export default function SuperLogs() {
         ) : (
           <>
             <div className="overflow-x-auto -mx-5">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead className="text-[11px] uppercase text-muted-foreground border-b border-border">
                   <tr><th className="text-left px-5 py-2 font-medium">Action</th><th className="text-left px-3 py-2 font-medium">Actor</th><th className="text-left px-3 py-2 font-medium">School</th><th className="text-left px-3 py-2 font-medium">IP</th><th className="text-right px-5 py-2 font-medium">When</th></tr>
                 </thead>
@@ -81,7 +81,7 @@ export default function SuperLogs() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
             <div className="flex justify-center pt-4">
               <Button size="sm" variant="outline" disabled={loading || done} onClick={() => loadMore()}>{done ? "End of log" : loading ? "Loading…" : "Load more"}</Button>

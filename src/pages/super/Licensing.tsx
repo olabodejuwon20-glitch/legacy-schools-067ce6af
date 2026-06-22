@@ -120,7 +120,7 @@ export default function SuperLicensing() {
       ) : (
         <Section title={`${filteredSchools.length} school${filteredSchools.length === 1 ? "" : "s"} × ${modules.length} module${modules.length === 1 ? "" : "s"}`}>
           <div className="overflow-x-auto -mx-5">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left font-medium text-muted-foreground px-5 py-2 sticky left-0 bg-card z-10 min-w-[200px]">School</th>
@@ -165,7 +165,7 @@ export default function SuperLicensing() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </Section>
       )}

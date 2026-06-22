@@ -101,7 +101,7 @@ export default function VerifyResult() {
           <div>
             <h3 className="text-sm font-semibold mb-2">Results</h3>
             <div className="overflow-x-auto rounded border border-border">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
                   <tr><th className="text-left p-2">Subject</th><th className="text-right p-2">Score</th><th className="text-center p-2">Grade</th><th className="text-left p-2">Remark</th></tr>
                 </thead>
@@ -116,7 +116,7 @@ export default function VerifyResult() {
                   ))}
                   {snap.results.length === 0 && <tr><td colSpan={4} className="p-3 text-center text-muted-foreground">No subjects recorded.</td></tr>}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           </div>
 

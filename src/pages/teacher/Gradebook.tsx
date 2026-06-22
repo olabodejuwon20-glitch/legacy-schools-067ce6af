@@ -113,7 +113,7 @@ export default function TeacherGradebook() {
       }>
       {students.length === 0 ? <EmptyState icon={BarChart3} title="No students enrolled" /> :
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead><tr className="text-xs uppercase text-muted-foreground border-b border-border">
               <th className="text-left font-medium py-3">Student</th>
               <th className="text-left font-medium py-3">Entries</th>
@@ -150,7 +150,7 @@ export default function TeacherGradebook() {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </div>}
     </SectionCard>
   );
