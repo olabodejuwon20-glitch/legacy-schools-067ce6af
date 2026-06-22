@@ -4,10 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { EmptyState } from "@/components/EmptyState";
-import { FileBarChart, Download, FileText, Package, Loader2 } from "lucide-react";
+import { FileBarChart, FileText, Package, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { downloadCSV, printToPDF, tableHTML, safeHtml } from "@/lib/exporters";
+import { exportBrandedPDF } from "@/lib/exporters";
 import { fetchResultSlip } from "@/lib/slip";
 import { toast } from "sonner";
 import JSZip from "jszip";
@@ -76,18 +76,21 @@ export default function AdminReports() {
     <div className="flex items-center gap-2">
       <Button size="sm" variant="outline" disabled={!perfData.length && !att.length}
         onClick={() => {
-          const rows = [
-            ...perfData.map(p => ({ Section: "Performance", Key: p.subject, Value: p.score + "%" })),
-            ...att.map(a => ({ Section: "Attendance", Key: a.name, Value: a.value })),
-          ];
-          downloadCSV(`${school?.slug || "school"}-report.csv`, rows);
-        }}><Download className="size-4" /> <span className="hidden sm:inline ml-1">CSV</span></Button>
-      <Button size="sm" variant="outline" disabled={!perfData.length && !att.length}
-        onClick={() => {
-          const html = `<h1>School Report</h1><div class="sub">${safeHtml(school?.name || "")}</div>
-          <h3>Performance by subject</h3>${tableHTML(["Subject","Average"], perfData.map(p => [p.subject, p.score + "%"]))}
-          <h3 style="margin-top:24px;">Attendance distribution</h3>${tableHTML(["Status","Count"], att.map(a => [a.name, a.value]))}`;
-          printToPDF(`Report – ${school?.name || ""}`, html);
+          exportBrandedPDF({
+            title: "School Analytics Report",
+            subtitle: "Performance and attendance overview",
+            schoolName: school?.name,
+            schoolLogo: school?.logo_url,
+            stats: [
+              { label: "Subjects tracked", value: perfData.length },
+              { label: "Attendance records", value: att.reduce((a, b) => a + b.value, 0) },
+            ],
+            sections: [
+              { kind: "table", heading: "Performance by subject", headers: ["Subject", "Average"], rows: perfData.map(p => [p.subject, p.score + "%"]) },
+              { kind: "table", heading: "Attendance distribution", headers: ["Status", "Count"], rows: att.map(a => [a.name, a.value]) },
+            ],
+            footerNote: "School analytics",
+          });
         }}><FileText className="size-4" /> <span className="hidden sm:inline ml-1">PDF</span></Button>
     </div>
   );
