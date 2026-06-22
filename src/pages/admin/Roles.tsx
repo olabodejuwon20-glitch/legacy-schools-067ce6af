@@ -25,13 +25,28 @@ type SlotRow = {
 };
 
 const EMPTY_SLOT = (slot: number): SlotRow => ({ slot, name: "", enabled: false, permissions: [] });
-const EMPTY_SLOTS: SlotRow[] = [1, 2, 3].map(EMPTY_SLOT);
-
-const SLOT_TONES: Record<number, { ring: string; chip: string; glow: string; label: string }> = {
-  1: { ring: "ring-[hsl(var(--admin))]/30",   chip: "bg-[hsl(var(--admin))]/10 text-[hsl(var(--admin))]",   glow: "from-[hsl(var(--admin))]/20",   label: "Slot 01" },
-  2: { ring: "ring-[hsl(var(--teacher))]/30", chip: "bg-[hsl(var(--teacher))]/10 text-[hsl(var(--teacher))]", glow: "from-[hsl(var(--teacher))]/20", label: "Slot 02" },
-  3: { ring: "ring-[hsl(var(--student))]/30", chip: "bg-[hsl(var(--student))]/10 text-[hsl(var(--student))]", glow: "from-[hsl(var(--student))]/20", label: "Slot 03" },
+const MAX_SLOTS = 10;
+const SLOT_NUMS = Array.from({ length: MAX_SLOTS }, (_, i) => i + 1);
+const DEFAULT_SLOT_NAMES: Record<number, string> = {
+  1: "Vice Principal",
+  2: "HOD",
+  3: "Exam Committee",
 };
+const EMPTY_SLOTS: SlotRow[] = SLOT_NUMS.map(s => ({
+  slot: s, name: DEFAULT_SLOT_NAMES[s] || "", enabled: false, permissions: [],
+}));
+
+const TONE_CYCLE = [
+  { ring: "ring-[hsl(var(--admin))]/30",   chip: "bg-[hsl(var(--admin))]/10 text-[hsl(var(--admin))]",     glow: "from-[hsl(var(--admin))]/20" },
+  { ring: "ring-[hsl(var(--teacher))]/30", chip: "bg-[hsl(var(--teacher))]/10 text-[hsl(var(--teacher))]", glow: "from-[hsl(var(--teacher))]/20" },
+  { ring: "ring-[hsl(var(--student))]/30", chip: "bg-[hsl(var(--student))]/10 text-[hsl(var(--student))]", glow: "from-[hsl(var(--student))]/20" },
+  { ring: "ring-[hsl(var(--parent))]/30",  chip: "bg-[hsl(var(--parent))]/10 text-[hsl(var(--parent))]",   glow: "from-[hsl(var(--parent))]/20" },
+];
+const SLOT_TONES: Record<number, { ring: string; chip: string; glow: string; label: string }> =
+  Object.fromEntries(SLOT_NUMS.map(s => {
+    const t = TONE_CYCLE[(s - 1) % TONE_CYCLE.length];
+    return [s, { ...t, label: `Slot ${String(s).padStart(2, "0")}` }];
+  }));
 
 const PRESETS: Array<{ id: string; name: string; description: string; keys: PermissionKey[] }> = [
   {
@@ -83,7 +98,9 @@ export default function AdminRoles() {
         permissions: Array.isArray(row.permissions) ? row.permissions : [],
       });
     });
-    const next = [1, 2, 3].map((s) => map.get(s) ?? EMPTY_SLOT(s));
+    const next = SLOT_NUMS.map((s) => map.get(s) ?? ({
+      slot: s, name: DEFAULT_SLOT_NAMES[s] || "", enabled: false, permissions: [],
+    }));
     setSlots(next);
     setOriginal(next.map((r) => ({ ...r, permissions: [...r.permissions] })));
     setLoading(false);
@@ -170,7 +187,7 @@ export default function AdminRoles() {
             </div>
             <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">Roles &amp; permissions</h1>
             <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Design up to three sub-admin roles for your school. Pick exactly what each one can access, then invite teammates from the Invites page.
+              Design up to 10 admin roles for your school. Rename each, pick exactly what they can access, then invite teammates from Workspace.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -184,10 +201,10 @@ export default function AdminRoles() {
 
         {/* Stat strip */}
         <div className="relative grid grid-cols-2 sm:grid-cols-4 border-t border-border bg-background/40 backdrop-blur">
-          <StatCell label="Active roles"    value={`${totalEnabled} / 3`} icon={<ShieldCheck className="size-4 text-primary" />} />
+            <StatCell label="Active roles"    value={`${totalEnabled} / ${MAX_SLOTS}`} icon={<ShieldCheck className="size-4 text-primary" />} />
           <StatCell label="Permissions in catalog" value={totalPermissions} icon={<KeyRound className="size-4 text-primary" />} />
           <StatCell label="Editing"         value={current?.name || `Slot ${active}`} icon={<Lock className="size-4 text-primary" />} />
-          <StatCell label="Assigned via"    value="Invites" icon={<Plus className="size-4 text-primary" />} last />
+            <StatCell label="Assigned via"    value="Workspace" icon={<Plus className="size-4 text-primary" />} last />
         </div>
       </div>
 
@@ -248,7 +265,7 @@ export default function AdminRoles() {
 
             <div className="rounded-xl border border-dashed border-border/70 p-3 text-[11px] text-muted-foreground leading-relaxed">
               <div className="font-medium text-foreground mb-1 flex items-center gap-1.5"><Sparkles className="size-3 text-primary" /> Tip</div>
-              Slots are fixed at 3 by design — keep your org tidy. Start with a preset, then fine-tune.
+              You have up to {MAX_SLOTS} role slots. Rename them to match your school (e.g. Vice Principal, HOD, Exam Committee).
             </div>
           </aside>
 
