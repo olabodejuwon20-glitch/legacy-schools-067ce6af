@@ -192,7 +192,7 @@ export default function AdminRoles() {
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm">
-              <Link to={schoolPath(school?.slug, "/app/admin/invites")}>
+              <Link to={schoolPath(school?.slug, "/app/admin/workspace")}>
                 <Users className="size-4 mr-1.5" /> Invite members
               </Link>
             </Button>
