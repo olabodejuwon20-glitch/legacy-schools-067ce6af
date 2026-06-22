@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Loader2, ShieldCheck, Copy, Settings2, Search, Plus, MoreHorizontal,
-  Link2, Trash2, UserPlus, Users, Check, X,
+  Link2, Trash2, UserPlus, Users, Check, X, Mail, Phone, CalendarDays,
+  MapPin, User, ChevronRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
@@ -10,6 +11,7 @@ import { schoolPath } from "@/lib/tenant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -19,6 +21,9 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import SEO from "@/components/SEO";
 import { cn } from "@/lib/utils";
@@ -28,6 +33,11 @@ type Row = {
   admin_slot: number | null;
   full_name: string | null;
   email: string | null;
+  phone: string | null;
+  gender: string | null;
+  address: string | null;
+  photo_url: string | null;
+  created_at: string | null;
 };
 type Slot = { slot: number; name: string; enabled: boolean };
 type InviteRow = {
@@ -70,26 +80,49 @@ export default function Workspace() {
   const [busy, setBusy] = useState(false);
   const [lastLink, setLastLink] = useState<string | null>(null);
 
+  // member drawer
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Row | null>(null);
+  const [roleBusy, setRoleBusy] = useState(false);
+
   async function load() {
     if (!school) return;
     setLoading(true);
     const { data: mems } = await supabase
       .from("memberships")
-      .select("user_id, admin_slot")
+      .select("user_id, admin_slot, created_at")
       .eq("school_id", school.id)
       .eq("role", "admin")
       .eq("status", "active");
     const ids = (mems ?? []).map((m: any) => m.user_id);
-    const profiles: Record<string, { full_name: string | null; email: string | null }> = {};
+    const profiles: Record<string, {
+      full_name: string | null; email: string | null;
+      phone: string | null; gender: string | null;
+      address: string | null; photo_url: string | null;
+    }> = {};
     if (ids.length) {
-      const { data: p } = await supabase.from("profiles").select("id,full_name,email").in("id", ids);
-      (p ?? []).forEach((r: any) => { profiles[r.id] = { full_name: r.full_name, email: r.email }; });
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("id,full_name,email,phone,gender,address,photo_url")
+        .in("id", ids);
+      (p ?? []).forEach((r: any) => {
+        profiles[r.id] = {
+          full_name: r.full_name, email: r.email,
+          phone: r.phone, gender: r.gender,
+          address: r.address, photo_url: r.photo_url,
+        };
+      });
     }
     setRows(((mems ?? []) as any).map((m: any) => ({
       user_id: m.user_id,
       admin_slot: m.admin_slot,
       full_name: profiles[m.user_id]?.full_name ?? null,
       email: profiles[m.user_id]?.email ?? null,
+      phone: profiles[m.user_id]?.phone ?? null,
+      gender: profiles[m.user_id]?.gender ?? null,
+      address: profiles[m.user_id]?.address ?? null,
+      photo_url: profiles[m.user_id]?.photo_url ?? null,
+      created_at: m.created_at,
     })));
 
     const { data: s } = await supabase
@@ -151,6 +184,21 @@ export default function Workspace() {
       .update({ status: "removed" }).eq("school_id", school.id).eq("user_id", userId);
     if (error) return toast.error(error.message || "Could not remove");
     toast.success("Collaborator removed");
+    setDrawerOpen(false);
+    setSelectedMember(null);
+    load();
+  }
+
+  async function changeRole(userId: string, newSlot: number | null) {
+    if (!school || roleBusy) return;
+    setRoleBusy(true);
+    const { error } = await supabase.from("memberships")
+      .update({ admin_slot: newSlot })
+      .eq("school_id", school.id)
+      .eq("user_id", userId);
+    setRoleBusy(false);
+    if (error) return toast.error(error.message || "Could not update role");
+    toast.success("Role updated");
     load();
   }
 
@@ -265,12 +313,20 @@ export default function Workspace() {
                     : "bg-primary/10 text-primary";
                   const isPrimary = !r.admin_slot;
                   return (
-                    <tr key={r.user_id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={r.user_id}
+                      className="border-t border-border hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => { setSelectedMember(r); setDrawerOpen(true); }}
+                    >
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className={cn("size-7 rounded-full grid place-items-center text-[11px] font-semibold shrink-0", tone)}>
-                            {initials(r.full_name, r.email)}
-                          </span>
+                          {r.photo_url ? (
+                            <img src={r.photo_url} alt="" className="size-7 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <span className={cn("size-7 rounded-full grid place-items-center text-[11px] font-semibold shrink-0", tone)}>
+                              {initials(r.full_name, r.email)}
+                            </span>
+                          )}
                           <span className="font-medium truncate">{r.full_name || "—"}</span>
                           {isPrimary && (
                             <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary">
@@ -288,12 +344,12 @@ export default function Workspace() {
                       <td className="px-2 py-2.5 text-right">
                         {!isPrimary && (
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <Button size="icon" variant="ghost" className="size-7">
                                 <MoreHorizontal className="size-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuContent align="end" className="w-40" onClick={(e) => e.stopPropagation()}>
                               <DropdownMenuItem asChild>
                                 <Link to={schoolPath(school?.slug, "/app/admin/roles")}>
                                   <Settings2 className="size-3.5 mr-2" /> Change role
@@ -464,6 +520,147 @@ export default function Workspace() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Member details drawer */}
+      <Sheet open={drawerOpen} onOpenChange={(v) => { setDrawerOpen(v); if (!v) setSelectedMember(null); }}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {selectedMember && (
+            <>
+              <SheetHeader className="text-left pb-4">
+                <div className="flex items-start gap-4">
+                  {selectedMember.photo_url ? (
+                    <img
+                      src={selectedMember.photo_url}
+                      alt={selectedMember.full_name || ""}
+                      className="size-16 rounded-full object-cover border border-border"
+                    />
+                  ) : (
+                    <span className={cn(
+                      "size-16 rounded-full grid place-items-center text-lg font-bold border border-border",
+                      selectedMember.admin_slot
+                        ? TONE_PALETTE[(selectedMember.admin_slot - 1) % TONE_PALETTE.length]
+                        : "bg-primary/10 text-primary",
+                    )}>
+                      {initials(selectedMember.full_name, selectedMember.email)}
+                    </span>
+                  )}
+                  <div className="min-w-0 pt-1">
+                    <SheetTitle className="text-xl truncate">
+                      {selectedMember.full_name || "Unnamed member"}
+                    </SheetTitle>
+                    <SheetDescription className="truncate">
+                      {selectedMember.email || "No email"}
+                    </SheetDescription>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className={cn(
+                        "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium",
+                        selectedMember.admin_slot
+                          ? TONE_PALETTE[(selectedMember.admin_slot - 1) % TONE_PALETTE.length]
+                          : "bg-primary/10 text-primary",
+                      )}>
+                        {selectedMember.admin_slot
+                          ? (slots.find(s => s.slot === selectedMember.admin_slot)?.name || `Slot ${selectedMember.admin_slot}`)
+                          : "Owner"}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                        <span className="size-1.5 rounded-full bg-emerald-500" /> Active
+                      </span>
+                      {!selectedMember.admin_slot && (
+                        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary">
+                          <ShieldCheck className="size-3" /> Primary admin
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              <Separator className="my-4" />
+
+              <div className="space-y-5">
+                {/* Profile info */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Profile</h3>
+                  <div className="space-y-3">
+                    <InfoRow icon={<Mail className="size-4" />} label="Email" value={selectedMember.email || "—"} />
+                    <InfoRow icon={<Phone className="size-4" />} label="Phone" value={selectedMember.phone || "—"} />
+                    <InfoRow icon={<User className="size-4" />} label="Gender" value={selectedMember.gender ? (selectedMember.gender[0].toUpperCase() + selectedMember.gender.slice(1)) : "—"} />
+                    <InfoRow icon={<MapPin className="size-4" />} label="Address" value={selectedMember.address || "—"} />
+                    <InfoRow icon={<CalendarDays className="size-4" />} label="Joined" value={selectedMember.created_at ? new Date(selectedMember.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "—"} />
+                  </div>
+                </div>
+
+                {/* Role management */}
+                {selectedMember.admin_slot !== null && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Role</h4>
+                      <Select
+                        value={String(selectedMember.admin_slot)}
+                        onValueChange={(v) => changeRole(selectedMember.user_id, Number(v))}
+                        disabled={roleBusy}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {enabledSlots.map((s) => (
+                            <SelectItem key={s.slot} value={String(s.slot)}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[11px] text-muted-foreground">
+                        Changing the role updates permissions immediately.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* Status actions */}
+                <Separator />
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Actions</h4>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      className="justify-start"
+                      asChild
+                    >
+                      <Link to={schoolPath(school?.slug, "/app/admin/roles")}>
+                        <Settings2 className="size-4 mr-2" /> Manage roles
+                      </Link>
+                    </Button>
+                    {selectedMember.admin_slot !== null && (
+                      <Button
+                        variant="destructive"
+                        className="justify-start"
+                        onClick={() => revoke(selectedMember.user_id)}
+                      >
+                        <Trash2 className="size-4 mr-2" /> Remove from workspace
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 text-muted-foreground">{icon}</span>
+      <div className="min-w-0">
+        <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</p>
+        <p className="text-sm font-medium truncate">{value}</p>
+      </div>
     </div>
   );
 }
