@@ -39,19 +39,28 @@ Deno.serve(async (req) => {
       .insert({ school_id, kind: "broadcast", title, created_by: user.id, last_message_preview: msg.slice(0, 140), last_message_at: new Date().toISOString() })
       .select("id")
       .single();
-    if (cErr) return json({ error: cErr.message }, 500);
+    if (cErr) {
+      console.error("[notify-recipients] conversation_create_failed", cErr);
+      return json({ error: "We couldn't send this notification. Please try again." }, 500);
+    }
 
     // resolve recipients
     let q = admin.from("memberships").select("user_id").eq("school_id", school_id).eq("status", "active");
     if (audience !== "all") q = q.eq("role", audience);
     const { data: members, error: mErr } = await q;
-    if (mErr) return json({ error: mErr.message }, 500);
+    if (mErr) {
+      console.error("[notify-recipients] recipient_lookup_failed", mErr);
+      return json({ error: "We couldn't send this notification. Please try again." }, 500);
+    }
 
     const userIds = Array.from(new Set([...(members ?? []).map((m: any) => m.user_id), user.id]));
     const participants = userIds.map((uid) => ({ conversation_id: conv!.id, user_id: uid }));
     if (participants.length) {
       const { error: pErr } = await admin.from("conversation_participants").insert(participants);
-      if (pErr) return json({ error: pErr.message }, 500);
+      if (pErr) {
+        console.error("[notify-recipients] participant_insert_failed", pErr);
+        return json({ error: "We couldn't send this notification. Please try again." }, 500);
+      }
     }
 
     // initial message

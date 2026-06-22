@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { getCurrentSchoolSlug, schoolPath, buildSchoolUrl } from "@/lib/tenant";
 import SEO from "@/components/SEO";
+import { friendlyError, friendlyInvokeError } from "@/lib/errors";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ export default function Register() {
       const { data, error } = await supabase.functions.invoke("register-school", {
         body: { schoolName, fullName, email, password },
       });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(await friendlyInvokeError(error, "We couldn't register your school. Please try again."));
       if ((data as any)?.error) throw new Error((data as any).error);
       const slug = (data as any).slug as string;
       const { error: sErr } = await supabase.auth.signInWithPassword({ email, password });
@@ -36,7 +37,7 @@ export default function Register() {
       toast.success(`School created — ${buildSchoolUrl(slug, "")}`);
       window.location.href = schoolPath(slug, "/onboarding");
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error(friendlyError(err, "We couldn't register your school. Please try again."));
     } finally { setBusy(false); }
   }
 

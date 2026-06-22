@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
 
   const raw = await req.text();
   const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
-  if (!secret) return new Response("not configured", { status: 503, headers: corsHeaders });
+  if (!secret) return new Response("service unavailable", { status: 503, headers: corsHeaders });
 
   const signature = req.headers.get("x-paystack-signature") ?? "";
   const expected = createHmac("sha512", secret).update(raw).digest("hex");
@@ -36,7 +36,10 @@ Deno.serve(async (req) => {
   }).eq("id", payment.id);
 
   const { error: applyErr } = await admin.rpc("apply_payment", { _payment_id: payment.id });
-  if (applyErr) return new Response(`apply failed: ${applyErr.message}`, { status: 500, headers: corsHeaders });
+  if (applyErr) {
+    console.error("[payments-webhook] apply_failed", applyErr);
+    return new Response("apply failed", { status: 500, headers: corsHeaders });
+  }
 
   return new Response("ok", { headers: corsHeaders });
 });

@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     const { school_id, plan, cycle, invoice_id } = body as { school_id?: string; plan?: string; cycle?: "termly" | "annual"; invoice_id?: string };
 
     if (!getPaystackKey()) {
-      return json({ error: "paystack_not_configured", message: "Add PAYSTACK_SECRET_KEY (live) or PAYSTACK_TEST_SECRET_KEY (test) in Lovable Cloud secrets." }, 503);
+      return json({ error: "Online subscription payments are not available right now. Please contact support." }, 503);
     }
 
     let invId = invoice_id ?? null;

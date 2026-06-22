@@ -68,7 +68,10 @@ Deno.serve(async (req) => {
       serial, pin_hash, status: "sold", buyer_user_id: user.id, sold_at: new Date().toISOString(),
       max_uses, expires_at,
     }).select("id, serial, max_uses, expires_at").single();
-    if (cErr || !card) return json({ error: "card_create_failed", details: cErr?.message }, 500);
+    if (cErr || !card) {
+      console.error("[trad-card-verify] card_create_failed", cErr);
+      return json({ error: "We couldn't create the result card. Please contact support." }, 500);
+    }
 
     await admin.from("trad_scratch_purchases").update({
       status: "paid", paid_at: new Date().toISOString(), card_id: card.id,

@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { schoolPath } from "@/lib/tenant";
 import SEO from "@/components/SEO";
+import { friendlyError } from "@/lib/errors";
 
 /** Root admin sign in. School admins can sign in here OR from their /:slug/admin URL. */
 export default function SignIn() {
@@ -30,12 +31,12 @@ export default function SignIn() {
         .eq("user_id", uid).eq("role", "admin").eq("status", "active").maybeSingle();
       if (!m) {
         await supabase.auth.signOut();
-        throw new Error("This account isn't a school admin.");
+        throw new Error("We couldn't sign you in with those details.");
       }
       const slug = (m as any).schools?.slug as string;
       toast.success("Welcome back");
       window.location.href = schoolPath(slug, "/app");
-    } catch (err) { toast.error((err as Error).message); } finally { setBusy(false); }
+    } catch (err) { toast.error(friendlyError(err, "We couldn't sign you in with those details.")); } finally { setBusy(false); }
   }
 
   return (

@@ -216,11 +216,11 @@ export async function aiCall(opts: AiCallOptions): Promise<AiCallResult> {
       const text = await r.text().catch(() => "");
       const err =
         r.status === 429 ? "Rate limit reached. Please try again in a moment."
-        : r.status === 402 ? "AI credits exhausted. Please top up the workspace."
-        : `AI gateway error (${r.status})`;
+        : r.status === 402 ? "AI is temporarily unavailable. Please try again later."
+        : "AI is temporarily unavailable. Please try again later.";
       if (jobId) {
         await admin().from("ai_jobs").update({
-          status: "error", error: err + (text ? ` :: ${text.slice(0, 500)}` : ""),
+          status: "error", error: err,
           finished_at: new Date().toISOString(), latency_ms: Date.now() - t0,
         }).eq("id", jobId);
       }

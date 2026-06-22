@@ -62,7 +62,8 @@ Deno.serve(async (req) => {
     });
     if (!r.ok) {
       const t = await r.text();
-      return json({ error: `AI gateway error: ${r.status}`, detail: t }, 502);
+      console.error("[generate-questions] ai_gateway_failed", r.status, t.slice(0, 500));
+      return json({ error: "AI is temporarily unavailable. Please try again shortly." }, 502);
     }
     const data = await r.json();
     const raw = data?.choices?.[0]?.message?.content ?? "{}";
@@ -90,11 +91,15 @@ Deno.serve(async (req) => {
 
     const { data: inserted, error: ierr } = await admin
       .from("questions_v2").insert(rows).select("id");
-    if (ierr) return json({ error: ierr.message }, 500);
+    if (ierr) {
+      console.error("[generate-questions] insert_failed", ierr);
+      return json({ error: "We couldn't save the generated questions. Please try again." }, 500);
+    }
 
     return json({ inserted: inserted?.length ?? 0 });
   } catch (e) {
-    return json({ error: String((e as Error).message ?? e) }, 500);
+    console.error("[generate-questions] error", e);
+    return json({ error: "We couldn't generate questions. Please try again." }, 500);
   }
 });
 

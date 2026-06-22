@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { schoolPath, buildSchoolUrl } from "@/lib/tenant";
 import { SchoolBadge } from "@/components/SchoolBadge";
+import { friendlyError } from "@/lib/errors";
 
 /** /:slug/admin — school admin sign in (email + password). */
 export default function SchoolAdminLogin() {
@@ -41,11 +42,11 @@ export default function SchoolAdminLogin() {
         .select("role").eq("user_id", uid).eq("school_id", school!.id).eq("role", "admin").eq("status", "active").maybeSingle();
       if (!m) {
         await supabase.auth.signOut();
-        throw new Error("This account is not an admin of this school.");
+        throw new Error("We couldn't sign you in with those details.");
       }
       toast.success("Welcome back");
       window.location.href = schoolPath(school!.slug, "/app");
-    } catch (err) { toast.error((err as Error).message); } finally { setBusy(false); }
+    } catch (err) { toast.error(friendlyError(err, "We couldn't sign you in with those details.")); } finally { setBusy(false); }
   }
 
   return (

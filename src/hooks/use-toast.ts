@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
+import { sanitizeErrorMessage } from "@/lib/error-sanitizer";
 
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
@@ -136,6 +137,11 @@ type Toast = Omit<ToasterToast, "id">;
 
 function toast({ ...props }: Toast) {
   const id = genId();
+  const safeProps = {
+    ...props,
+    title: typeof props.title === "string" ? sanitizeErrorMessage(props.title, props.title) : props.title,
+    description: typeof props.description === "string" ? sanitizeErrorMessage(props.description, props.description) : props.description,
+  };
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -147,7 +153,7 @@ function toast({ ...props }: Toast) {
   dispatch({
     type: "ADD_TOAST",
     toast: {
-      ...props,
+      ...safeProps,
       id,
       open: true,
       onOpenChange: (open) => {

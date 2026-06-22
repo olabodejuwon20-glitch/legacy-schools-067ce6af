@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableKey) {
       console.error("[parse-trad-exam-doc] LOVABLE_API_KEY missing");
-      return json({ error: "AI service not configured" }, 500);
+      return json({ error: "AI extraction is temporarily unavailable. Please try again later." }, 500);
     }
 
     const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
       await admin.from("trad_exam_uploads").update({ status: "failed", error: `AI ${aiRes.status}: ${errText.slice(0, 500)}` }).eq("id", upload_id);
       if (aiRes.status === 429) return json({ error: "Rate limit – try again shortly" }, 429);
       if (aiRes.status === 402) return json({ error: "AI credits exhausted" }, 402);
-      return json({ error: "AI parsing failed" }, 500);
+      return json({ error: "AI extraction failed. Please try again." }, 500);
     }
 
     const aiJson = await aiRes.json();

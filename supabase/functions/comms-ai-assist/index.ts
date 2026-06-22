@@ -61,6 +61,7 @@ Deno.serve(async (req) => {
   } catch (e: any) {
     const msg = String(e?.message ?? e);
     const code = msg.includes("402") ? 402 : msg.includes("429") ? 429 : 500;
-    return json({ error: msg }, code);
+    console.error("[comms-ai-assist] error", e);
+    return json({ error: code === 429 ? "AI is busy, please try again shortly." : code === 402 ? "AI credits are unavailable right now." : "We couldn't complete the AI request. Please try again." }, code);
   }
 });

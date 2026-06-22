@@ -79,7 +79,7 @@ Write the comment now.`;
     });
     if (r.status === 429) return json({ error: "AI is busy, please try again in a moment." }, 429);
     if (r.status === 402) return json({ error: "AI credits exhausted. Top up in workspace settings." }, 402);
-    if (!r.ok) return json({ error: `AI gateway error ${r.status}` }, 502);
+    if (!r.ok) return json({ error: "AI is temporarily unavailable. Please try again shortly." }, 502);
 
     const data = await r.json();
     const raw = data?.choices?.[0]?.message?.content ?? "{}";
@@ -90,7 +90,8 @@ Write the comment now.`;
 
     return json({ comment, student: firstName, summary, attendance_pct: attPct });
   } catch (e) {
-    return json({ error: String((e as Error).message ?? e) }, 500);
+    console.error("[generate-report-comment] error", e);
+    return json({ error: "We couldn't generate the comment. Please try again." }, 500);
   }
 });
 

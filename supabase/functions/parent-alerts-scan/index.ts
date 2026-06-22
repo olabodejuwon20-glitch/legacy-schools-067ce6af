@@ -60,10 +60,14 @@ Deno.serve(async (req) => {
 
     if (!alerts.length) return json({ created: 0, flagged: flagged.length });
     const { error, count } = await admin.from("parent_alerts").upsert(alerts, { onConflict: "school_id,dedupe_key", ignoreDuplicates: true, count: "exact" });
-    if (error) return json({ error: error.message }, 500);
+    if (error) {
+      console.error("[parent-alerts-scan] upsert_failed", error);
+      return json({ error: "We couldn't scan parent alerts. Please try again." }, 500);
+    }
     return json({ created: count ?? alerts.length, flagged: flagged.length });
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    console.error("[parent-alerts-scan] error", e);
+    return json({ error: "We couldn't scan parent alerts. Please try again." }, 500);
   }
 });
 

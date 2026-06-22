@@ -8,6 +8,7 @@
  */
 
 import { reportError } from "@/lib/error-reporter";
+import { sanitizeErrorMessage } from "@/lib/error-sanitizer";
 
 const TECH_PATTERNS: { re: RegExp; msg: string }[] = [
   { re: /Edge Function returned a non-2xx/i, msg: "" },
@@ -27,6 +28,8 @@ const TECH_PATTERNS: { re: RegExp; msg: string }[] = [
 ];
 
 function pickFromMessage(raw: string, fallback: string): string {
+  const globallySafe = sanitizeErrorMessage(raw, "");
+  if (globallySafe) return globallySafe;
   for (const { re, msg } of TECH_PATTERNS) {
     if (re.test(raw)) return msg || fallback;
   }
