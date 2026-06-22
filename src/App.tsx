@@ -300,6 +300,7 @@ const App = () => (
               <Route path="admin/trad-exams/:sessionId" element={<RoleGate allow="admin"><AdminTradExamSession /></RoleGate>} />
               <Route path="admin/trad-exams-approvals" element={<RoleGate allow="admin"><AdminTradExamApprovals /></RoleGate>} />
               <Route path="admin/trad-exams-results" element={<RoleGate allow="admin"><AdminTradExamResults /></RoleGate>} />
+              <Route path="admin/exam-results-release" element={<RoleGate allow="admin"><AdminExamResultsRelease /></RoleGate>} />
               <Route path="admin/trad-cards" element={<RoleGate allow="admin"><AdminTradScratchCards /></RoleGate>} />
               <Route path="admin/academic-setup" element={<RoleGate allow="admin"><AdminAcademicSetup /></RoleGate>} />
               <Route path="admin/exam-appeals" element={<RoleGate allow="admin"><AdminExamAppeals /></RoleGate>} />
