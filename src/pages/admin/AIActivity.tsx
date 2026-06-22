@@ -139,7 +139,7 @@ export default function AIActivity() {
           <EmptyState icon={Activity} title="No activity" />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <div className="overflow-x-auto"><table className="w-full text-xs">
               <thead className="text-muted-foreground">
                 <tr className="text-left">
                   <th className="py-2 pr-3">When</th>
@@ -166,7 +166,7 @@ export default function AIActivity() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         )}
       </SectionCard>

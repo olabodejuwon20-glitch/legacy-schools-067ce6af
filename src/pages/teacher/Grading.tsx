@@ -67,7 +67,7 @@ export default function Grading() {
         </TabsList>
         <TabsContent value="exams" className="mt-4">
           {exams.length === 0 ? <EmptyState icon={PencilRuler} title="No submissions yet" /> :
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead><tr className="text-xs uppercase text-muted-foreground border-b border-border">
                 <th className="text-left font-medium py-3">Exam</th><th className="text-left font-medium py-3">Student</th>
                 <th className="text-left font-medium py-3">Score</th><th className="text-left font-medium py-3">Submitted</th><th></th>
@@ -83,7 +83,7 @@ export default function Grading() {
                   </tr>
                 ))}
               </tbody>
-            </table>}
+            </table></div>}
         </TabsContent>
         <TabsContent value="assignments" className="mt-4">
           {assignments.length === 0 ? <EmptyState icon={FilePlus2} title="No assignments created" /> :

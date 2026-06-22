@@ -176,7 +176,7 @@ export default function SuperBilling() {
           <EmptyState icon={<Receipt className="size-5" />} title="No invoices" description="Create one to start tracking billing." />
         ) : (
           <div className="overflow-x-auto -mx-5">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground">
                 <tr className="border-b border-border">
                   <th className="text-left px-5 py-2 font-medium">Number</th>
@@ -207,7 +207,7 @@ export default function SuperBilling() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         )}
       </Section>

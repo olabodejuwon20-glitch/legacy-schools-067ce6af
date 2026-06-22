@@ -128,7 +128,7 @@ export default function SuperUsers() {
           <EmptyState icon={<Users className="size-5 text-muted-foreground" />} title="No users match" />
         ) : (
           <div className="overflow-x-auto -mx-5">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="text-[11px] uppercase text-muted-foreground border-b border-border">
                 <tr>
                   <th className="text-left px-5 py-2 font-medium">User</th>
@@ -168,7 +168,7 @@ export default function SuperUsers() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
             <div className="flex items-center justify-between px-5 py-3 text-xs text-muted-foreground">
               <span>Page {page + 1} of {totalPages}</span>
               <div className="flex gap-2">

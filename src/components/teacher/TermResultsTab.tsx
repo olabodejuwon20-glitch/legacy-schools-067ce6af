@@ -146,7 +146,7 @@ export function TermResultsTab() {
                   {list.length} subjects · avg {Math.round(list.reduce((a, r) => a + Number(r.score), 0) / list.length)}%
                 </div>
               </div>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead><tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="text-left px-3 py-2">Subject</th>
                   <th className="px-2 py-2">CA</th>
@@ -190,7 +190,7 @@ export function TermResultsTab() {
                     );
                   })}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           ))}
         </div>

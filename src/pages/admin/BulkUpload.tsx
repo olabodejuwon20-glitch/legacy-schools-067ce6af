@@ -80,7 +80,7 @@ export default function BulkUpload() {
         </div>
         {rows.length > 0 && (
           <div className="rounded-lg border border-border overflow-hidden max-h-64 overflow-y-auto">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead className="bg-muted/60"><tr><th className="text-left p-2">Name</th><th className="text-left p-2">Phone</th><th className="text-left p-2">PIN</th><th className="text-left p-2">Status</th></tr></thead>
               <tbody>{rows.map((r,i)=>{
                 const res = results?.find(x => x.phone === r.phone.replace(/[^\d+]/g,""));
@@ -88,7 +88,7 @@ export default function BulkUpload() {
                   <td className="p-2 font-mono text-xs">{res?.pin ?? "—"}</td>
                   <td className="p-2">{res ? (res.ok ? <span className="inline-flex items-center gap-1 text-emerald-600"><Check className="size-3.5"/>added</span> : <span className="inline-flex items-center gap-1 text-destructive"><X className="size-3.5"/>{res.error}</span>) : <span className="text-muted-foreground">pending</span>}</td></tr>;
               })}</tbody>
-            </table>
+            </table></div>
           </div>
         )}
         {rows.length === 0 && <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground"><FileSpreadsheet className="size-8 mx-auto mb-2 opacity-60"/>Pick a CSV with <code>full_name,phone</code> headers.</div>}

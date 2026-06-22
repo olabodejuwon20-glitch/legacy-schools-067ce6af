@@ -269,7 +269,7 @@ export default function AdminSettings() {
           <DialogHeader><DialogTitle>NECO export preview {previewData ? `· ${previewData.total} students` : ""}</DialogTitle></DialogHeader>
           {previewData && (
             <div className="overflow-auto max-h-[60vh] border border-border rounded-md">
-              <table className="w-full text-xs">
+              <div className="overflow-x-auto"><table className="w-full text-xs">
                 <thead className="bg-muted/50 sticky top-0">
                   <tr>{previewData.headers.map(h => <th key={h} className="text-left px-2 py-1.5 whitespace-nowrap font-medium">{h}</th>)}</tr>
                 </thead>
@@ -280,7 +280,7 @@ export default function AdminSettings() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
           <div className="flex justify-end"><Button onClick={() => callNeco(false)} disabled={necoBusy}><Download className="size-4" /> Download full CSV</Button></div>

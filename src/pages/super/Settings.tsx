@@ -216,7 +216,7 @@ function AICachePanel() {
         <div className="rounded-md border border-border">
           <div className="px-3 py-2 border-b border-border text-xs font-semibold flex items-center gap-1.5"><Brain className="size-3.5" /> By feature</div>
           <div className="max-h-80 overflow-y-auto text-xs">
-            <table className="w-full">
+            <div className="overflow-x-auto"><table className="w-full">
               <thead className="bg-muted/40 text-muted-foreground"><tr>
                 <th className="text-left px-3 py-1.5">Feature</th>
                 <th className="text-right px-3 py-1.5">Hit %</th>
@@ -236,14 +236,14 @@ function AICachePanel() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </div>
 
         <div className="rounded-md border border-border">
           <div className="px-3 py-2 border-b border-border text-xs font-semibold">By role (last 60 days)</div>
           <div className="max-h-80 overflow-y-auto text-xs">
-            <table className="w-full">
+            <div className="overflow-x-auto"><table className="w-full">
               <thead className="bg-muted/40 text-muted-foreground"><tr>
                 <th className="text-left px-3 py-1.5">Role</th>
                 <th className="text-right px-3 py-1.5">Hit %</th>
@@ -263,7 +263,7 @@ function AICachePanel() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </div>
       </div>
@@ -407,7 +407,7 @@ function AuthActivityPanel() {
 
       {loading ? <Skel className="h-64" /> : (
         <div className="rounded-md border border-border overflow-hidden">
-          <table className="w-full text-xs">
+          <div className="overflow-x-auto"><table className="w-full text-xs">
             <thead className="bg-muted/40 text-muted-foreground"><tr>
               <th className="text-left px-3 py-2">When</th>
               <th className="text-left px-3 py-2">Event</th>
@@ -436,7 +436,7 @@ function AuthActivityPanel() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </Section>
@@ -543,7 +543,7 @@ function LiveErrorsPanel() {
 
       {loading ? <Skel className="h-64" /> : (
         <div className="rounded-md border border-border overflow-hidden">
-          <table className="w-full text-xs">
+          <div className="overflow-x-auto"><table className="w-full text-xs">
             <thead className="bg-muted/40 text-muted-foreground"><tr>
               <th className="text-left px-3 py-2 w-28">When</th>
               <th className="text-left px-3 py-2 w-24">Source</th>
@@ -582,7 +582,7 @@ function LiveErrorsPanel() {
                   ) : null,
               ])}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </Section>

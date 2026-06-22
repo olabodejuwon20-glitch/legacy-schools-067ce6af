@@ -396,7 +396,7 @@ export default function ExamCommittee() {
                         <Badge variant="outline" className="ml-1">{items.length} paper{items.length > 1 ? "s" : ""}</Badge>
                       </div>
                       <div className="overflow-x-auto rounded-lg border border-border">
-                        <table className="w-full text-sm">
+                        <div className="overflow-x-auto"><table className="w-full text-sm">
                           <thead className="text-xs text-muted-foreground bg-muted/30">
                             <tr>
                               <th className="text-left px-3 py-2">Time</th>
@@ -457,7 +457,7 @@ export default function ExamCommittee() {
                               );
                             })}
                           </tbody>
-                        </table>
+                        </table></div>
                       </div>
                     </div>
                   ))}
@@ -497,7 +497,7 @@ export default function ExamCommittee() {
                 <EmptyState icon={Users2} title="No papers scheduled" desc="Add papers to the timetable first." />
               ) : (
                 <div className="overflow-x-auto rounded-lg border border-border">
-                  <table className="w-full text-sm">
+                  <div className="overflow-x-auto"><table className="w-full text-sm">
                     <thead className="text-xs text-muted-foreground bg-muted/30">
                       <tr>
                         <th className="text-left px-3 py-2">Date</th>
@@ -532,7 +532,7 @@ export default function ExamCommittee() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 </div>
               )}
             </SectionCard>
@@ -736,7 +736,7 @@ function ScheduleBoard({
             <span className="font-semibold">{new Date(date).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
           </div>
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-xs border-collapse">
+            <div className="overflow-x-auto"><table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-muted/40">
                   <th className="text-left p-2 w-20">Time</th>
@@ -792,7 +792,7 @@ function ScheduleBoard({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </div>
       ))}

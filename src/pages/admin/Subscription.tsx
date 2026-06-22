@@ -265,7 +265,7 @@ export default function AdminSubscription() {
                 No subscription invoices yet. Pick a plan to get started.
               </div>
             ) : (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead className="text-xs text-muted-foreground border-b">
                   <tr>
                     <th className="text-left px-4 py-2">Invoice</th>
@@ -299,7 +299,7 @@ export default function AdminSubscription() {
                     );
                   })}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </Card>
         </TabsContent>

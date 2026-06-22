@@ -124,7 +124,7 @@ export default function Proctoring() {
        : rows.length === 0 ? <EmptyState icon={ShieldAlert} title="No exam attempts yet" />
        : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground">
               <tr className="text-left">
                 <th className="py-2 px-2">Student</th>
@@ -159,7 +159,7 @@ export default function Proctoring() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
