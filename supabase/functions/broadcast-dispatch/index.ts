@@ -36,7 +36,10 @@ async function resolveAudience(schoolId: string, audience: any): Promise<string[
 async function dispatchJob(jobId: string) {
   const { data: job, error } = await admin.from("broadcast_jobs")
     .select("*").eq("id", jobId).single();
-  if (error || !job) return { ok: false, error: error?.message ?? "not found" };
+  if (error || !job) {
+    if (error) console.error("[broadcast-dispatch] job_lookup_failed", error);
+    return { ok: false, error: "Broadcast could not be sent." };
+  }
   if (job.status === "sent") return { ok: true, skipped: "already sent" };
 
   await admin.from("broadcast_jobs").update({ status: "sending" }).eq("id", jobId);
@@ -145,6 +148,6 @@ Deno.serve(async (req) => {
     return json(r, r.ok ? 200 : 500);
   } catch (e) {
     console.error("[broadcast-dispatch]", e);
-    return json({ error: String((e as Error).message ?? e) }, 500);
+    return json({ error: "Broadcast could not be sent. Please try again." }, 500);
   }
 });
