@@ -7,9 +7,9 @@ import { schoolPath } from "@/lib/tenant";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { ResultReleaseBadge } from "@/components/exam/ResultReleaseBadge";
 
 type Row = {
   id: string; attempt_id: string; student_id: string;
@@ -19,20 +19,6 @@ type Row = {
   forwarded_to_admin_at: string | null;
   exam: { title: string } | null;
   student: { full_name: string | null; email: string | null } | null;
-};
-
-const TONE: Record<string, string> = {
-  pending_validation: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  forwarded_admin: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
-  validated: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  rejected: "bg-red-500/15 text-red-700 dark:text-red-300",
-};
-
-const LABEL: Record<string, string> = {
-  pending_validation: "Committee review",
-  forwarded_admin: "Awaiting admin release",
-  validated: "Released",
-  rejected: "Rejected",
 };
 
 export default function AdminTradExamResults() {
@@ -114,7 +100,7 @@ export default function AdminTradExamResults() {
                         </div>
                       )}
                     </div>
-                    <Badge variant="outline" className={TONE[r.status] ?? ""}>{LABEL[r.status] ?? r.status}</Badge>
+                    <ResultReleaseBadge status={r.status} released_at={r.released_at} scheduled_release_at={r.scheduled_release_at} />
 
                     {r.status === "pending_validation" && (
                       <>
