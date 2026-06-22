@@ -42,7 +42,8 @@ Deno.serve(async (req) => {
     });
     if (cErr) {
       if (/already/i.test(cErr.message)) return json({ error: "An account with this email already exists. Sign in instead." }, 400);
-      return json({ error: cErr.message }, 400);
+      console.error("[register-school] create_user_failed", cErr);
+      return json({ error: "We couldn't create the admin account. Please check your details and try again." }, 400);
     }
     const uid = created.user!.id;
     await admin.from("profiles").upsert({ id: uid, full_name: fullName, email });
@@ -50,7 +51,10 @@ Deno.serve(async (req) => {
     // create school
     const { data: school, error: sErr } = await admin.from("schools")
       .insert({ name: schoolName, slug, created_by: uid }).select("id,slug,name").single();
-    if (sErr) return json({ error: sErr.message }, 400);
+    if (sErr) {
+      console.error("[register-school] create_school_failed", sErr);
+      return json({ error: "We couldn't create the school. Please check your details and try again." }, 400);
+    }
 
     // make admin (bootstrap trigger may already do this; upsert to be safe)
     await admin.from("memberships").upsert(
