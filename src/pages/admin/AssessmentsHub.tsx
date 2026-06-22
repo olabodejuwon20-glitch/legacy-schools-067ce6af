@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ScrollText, ClipboardList, ClipboardCheck, ShieldCheck, FileBarChart, Gauge } from "lucide-react";
+import { ScrollText, ClipboardList, ClipboardCheck, ShieldCheck, FileBarChart, Gauge, CalendarClock } from "lucide-react";
 import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -11,6 +11,7 @@ const ITEMS = [
   { to: "proctoring",            icon: ClipboardCheck, title: "Proctoring",       desc: "Live monitoring, lockdown and violation evidence." },
   { to: "trad-exams-approvals",  icon: ShieldCheck,    title: "Approvals",        desc: "Review and sign-off scored exams before publishing." },
   { to: "trad-exams-results",    icon: FileBarChart,   title: "Results",          desc: "Publish, unlock and audit exam results." },
+  { to: "exam-results-release",  icon: CalendarClock,  title: "CA/Test release",  desc: "Schedule when students see CA and Test scores." },
   { to: "exam-appeals",          icon: Gauge,          title: "Exam Appeals",     desc: "Handle student appeals through the multi-level workflow." },
 ];
 
