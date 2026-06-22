@@ -61,14 +61,22 @@ Deno.serve(async (req) => {
           const { data: existing } = await admin.rpc("auth_user_id_by_email", { _email: email });
           uid = existing ?? undefined;
         }
-        if (!uid) { results.push({ phone, ok: false, error: cErr.message }); continue; }
+        if (!uid) {
+          console.error("[bulk-onboard] create_user_failed", cErr);
+          results.push({ phone, ok: false, error: "Could not add this person. Check the details and try again." });
+          continue;
+        }
       }
       await admin.from("profiles").upsert({ id: uid, full_name: fullName, email, phone });
       const { error: mErr } = await admin.from("memberships").upsert(
         { school_id: schoolId, user_id: uid, role, status: "active", bio_completed: false, must_change_pin: true },
         { onConflict: "school_id,user_id,role" } as any,
       );
-      if (mErr) { results.push({ phone, ok: false, error: mErr.message }); continue; }
+      if (mErr) {
+        console.error("[bulk-onboard] membership_upsert_failed", mErr);
+        results.push({ phone, ok: false, error: "Could not add this person. Check the details and try again." });
+        continue;
+      }
       results.push({ phone, ok: true, pin });
     }
 
