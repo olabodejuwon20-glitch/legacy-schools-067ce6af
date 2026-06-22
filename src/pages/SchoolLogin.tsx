@@ -40,7 +40,7 @@ export default function SchoolLogin() {
       const email = (data as any).email as string;
       const mustChange = !!(data as any).mustChangePin;
       const { error: sErr } = await supabase.auth.signInWithPassword({ email, password: pin });
-      if (sErr) throw new Error("PIN doesn't match. Try again.");
+      if (sErr) throw new Error("We couldn't sign you in with those details.");
       toast.success("Welcome");
       window.location.href = schoolPath(school!.slug, mustChange ? "/change-pin" : "/app");
     } catch (err) { toast.error(friendlyError(err, "We couldn't sign you in. Please try again.")); } finally { setBusy(false); }
