@@ -14,7 +14,8 @@ export async function embedTexts(inputs: string[], model = "openai/text-embeddin
   });
   if (!r.ok) {
     const text = await r.text().catch(() => "");
-    throw new Error(`embed gateway error ${r.status}: ${text.slice(0, 300)}`);
+    console.error("[embed] gateway_failed", r.status, text.slice(0, 300));
+    throw new Error("AI search is temporarily unavailable. Please try again later.");
   }
   const data = await r.json();
   return (data.data ?? []).map((d: any) => d.embedding as number[]);
