@@ -82,6 +82,8 @@ export default function Workspace() {
   // invite dialog
   const [open, setOpen] = useState(false);
   const [slotChoice, setSlotChoice] = useState<string>("");
+  const [inviteEmail, setInviteEmail] = useState<string>("");
+  const [emailSent, setEmailSent] = useState<boolean>(false);
   const [busy, setBusy] = useState(false);
   const [lastLink, setLastLink] = useState<string | null>(null);
 
@@ -154,6 +156,11 @@ export default function Workspace() {
     if (!school || !user || busy) return;
     if (!mayEdit) { toast.error("You don't have permission to invite collaborators."); return; }
     if (!slotChoice) { toast.error("Pick a role for this collaborator"); return; }
+    const email = inviteEmail.trim().toLowerCase();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Enter a valid email address (or leave it blank for link only)");
+      return;
+    }
     setBusy(true);
     try {
       const code = `ADM-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -169,7 +176,27 @@ export default function Workspace() {
       const url = `${window.location.origin}${schoolPath(school.slug, "/join")}?code=${code}`;
       await navigator.clipboard.writeText(url).catch(() => {});
       setLastLink(url);
+      setEmailSent(false);
       toast.success("Invite link created and copied");
+      if (email) {
+        const slotName = slots.find(s => s.slot === Number(slotChoice))?.name || `Role ${slotChoice}`;
+        const { error: mailErr } = await supabase.functions.invoke("send-admin-invite", {
+          body: {
+            to: email,
+            invite_url: url,
+            code,
+            role_name: slotName,
+            school_name: school.name,
+            inviter_name: user.email || "Your colleague",
+          },
+        });
+        if (mailErr) {
+          toast.warning("Link created, but email could not be sent. Share the link manually.");
+        } else {
+          setEmailSent(true);
+          toast.success(`Invite emailed to ${email}`);
+        }
+      }
       load();
     } catch (err: any) {
       toast.error(err?.message || "Could not create invite");
