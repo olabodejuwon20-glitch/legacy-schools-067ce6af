@@ -6,7 +6,7 @@ import {
   Wallet, Activity, Sun, Moon, Search, Menu, LogOut, UserSquare2, ListChecks, PencilRuler,
   Building2, Ticket, Upload, Bus, Megaphone, NotebookPen, FolderOpen, UserCog,
   BookOpenCheck, ClipboardList, BarChart3, Award, Mail, Inbox as InboxIcon,
-  Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine,
+  Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine, Receipt,
 } from "lucide-react";
 import { ROLE_META, Role, useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
@@ -66,6 +66,7 @@ const SECTION_OF: Record<string, string> = {
   "communication": "Communication",
   // Finance
   "fees": "Finance", "subscription": "Finance",
+  "billing": "Finance",
   // Operations
   "hostel": "Operations", "transport": "Operations",
   // System
@@ -114,6 +115,7 @@ const NAV: Record<Role, { label: string; to: string; icon: any }[]> = {
     { label: "Lesson Notes", to: "lesson-notes", icon: NotebookPen },
     { label: "Fees & Payments", to: "fees", icon: Wallet },
     { label: "Subscription", to: "subscription", icon: CreditCard },
+    { label: "Billing", to: "billing", icon: Receipt },
     { label: "Hostel",    to: "hostel",    icon: Building2 },
     { label: "Transport", to: "transport", icon: Bus },
     { label: "Announcements", to: "announcements", icon: Megaphone },
