@@ -293,6 +293,7 @@ const App = () => (
               <Route path="admin/copilot" element={<RoleGate allow="admin"><PremiumGate feature="Principal AI Copilot" description="Ask anything about your school — attendance, fees, weak topics. Unlocked with any paid plan."><AdminCopilot /></PremiumGate></RoleGate>} />
               <Route path="admin/knowledge" element={<RoleGate allow="admin"><AdminKnowledge /></RoleGate>} />
               <Route path="admin/subscription" element={<RoleGate allow="admin"><AdminSubscription /></RoleGate>} />
+              <Route path="admin/billing" element={<RoleGate allow="admin"><AdminSubscription initialTab="invoices" /></RoleGate>} />
               <Route path="admin/roles" element={<RoleGate allow="admin"><AdminRoles /></RoleGate>} />
               <Route path="admin/trad-exams" element={<RoleGate allow="admin"><AdminTradExams /></RoleGate>} />
               <Route path="admin/exam-committee" element={<RoleGate allow="admin"><AdminExamCommittee /></RoleGate>} />
