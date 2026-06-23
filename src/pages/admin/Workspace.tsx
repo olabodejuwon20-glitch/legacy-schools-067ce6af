@@ -226,6 +226,21 @@ export default function Workspace() {
 
   const pendingInvites = invites.filter(i => i.uses < i.max_uses);
 
+  if (!mayView) {
+    return (
+      <div className="max-w-md mx-auto py-16 text-center space-y-3">
+        <SEO title="Workspace" description="Workspace access" path="/admin/workspace" />
+        <div className="mx-auto size-12 rounded-full bg-muted grid place-items-center">
+          <Lock className="size-5 text-muted-foreground" />
+        </div>
+        <h1 className="font-display text-lg font-semibold">Workspace is restricted</h1>
+        <p className="text-sm text-muted-foreground">
+          You don't have permission to view the workspace. Ask the school admin to grant you access on the Roles page.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <SEO title="Workspace" description="Manage admin collaborators." path="/admin/workspace" />
@@ -246,13 +261,21 @@ export default function Workspace() {
           </div>
         </div>
         <div className="sm:ml-auto flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link to={schoolPath(school?.slug, "/app/admin/roles")}>
-              <Settings2 className="size-4 mr-1.5" /> Manage roles
-            </Link>
-          </Button>
-          <Button size="sm" onClick={() => { setOpen(true); setLastLink(null); }} disabled={enabledSlots.length === 0}>
-            <UserPlus className="size-4 mr-1.5" /> Invite
+          {mayEdit && (
+            <Button asChild variant="ghost" size="sm">
+              <Link to={schoolPath(school?.slug, "/app/admin/roles")}>
+                <Settings2 className="size-4 mr-1.5" /> Manage roles
+              </Link>
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => { setOpen(true); setLastLink(null); }}
+            disabled={!mayEdit || enabledSlots.length === 0}
+            title={!mayEdit ? "You have view-only access to the workspace" : undefined}
+          >
+            {mayEdit ? <UserPlus className="size-4 mr-1.5" /> : <Lock className="size-4 mr-1.5" />}
+            Invite
           </Button>
         </div>
       </header>
