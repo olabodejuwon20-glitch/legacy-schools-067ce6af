@@ -642,7 +642,7 @@ export default function Workspace() {
                       {selectedMember.full_name || "Unnamed member"}
                     </SheetTitle>
                     <SheetDescription className="truncate">
-                      {selectedMember.email || "No email"}
+                      {displayContact(selectedMember) === "—" ? "No contact on file" : displayContact(selectedMember)}
                     </SheetDescription>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       <span className={cn(
@@ -675,7 +675,7 @@ export default function Workspace() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Profile</h3>
                   <div className="space-y-3">
-                    <InfoRow icon={<Mail className="size-4" />} label="Email" value={selectedMember.email || "—"} />
+                    <InfoRow icon={<Mail className="size-4" />} label="Email" value={isSyntheticEmail(selectedMember.email) ? "—" : (selectedMember.email || "—")} />
                     <InfoRow icon={<Phone className="size-4" />} label="Phone" value={selectedMember.phone || "—"} />
                     <InfoRow icon={<User className="size-4" />} label="Gender" value={selectedMember.gender ? (selectedMember.gender[0].toUpperCase() + selectedMember.gender.slice(1)) : "—"} />
                     <InfoRow icon={<MapPin className="size-4" />} label="Address" value={selectedMember.address || "—"} />
