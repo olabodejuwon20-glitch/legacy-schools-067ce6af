@@ -316,9 +316,11 @@ export default function Workspace() {
               </div>
               <p className="text-sm font-medium">No members yet</p>
               <p className="text-xs text-muted-foreground mt-1">Invite collaborators to join this workspace.</p>
-              <Button size="sm" className="mt-4" onClick={() => setOpen(true)} disabled={enabledSlots.length === 0}>
-                <Plus className="size-4 mr-1.5" /> Invite member
-              </Button>
+              {mayEdit && (
+                <Button size="sm" className="mt-4" onClick={() => setOpen(true)} disabled={enabledSlots.length === 0}>
+                  <Plus className="size-4 mr-1.5" /> Invite member
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto"><table className="w-full text-sm">
@@ -370,7 +372,7 @@ export default function Workspace() {
                         </span>
                       </td>
                       <td className="px-2 py-2.5 text-right">
-                        {!isPrimary && (
+                        {!isPrimary && mayEdit && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <Button size="icon" variant="ghost" className="size-7">
@@ -414,9 +416,11 @@ export default function Workspace() {
               </div>
               <p className="text-sm font-medium">No invite links</p>
               <p className="text-xs text-muted-foreground mt-1">Create a link to bring a teammate onboard.</p>
-              <Button size="sm" className="mt-4" onClick={() => setOpen(true)} disabled={enabledSlots.length === 0}>
-                <Plus className="size-4 mr-1.5" /> New invite link
-              </Button>
+              {mayEdit && (
+                <Button size="sm" className="mt-4" onClick={() => setOpen(true)} disabled={enabledSlots.length === 0}>
+                  <Plus className="size-4 mr-1.5" /> New invite link
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto"><table className="w-full text-sm">
@@ -463,9 +467,11 @@ export default function Workspace() {
                           <Button size="icon" variant="ghost" className="size-7" onClick={() => copyLink(i.code)} title="Copy link">
                             <Copy className="size-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="size-7" onClick={() => deleteInvite(i.id)} title="Revoke">
-                            <Trash2 className="size-3.5 text-destructive" />
-                          </Button>
+                          {mayEdit && (
+                            <Button size="icon" variant="ghost" className="size-7" onClick={() => deleteInvite(i.id)} title="Revoke">
+                              <Trash2 className="size-3.5 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
