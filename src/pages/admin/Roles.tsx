@@ -13,7 +13,10 @@ import {
   Loader2, Save, ShieldCheck, ShieldOff, Search, Sparkles, Users,
   KeyRound, ChevronRight, Check, Copy, RotateCcw, Plus, Lock,
 } from "lucide-react";
-import { PERMISSION_GROUPS, ALL_PERMISSION_KEYS, type PermissionKey } from "@/lib/adminPermissions";
+import {
+  PERMISSION_GROUPS, ALL_PERMISSION_KEYS, ALL_GRANTABLE_KEYS,
+  EDIT_SUFFIX, getLevel, type PermissionKey, type AccessLevel,
+} from "@/lib/adminPermissions";
 import { schoolPath } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +73,16 @@ const PRESETS: Array<{ id: string; name: string; description: string; keys: Perm
     keys: ["announcements", "inbox", "parent-alerts", "action:send_announcement"],
   },
 ];
+
+/** Apply a tri-state level to a permission set (immutably). */
+function setLevel(perms: string[], key: string, level: AccessLevel): string[] {
+  const set = new Set(perms);
+  set.delete(key);
+  set.delete(key + EDIT_SUFFIX);
+  if (level === "view") set.add(key);
+  if (level === "edit") { set.add(key); set.add(key + EDIT_SUFFIX); }
+  return Array.from(set);
+}
 
 export default function AdminRoles() {
   const { school } = useSchool();
@@ -129,12 +142,17 @@ export default function AdminRoles() {
       }),
     );
   }
+  function changeLevel(slot: number, key: string, level: AccessLevel) {
+    setSlots((s) => s.map((r) => r.slot === slot ? { ...r, permissions: setLevel(r.permissions, key, level) } : r));
+  }
   function setGroup(slot: number, groupKeys: string[], on: boolean) {
     setSlots((s) =>
       s.map((r) => {
         if (r.slot !== slot) return r;
         const set = new Set(r.permissions);
-        groupKeys.forEach((k) => (on ? set.add(k) : set.delete(k)));
+        groupKeys.forEach((k) => {
+          if (on) set.add(k); else { set.delete(k); set.delete(k + EDIT_SUFFIX); }
+        });
         return { ...r, permissions: Array.from(set) };
       }),
     );
@@ -319,9 +337,10 @@ export default function AdminRoles() {
               query={query}
               setQuery={setQuery}
               onToggle={(k, on) => toggleKey(current.slot, k, on)}
+              onLevel={(k, lvl) => changeLevel(current.slot, k, lvl)}
               onGroup={(keys, on) => setGroup(current.slot, keys, on)}
               onClear={() => update(current.slot, { permissions: [] })}
-              onAll={() => update(current.slot, { permissions: ALL_PERMISSION_KEYS.slice() })}
+              onAll={() => update(current.slot, { permissions: ALL_GRANTABLE_KEYS.slice() })}
             />
           </section>
         </div>
@@ -405,12 +424,13 @@ function RoleHeaderCard({
 }
 
 function PermissionsEditor({
-  row, query, setQuery, onToggle, onGroup, onClear, onAll,
+  row, query, setQuery, onToggle, onLevel, onGroup, onClear, onAll,
 }: {
   row: SlotRow;
   query: string;
   setQuery: (s: string) => void;
   onToggle: (k: string, on: boolean) => void;
+  onLevel: (k: string, level: AccessLevel) => void;
   onGroup: (keys: string[], on: boolean) => void;
   onClear: () => void;
   onAll: () => void;
@@ -470,19 +490,36 @@ function PermissionsEditor({
               </div>
               <ul className="divide-y divide-border/60">
                 {g.items.map((it) => {
-                  const on = row.permissions.includes(it.key);
                   const isAction = it.key.startsWith("action:");
+                  const level = getLevel(row.permissions, it.key);
+                  const on = level !== "none";
                   return (
                     <li key={it.key}>
-                      <label className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-accent/30 cursor-pointer transition-colors">
-                        <Checkbox checked={on} onCheckedChange={(v) => onToggle(it.key, !!v)} />
-                        <span className="text-sm flex-1 leading-tight">{it.label}</span>
-                        {isAction && (
-                          <Badge variant="outline" className="h-5 px-1.5 text-[9px] uppercase tracking-wider text-warning border-warning/40 bg-warning/5">
-                            Action
-                          </Badge>
+                      <div className="flex items-start gap-3 px-3.5 py-2.5 hover:bg-accent/30 transition-colors">
+                        {it.editable ? (
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm leading-tight">{it.label}</div>
+                            {it.description && (
+                              <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{it.description}</div>
+                            )}
+                            <LevelPicker
+                              className="mt-1.5"
+                              value={level}
+                              onChange={(lvl) => onLevel(it.key, lvl)}
+                            />
+                          </div>
+                        ) : (
+                          <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                            <Checkbox checked={on} onCheckedChange={(v) => onToggle(it.key, !!v)} />
+                            <span className="text-sm flex-1 leading-tight">{it.label}</span>
+                            {isAction && (
+                              <Badge variant="outline" className="h-5 px-1.5 text-[9px] uppercase tracking-wider text-warning border-warning/40 bg-warning/5">
+                                Action
+                              </Badge>
+                            )}
+                          </label>
                         )}
-                      </label>
+                      </div>
                     </li>
                   );
                 })}
@@ -496,6 +533,38 @@ function PermissionsEditor({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function LevelPicker({
+  value, onChange, className,
+}: {
+  value: AccessLevel;
+  onChange: (lvl: AccessLevel) => void;
+  className?: string;
+}) {
+  const opts: { id: AccessLevel; label: string; tone: string }[] = [
+    { id: "none", label: "None",  tone: "data-[on=true]:bg-muted data-[on=true]:text-foreground" },
+    { id: "view", label: "View",  tone: "data-[on=true]:bg-sky-500/15 data-[on=true]:text-sky-700 dark:data-[on=true]:text-sky-300" },
+    { id: "edit", label: "Edit",  tone: "data-[on=true]:bg-emerald-500/15 data-[on=true]:text-emerald-700 dark:data-[on=true]:text-emerald-300" },
+  ];
+  return (
+    <div className={cn("inline-flex rounded-md border border-border bg-background p-0.5 text-[11px] font-medium", className)}>
+      {opts.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          data-on={value === o.id}
+          onClick={() => onChange(o.id)}
+          className={cn(
+            "px-2.5 py-1 rounded-[5px] transition-colors text-muted-foreground hover:text-foreground",
+            o.tone,
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
