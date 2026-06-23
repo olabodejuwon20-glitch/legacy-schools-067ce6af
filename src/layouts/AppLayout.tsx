@@ -6,7 +6,7 @@ import {
   Wallet, Activity, Sun, Moon, Search, Menu, LogOut, UserSquare2, ListChecks, PencilRuler,
   Building2, Ticket, Upload, Bus, Megaphone, NotebookPen, FolderOpen, UserCog,
   BookOpenCheck, ClipboardList, BarChart3, Award, Mail, Inbox as InboxIcon,
-  Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine,
+  Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine, Receipt,
 } from "lucide-react";
 import { ROLE_META, Role, useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
@@ -66,6 +66,7 @@ const SECTION_OF: Record<string, string> = {
   "communication": "Communication",
   // Finance
   "fees": "Finance", "subscription": "Finance",
+  "billing": "Finance",
   // Operations
   "hostel": "Operations", "transport": "Operations",
   // System
@@ -114,6 +115,7 @@ const NAV: Record<Role, { label: string; to: string; icon: any }[]> = {
     { label: "Lesson Notes", to: "lesson-notes", icon: NotebookPen },
     { label: "Fees & Payments", to: "fees", icon: Wallet },
     { label: "Subscription", to: "subscription", icon: CreditCard },
+    { label: "Billing", to: "billing", icon: Receipt },
     { label: "Hostel",    to: "hostel",    icon: Building2 },
     { label: "Transport", to: "transport", icon: Bus },
     { label: "Announcements", to: "announcements", icon: Megaphone },
@@ -250,7 +252,7 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: enabledModules } = useEnabledModules(school?.id);
-  const { isFullAdmin, allowed } = useAdminPermissions();
+  const { isFullAdmin, allowed, slotRow } = useAdminPermissions();
 
   useEffect(() => {
     if (school?.id) warmSchoolCache(school.id, activeRole);
@@ -276,8 +278,10 @@ export default function AppLayout() {
         .map(({ label, to, icon }) => ({ label, to, icon }))
     : NAV[activeRole];
   // Restrict sidebar for slotted (sub-)admins. Dashboard ("") and absolute paths stay visible.
+  // Billing reuses the `subscription` permission key.
+  const permKeyFor = (to: string) => (to === "billing" ? "subscription" : to);
   const filteredItems = activeRole === "admin" && !isFullAdmin
-    ? items.filter(it => it.to === "" || it.to.startsWith("/") || allowed.has(it.to))
+    ? items.filter(it => it.to === "" || it.to.startsWith("/") || allowed.has(permKeyFor(it.to)))
     : items;
   // Group items into sections preserving the role-defined order within each group.
   const grouped = new Map<string, typeof items>();
@@ -295,6 +299,10 @@ export default function AppLayout() {
   ];
   const userLabel = displayName || email || "User";
   const initials = userLabel.split(/[\s@]/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase();
+  // Show the slot's assigned role name for sub-admins, otherwise the portal role.
+  const roleLabel = activeRole === "admin" && !isFullAdmin && slotRow?.name
+    ? slotRow.name
+    : activeRole;
 
   const { pathname } = useLocation();
 
@@ -355,7 +363,7 @@ export default function AppLayout() {
             {!collapsed && (
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold truncate">{userLabel}</div>
-                <div className="text-[11px] text-muted-foreground truncate capitalize">{activeRole}</div>
+                <div className="text-[11px] text-muted-foreground truncate capitalize">{roleLabel}</div>
               </div>
             )}
           </div>
@@ -391,7 +399,7 @@ export default function AppLayout() {
                     </Avatar>
                     <div className="hidden sm:block text-left leading-tight">
                       <div className="text-sm font-semibold">{userLabel}</div>
-                      <div className="text-[11px] text-muted-foreground capitalize">{activeRole}</div>
+                      <div className="text-[11px] text-muted-foreground capitalize">{roleLabel}</div>
                     </div>
                     <ChevronDown className="size-4 text-muted-foreground" />
                   </button>

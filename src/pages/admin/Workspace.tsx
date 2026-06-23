@@ -67,6 +67,17 @@ function initials(name?: string | null, email?: string | null) {
   return src.slice(0, 2).toUpperCase();
 }
 
+/** Internal phone-auth users get a synthetic placeholder email like
+ *  `p2348...@members.edusmart.local`. Don't show that to admins. */
+function isSyntheticEmail(email?: string | null) {
+  return !!email && /@members\.edusmart\.local$/i.test(email);
+}
+function displayContact(r: { email: string | null; phone: string | null }) {
+  if (r.email && !isSyntheticEmail(r.email)) return r.email;
+  if (r.phone) return r.phone;
+  return "—";
+}
+
 export default function Workspace() {
   const { school, user } = useSchool();
   const { isFullAdmin, can, canEdit } = useAdminPermissions();
@@ -396,7 +407,7 @@ export default function Workspace() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-muted-foreground truncate max-w-[260px]">{r.email || "—"}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground truncate max-w-[260px]">{displayContact(r)}</td>
                       <td className="px-4 py-2.5">
                         <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium", tone)}>
                           {slotName}
@@ -631,7 +642,7 @@ export default function Workspace() {
                       {selectedMember.full_name || "Unnamed member"}
                     </SheetTitle>
                     <SheetDescription className="truncate">
-                      {selectedMember.email || "No email"}
+                      {displayContact(selectedMember) === "—" ? "No contact on file" : displayContact(selectedMember)}
                     </SheetDescription>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       <span className={cn(
@@ -664,7 +675,7 @@ export default function Workspace() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Profile</h3>
                   <div className="space-y-3">
-                    <InfoRow icon={<Mail className="size-4" />} label="Email" value={selectedMember.email || "—"} />
+                    <InfoRow icon={<Mail className="size-4" />} label="Email" value={isSyntheticEmail(selectedMember.email) ? "—" : (selectedMember.email || "—")} />
                     <InfoRow icon={<Phone className="size-4" />} label="Phone" value={selectedMember.phone || "—"} />
                     <InfoRow icon={<User className="size-4" />} label="Gender" value={selectedMember.gender ? (selectedMember.gender[0].toUpperCase() + selectedMember.gender.slice(1)) : "—"} />
                     <InfoRow icon={<MapPin className="size-4" />} label="Address" value={selectedMember.address || "—"} />
