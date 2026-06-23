@@ -363,7 +363,7 @@ export default function AppLayout() {
             {!collapsed && (
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold truncate">{userLabel}</div>
-                <div className="text-[11px] text-muted-foreground truncate capitalize">{activeRole}</div>
+                <div className="text-[11px] text-muted-foreground truncate capitalize">{roleLabel}</div>
               </div>
             )}
           </div>
@@ -399,7 +399,7 @@ export default function AppLayout() {
                     </Avatar>
                     <div className="hidden sm:block text-left leading-tight">
                       <div className="text-sm font-semibold">{userLabel}</div>
-                      <div className="text-[11px] text-muted-foreground capitalize">{activeRole}</div>
+                      <div className="text-[11px] text-muted-foreground capitalize">{roleLabel}</div>
                     </div>
                     <ChevronDown className="size-4 text-muted-foreground" />
                   </button>
