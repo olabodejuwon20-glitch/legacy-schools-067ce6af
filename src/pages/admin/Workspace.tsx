@@ -152,6 +152,7 @@ export default function Workspace() {
 
   async function createInvite() {
     if (!school || !user || busy) return;
+    if (!mayEdit) { toast.error("You don't have permission to invite collaborators."); return; }
     if (!slotChoice) { toast.error("Pick a role for this collaborator"); return; }
     setBusy(true);
     try {
@@ -176,6 +177,7 @@ export default function Workspace() {
   }
 
   async function deleteInvite(id: string) {
+    if (!mayEdit) { toast.error("You don't have permission to revoke invites."); return; }
     const { error } = await supabase.from("invite_codes").delete().eq("id", id);
     if (error) return toast.error(error.message || "Could not revoke");
     toast.success("Invite revoked");
@@ -184,6 +186,7 @@ export default function Workspace() {
 
   async function revoke(userId: string) {
     if (!school) return;
+    if (!mayEdit) { toast.error("You don't have permission to remove collaborators."); return; }
     if (!confirm("Remove this collaborator from the workspace?")) return;
     const { error } = await supabase.from("memberships")
       .update({ status: "removed" }).eq("school_id", school.id).eq("user_id", userId);
@@ -196,6 +199,7 @@ export default function Workspace() {
 
   async function changeRole(userId: string, newSlot: number | null) {
     if (!school || roleBusy) return;
+    if (!mayEdit) { toast.error("You don't have permission to change roles."); return; }
     setRoleBusy(true);
     const { error } = await supabase.from("memberships")
       .update({ admin_slot: newSlot })
