@@ -27,6 +27,8 @@ import {
 import { toast } from "sonner";
 import SEO from "@/components/SEO";
 import { cn } from "@/lib/utils";
+import { useAdminPermissions } from "@/lib/adminPermissions";
+import { Lock } from "lucide-react";
 
 type Row = {
   user_id: string;
@@ -67,6 +69,9 @@ function initials(name?: string | null, email?: string | null) {
 
 export default function Workspace() {
   const { school, user } = useSchool();
+  const { isFullAdmin, can, canEdit } = useAdminPermissions();
+  const mayView = isFullAdmin || can("workspace");
+  const mayEdit = isFullAdmin || canEdit("workspace");
   const [rows, setRows] = useState<Row[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [invites, setInvites] = useState<InviteRow[]>([]);
@@ -147,6 +152,7 @@ export default function Workspace() {
 
   async function createInvite() {
     if (!school || !user || busy) return;
+    if (!mayEdit) { toast.error("You don't have permission to invite collaborators."); return; }
     if (!slotChoice) { toast.error("Pick a role for this collaborator"); return; }
     setBusy(true);
     try {
@@ -171,6 +177,7 @@ export default function Workspace() {
   }
 
   async function deleteInvite(id: string) {
+    if (!mayEdit) { toast.error("You don't have permission to revoke invites."); return; }
     const { error } = await supabase.from("invite_codes").delete().eq("id", id);
     if (error) return toast.error(error.message || "Could not revoke");
     toast.success("Invite revoked");
@@ -179,6 +186,7 @@ export default function Workspace() {
 
   async function revoke(userId: string) {
     if (!school) return;
+    if (!mayEdit) { toast.error("You don't have permission to remove collaborators."); return; }
     if (!confirm("Remove this collaborator from the workspace?")) return;
     const { error } = await supabase.from("memberships")
       .update({ status: "removed" }).eq("school_id", school.id).eq("user_id", userId);
@@ -191,6 +199,7 @@ export default function Workspace() {
 
   async function changeRole(userId: string, newSlot: number | null) {
     if (!school || roleBusy) return;
+    if (!mayEdit) { toast.error("You don't have permission to change roles."); return; }
     setRoleBusy(true);
     const { error } = await supabase.from("memberships")
       .update({ admin_slot: newSlot })
@@ -221,6 +230,21 @@ export default function Workspace() {
 
   const pendingInvites = invites.filter(i => i.uses < i.max_uses);
 
+  if (!mayView) {
+    return (
+      <div className="max-w-md mx-auto py-16 text-center space-y-3">
+        <SEO title="Workspace" description="Workspace access" path="/admin/workspace" />
+        <div className="mx-auto size-12 rounded-full bg-muted grid place-items-center">
+          <Lock className="size-5 text-muted-foreground" />
+        </div>
+        <h1 className="font-display text-lg font-semibold">Workspace is restricted</h1>
+        <p className="text-sm text-muted-foreground">
+          You don't have permission to view the workspace. Ask the school admin to grant you access on the Roles page.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <SEO title="Workspace" description="Manage admin collaborators." path="/admin/workspace" />
@@ -241,13 +265,21 @@ export default function Workspace() {
           </div>
         </div>
         <div className="sm:ml-auto flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link to={schoolPath(school?.slug, "/app/admin/roles")}>
-              <Settings2 className="size-4 mr-1.5" /> Manage roles
-            </Link>
-          </Button>
-          <Button size="sm" onClick={() => { setOpen(true); setLastLink(null); }} disabled={enabledSlots.length === 0}>
-            <UserPlus className="size-4 mr-1.5" /> Invite
+          {mayEdit && (
+            <Button asChild variant="ghost" size="sm">
+              <Link to={schoolPath(school?.slug, "/app/admin/roles")}>
+                <Settings2 className="size-4 mr-1.5" /> Manage roles
+              </Link>
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => { setOpen(true); setLastLink(null); }}
+            disabled={!mayEdit || enabledSlots.length === 0}
+            title={!mayEdit ? "You have view-only access to the workspace" : undefined}
+          >
+            {mayEdit ? <UserPlus className="size-4 mr-1.5" /> : <Lock className="size-4 mr-1.5" />}
+            Invite
           </Button>
         </div>
       </header>
@@ -288,9 +320,11 @@ export default function Workspace() {
               </div>
               <p className="text-sm font-medium">No members yet</p>
               <p className="text-xs text-muted-foreground mt-1">Invite collaborators to join this workspace.</p>
-              <Button size="sm" className="mt-4" onClick={() => setOpen(true)} disabled={enabledSlots.length === 0}>
-                <Plus className="size-4 mr-1.5" /> Invite member
-              </Button>
+              {mayEdit && (
+                <Button size="sm" className="mt-4" onClick={() => setOpen(true)} disabled={enabledSlots.length === 0}>
+                  <Plus className="size-4 mr-1.5" /> Invite member
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto"><table className="w-full text-sm">
@@ -342,7 +376,7 @@ export default function Workspace() {
                         </span>
                       </td>
                       <td className="px-2 py-2.5 text-right">
-                        {!isPrimary && (
+                        {!isPrimary && mayEdit && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <Button size="icon" variant="ghost" className="size-7">
@@ -386,9 +420,11 @@ export default function Workspace() {
               </div>
               <p className="text-sm font-medium">No invite links</p>
               <p className="text-xs text-muted-foreground mt-1">Create a link to bring a teammate onboard.</p>
-              <Button size="sm" className="mt-4" onClick={() => setOpen(true)} disabled={enabledSlots.length === 0}>
-                <Plus className="size-4 mr-1.5" /> New invite link
-              </Button>
+              {mayEdit && (
+                <Button size="sm" className="mt-4" onClick={() => setOpen(true)} disabled={enabledSlots.length === 0}>
+                  <Plus className="size-4 mr-1.5" /> New invite link
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto"><table className="w-full text-sm">
@@ -435,9 +471,11 @@ export default function Workspace() {
                           <Button size="icon" variant="ghost" className="size-7" onClick={() => copyLink(i.code)} title="Copy link">
                             <Copy className="size-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="size-7" onClick={() => deleteInvite(i.id)} title="Revoke">
-                            <Trash2 className="size-3.5 text-destructive" />
-                          </Button>
+                          {mayEdit && (
+                            <Button size="icon" variant="ghost" className="size-7" onClick={() => deleteInvite(i.id)} title="Revoke">
+                              <Trash2 className="size-3.5 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
