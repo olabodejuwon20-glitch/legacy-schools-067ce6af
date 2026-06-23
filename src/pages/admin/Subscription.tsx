@@ -35,7 +35,7 @@ type SubRow = {
   monthly_amount_cents: number;
 };
 
-export default function AdminSubscription() {
+export default function AdminSubscription({ initialTab = "plans" }: { initialTab?: "plans" | "invoices" } = {}) {
   const { school } = useSchool();
   const [row, setRow] = useState<SchoolRow | null>(null);
   const [sub, setSub] = useState<SubRow | null>(null);
@@ -236,7 +236,7 @@ export default function AdminSubscription() {
         </div>
       </Card>
 
-      <Tabs defaultValue="plans">
+      <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="plans">Plans</TabsTrigger>
           <TabsTrigger value="invoices">Billing history ({invoices.length})</TabsTrigger>
