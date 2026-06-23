@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(url, service, { auth: { persistSession: false } });
 
-    const { data: invite } = await admin.from("invite_codes").select("school_id, role, expires_at, uses, max_uses").eq("code", code).maybeSingle();
+    const { data: invite } = await admin.from("invite_codes").select("school_id, role, admin_slot, expires_at, uses, max_uses").eq("code", code).maybeSingle();
     if (!invite) return json({ error: "Invalid code" }, 400);
     if (invite.expires_at && new Date(invite.expires_at) < new Date()) return json({ error: "Code expired" }, 400);
     if (invite.uses >= invite.max_uses) return json({ error: "Code exhausted" }, 400);
@@ -62,7 +62,9 @@ Deno.serve(async (req) => {
     });
     await admin.from("memberships").upsert(
       {
-        school_id: school.id, user_id: uid, role: invite.role, status: "active",
+        school_id: school.id, user_id: uid, role: invite.role,
+        admin_slot: invite.role === "admin" ? (invite.admin_slot ?? null) : null,
+        status: "active",
         bio_completed: true, must_change_pin: false,
         profile_data: bio.profile_data ?? {},
       },
