@@ -27,6 +27,8 @@ import {
 import { toast } from "sonner";
 import SEO from "@/components/SEO";
 import { cn } from "@/lib/utils";
+import { useAdminPermissions } from "@/lib/adminPermissions";
+import { Lock } from "lucide-react";
 
 type Row = {
   user_id: string;
@@ -67,6 +69,9 @@ function initials(name?: string | null, email?: string | null) {
 
 export default function Workspace() {
   const { school, user } = useSchool();
+  const { isFullAdmin, can, canEdit } = useAdminPermissions();
+  const mayView = isFullAdmin || can("workspace");
+  const mayEdit = isFullAdmin || canEdit("workspace");
   const [rows, setRows] = useState<Row[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [invites, setInvites] = useState<InviteRow[]>([]);
