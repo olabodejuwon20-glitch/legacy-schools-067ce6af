@@ -67,6 +67,17 @@ function initials(name?: string | null, email?: string | null) {
   return src.slice(0, 2).toUpperCase();
 }
 
+/** Internal phone-auth users get a synthetic placeholder email like
+ *  `p2348...@members.edusmart.local`. Don't show that to admins. */
+function isSyntheticEmail(email?: string | null) {
+  return !!email && /@members\.edusmart\.local$/i.test(email);
+}
+function displayContact(r: { email: string | null; phone: string | null }) {
+  if (r.email && !isSyntheticEmail(r.email)) return r.email;
+  if (r.phone) return r.phone;
+  return "—";
+}
+
 export default function Workspace() {
   const { school, user } = useSchool();
   const { isFullAdmin, can, canEdit } = useAdminPermissions();
