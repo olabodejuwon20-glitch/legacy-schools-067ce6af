@@ -407,7 +407,7 @@ export default function Workspace() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-muted-foreground truncate max-w-[260px]">{r.email || "—"}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground truncate max-w-[260px]">{displayContact(r)}</td>
                       <td className="px-4 py-2.5">
                         <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium", tone)}>
                           {slotName}
