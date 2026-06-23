@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, CheckCircle2, Clock, AlertCircle, Receipt, ArrowUpRight, CreditCard, CalendarClock, XCircle, RefreshCw } from "lucide-react";
+import { Download, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -41,6 +43,8 @@ export default function AdminSubscription() {
   const [invoices, setInvoices] = useState<SubInvoice[]>([]);
   const [cycle, setCycle] = useState<"termly" | "annual">("termly");
   const [busy, setBusy] = useState<string | null>(null);
+  const [invQ, setInvQ] = useState("");
+  const [invStatus, setInvStatus] = useState<"all" | "open" | "paid" | "failed" | "void">("all");
 
   async function load() {
     if (!school) return;
@@ -115,6 +119,35 @@ export default function AdminSubscription() {
   const nextBillingISO = sub?.current_period_end ?? row.plan_expires_at ?? row.term_ends_at ?? null;
   const nextBilling = nextBillingISO ? new Date(nextBillingISO) : null;
   const isCancelled = (sub?.status ?? row.status) === "cancelled";
+
+  const invoiceTotals = (() => {
+    const paid = invoices.filter(i => i.status === "paid");
+    const open = invoices.filter(i => i.status === "open");
+    const sum = (xs: SubInvoice[]) => xs.reduce((a, x) => a + (x.amount_kobo ?? x.amount_cents ?? 0), 0);
+    return { paidTotal: sum(paid), outstanding: sum(open), paidCount: paid.length, openCount: open.length };
+  })();
+
+  const filteredInvoices = invoices
+    .filter(i => invStatus === "all" || i.status === invStatus)
+    .filter(i => {
+      const q = invQ.trim().toLowerCase();
+      if (!q) return true;
+      return (i.number ?? "").toLowerCase().includes(q) || (i.plan ?? "").toLowerCase().includes(q);
+    });
+
+  function exportInvoicesCSV() {
+    const rows = [["Invoice", "Plan", "Period start", "Period end", "Amount (NGN)", "Status", "Issued", "Paid", "Reference"]].concat(
+      invoices.map(i => [
+        i.number, i.plan ?? "",
+        i.period_start ?? "", i.period_end ?? "",
+        (((i.amount_kobo ?? i.amount_cents) ?? 0) / 100).toString(),
+        i.status, i.issued_at, i.paid_at ?? "", i.paystack_reference ?? "",
+      ])
+    );
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a"); a.href = url; a.download = `billing-history-${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
@@ -206,7 +239,7 @@ export default function AdminSubscription() {
       <Tabs defaultValue="plans">
         <TabsList>
           <TabsTrigger value="plans">Plans</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
+          <TabsTrigger value="invoices">Billing history ({invoices.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="plans" className="space-y-4">
@@ -257,13 +290,62 @@ export default function AdminSubscription() {
           </div>
         </TabsContent>
 
-        <TabsContent value="invoices">
+        <TabsContent value="invoices" className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground">Total paid</div>
+              <div className="text-xl font-bold tabular-nums">{formatNaira(invoiceTotals.paidTotal)}</div>
+              <div className="text-xs text-muted-foreground">{invoiceTotals.paidCount} invoice(s)</div>
+            </Card>
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground">Outstanding</div>
+              <div className={`text-xl font-bold tabular-nums ${invoiceTotals.outstanding > 0 ? "text-destructive" : ""}`}>{formatNaira(invoiceTotals.outstanding)}</div>
+              <div className="text-xs text-muted-foreground">{invoiceTotals.openCount} open</div>
+            </Card>
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground">Last payment</div>
+              <div className="text-sm font-semibold">
+                {invoices.find(i => i.paid_at)?.paid_at
+                  ? new Date(invoices.find(i => i.paid_at)!.paid_at!).toLocaleDateString()
+                  : "—"}
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground">Next billing</div>
+              <div className="text-sm font-semibold">{nextBilling ? nextBilling.toLocaleDateString() : "—"}</div>
+            </Card>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 justify-between">
+            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input className="pl-9 h-9" placeholder="Search invoice or plan…" value={invQ} onChange={e => setInvQ(e.target.value)} />
+              </div>
+              <Select value={invStatus} onValueChange={v => setInvStatus(v as any)}>
+                <SelectTrigger className="w-[140px] h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="void">Void</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" size="sm" onClick={exportInvoicesCSV} disabled={invoices.length === 0}>
+              <Download className="size-4 mr-1" /> Export CSV
+            </Button>
+          </div>
+
           <Card className="overflow-hidden">
             {invoices.length === 0 ? (
               <div className="p-10 text-center text-sm text-muted-foreground">
                 <Receipt className="size-8 mx-auto mb-2 opacity-50" />
                 No subscription invoices yet. Pick a plan to get started.
               </div>
+            ) : filteredInvoices.length === 0 ? (
+              <div className="p-10 text-center text-sm text-muted-foreground">No invoices match your filters.</div>
             ) : (
               <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead className="text-xs text-muted-foreground border-b">
@@ -273,11 +355,13 @@ export default function AdminSubscription() {
                     <th className="text-left px-3 py-2">Period</th>
                     <th className="text-right px-3 py-2">Amount</th>
                     <th className="text-left px-3 py-2">Status</th>
+                    <th className="text-left px-3 py-2">Issued</th>
+                    <th className="text-left px-3 py-2">Paid</th>
                     <th className="px-4 py-2"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {invoices.map(inv => {
+                  {filteredInvoices.map(inv => {
                     const amt = inv.amount_kobo ?? inv.amount_cents;
                     return (
                       <tr key={inv.id} className="border-b hover:bg-muted/30">
@@ -287,13 +371,31 @@ export default function AdminSubscription() {
                           {inv.period_start ? new Date(inv.period_start).toLocaleDateString() : "—"} → {inv.period_end ? new Date(inv.period_end).toLocaleDateString() : "—"}
                         </td>
                         <td className="px-3 py-3 text-right tabular-nums">{formatNaira(amt)}</td>
-                        <td className="px-3 py-3"><Badge variant={inv.status === "paid" ? "default" : "secondary"} className="capitalize">{inv.status}</Badge></td>
+                        <td className="px-3 py-3">
+                          <Badge
+                            variant={inv.status === "paid" ? "default" : inv.status === "failed" ? "destructive" : "secondary"}
+                            className="capitalize"
+                          >
+                            {inv.status}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-3 text-muted-foreground text-xs">{inv.issued_at ? new Date(inv.issued_at).toLocaleDateString() : "—"}</td>
+                        <td className="px-3 py-3 text-muted-foreground text-xs">{inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : "—"}</td>
                         <td className="px-4 py-3 text-right">
-                          {inv.status === "open" && (
-                            <Button size="sm" disabled={busy === inv.id} onClick={() => reopen(inv)}>
-                              {busy === inv.id ? "…" : "Pay now"}
-                            </Button>
-                          )}
+                          <div className="flex justify-end gap-2">
+                            {inv.status === "open" && (
+                              <Button size="sm" disabled={busy === inv.id} onClick={() => reopen(inv)}>
+                                <CreditCard className="size-3.5 mr-1" />
+                                {busy === inv.id ? "…" : "Pay now"}
+                              </Button>
+                            )}
+                            {inv.status === "failed" && (
+                              <Button size="sm" variant="outline" disabled={busy === inv.id} onClick={() => reopen(inv)}>
+                                <RefreshCw className="size-3.5 mr-1" />
+                                {busy === inv.id ? "…" : "Retry"}
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
