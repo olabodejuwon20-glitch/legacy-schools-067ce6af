@@ -515,7 +515,7 @@ export default function Workspace() {
       )}
 
       {/* Invite dialog */}
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setSlotChoice(""); setLastLink(null); } }}>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setSlotChoice(""); setLastLink(null); setInviteEmail(""); setEmailSent(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Invite a collaborator</DialogTitle>
