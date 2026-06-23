@@ -46,6 +46,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     label: "Academics",
     items: [
       { key: "classes", label: "Classes", editable: true },
+      { key: "academic", label: "Academic structure (classes, arms, subjects, promotion)", editable: true },
       { key: "timetable", label: "Timetable", editable: true },
       { key: "attendance", label: "Attendance", editable: true },
       { key: "lesson-notes", label: "Lesson notes (approve)", editable: true },
