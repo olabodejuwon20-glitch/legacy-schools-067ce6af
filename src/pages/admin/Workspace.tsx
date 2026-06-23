@@ -520,7 +520,7 @@ export default function Workspace() {
           <DialogHeader>
             <DialogTitle>Invite a collaborator</DialogTitle>
             <DialogDescription>
-              Generate a one-time link. Share it with the person you want to add — they'll join with the role you pick.
+              Pick a role and (optionally) an email. We'll generate a one-time link and email it directly to them.
             </DialogDescription>
           </DialogHeader>
 
@@ -528,9 +528,11 @@ export default function Workspace() {
             <div className="space-y-3">
               <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm">
                 <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium">
-                  <Check className="size-4" /> Link copied to clipboard
+                  <Check className="size-4" /> {emailSent ? "Invite emailed & link copied" : "Link copied to clipboard"}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Send this to your teammate. It works once.</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {emailSent ? "We sent the invite to your teammate. The link also works once if you'd like to share it manually." : "Send this to your teammate. It works once."}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <Input readOnly value={lastLink} className="font-mono text-xs" />
@@ -539,7 +541,7 @@ export default function Workspace() {
                 </Button>
               </div>
               <DialogFooter className="gap-2 sm:gap-2">
-                <Button variant="outline" onClick={() => { setLastLink(null); setSlotChoice(""); }}>
+                <Button variant="outline" onClick={() => { setLastLink(null); setSlotChoice(""); setInviteEmail(""); setEmailSent(false); }}>
                   Create another
                 </Button>
                 <Button onClick={() => setOpen(false)}>Done</Button>
@@ -574,11 +576,26 @@ export default function Workspace() {
                   </p>
                 )}
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Mail className="size-3.5" /> Email (optional)
+                </Label>
+                <Input
+                  type="email"
+                  placeholder="teammate@school.edu"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  disabled={busy || !slotChoice}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Leave blank to only get a shareable link. With an email, we'll send the invite directly after the role is set.
+                </p>
+              </div>
               <DialogFooter className="gap-2 sm:gap-2">
                 <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
                 <Button onClick={createInvite} disabled={busy || !slotChoice}>
                   {busy ? <Loader2 className="size-4 animate-spin mr-2" /> : <Link2 className="size-4 mr-2" />}
-                  Create invite link
+                  {inviteEmail.trim() ? "Send invite" : "Create invite link"}
                 </Button>
               </DialogFooter>
             </div>
