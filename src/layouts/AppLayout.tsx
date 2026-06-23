@@ -252,7 +252,7 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: enabledModules } = useEnabledModules(school?.id);
-  const { isFullAdmin, allowed } = useAdminPermissions();
+  const { isFullAdmin, allowed, slotRow } = useAdminPermissions();
 
   useEffect(() => {
     if (school?.id) warmSchoolCache(school.id, activeRole);
@@ -278,8 +278,10 @@ export default function AppLayout() {
         .map(({ label, to, icon }) => ({ label, to, icon }))
     : NAV[activeRole];
   // Restrict sidebar for slotted (sub-)admins. Dashboard ("") and absolute paths stay visible.
+  // Billing reuses the `subscription` permission key.
+  const permKeyFor = (to: string) => (to === "billing" ? "subscription" : to);
   const filteredItems = activeRole === "admin" && !isFullAdmin
-    ? items.filter(it => it.to === "" || it.to.startsWith("/") || allowed.has(it.to))
+    ? items.filter(it => it.to === "" || it.to.startsWith("/") || allowed.has(permKeyFor(it.to)))
     : items;
   // Group items into sections preserving the role-defined order within each group.
   const grouped = new Map<string, typeof items>();
@@ -297,6 +299,10 @@ export default function AppLayout() {
   ];
   const userLabel = displayName || email || "User";
   const initials = userLabel.split(/[\s@]/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase();
+  // Show the slot's assigned role name for sub-admins, otherwise the portal role.
+  const roleLabel = activeRole === "admin" && !isFullAdmin && slotRow?.name
+    ? slotRow.name
+    : activeRole;
 
   const { pathname } = useLocation();
 
