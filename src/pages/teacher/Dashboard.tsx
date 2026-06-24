@@ -65,7 +65,7 @@ export default function TeacherDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl sm:text-2xl font-bold">Good morning, {displayName?.split(" ")[0] || "Teacher"}! 👋</h2>
+          <h2 className="font-display text-xl sm:text-2xl font-bold">Good morning, {displayName?.split(" ")[0] || "Teacher"}!&nbsp;</h2>
           <p className="text-sm text-muted-foreground">Here's what's happening in your classes today.</p>
         </div>
         <div className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border bg-card"><Calendar className="size-3.5 text-muted-foreground" />{new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</div>
