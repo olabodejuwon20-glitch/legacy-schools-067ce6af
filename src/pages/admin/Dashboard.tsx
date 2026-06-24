@@ -173,7 +173,7 @@ export default function AdminDashboard() {
                 <tr key={s.user_id} className="border-b border-border last:border-0">
                   <td className="py-3 text-muted-foreground">{i + 1}</td>
                   <td className="font-medium">{s.profile?.full_name || s.profile?.email?.split("@")[0] || "—"}</td>
-                  <td className="text-muted-foreground">{s.profile?.email || "—"}</td>
+                  <td className="text-muted-foreground">{(s.profile?.email && /@members\.edusmart\.local$/i.test(s.profile.email)) ? "\n" : (s.profile?.email || "—")}</td>
                   <td className="text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</td>
                   <td><span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success">Active</span></td>
                 </tr>
