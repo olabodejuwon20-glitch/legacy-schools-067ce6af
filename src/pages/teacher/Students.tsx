@@ -49,13 +49,13 @@ export default function TeacherStudents() {
   return (
     <SectionCard title="My Students" description={`${filtered.length} of ${rows.length}`}
       action={
-        <div className="flex gap-2">
-          <div className="relative">
+        <div className="flex gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search" className="pl-8 w-[200px]" />
+            <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search" className="pl-8 w-full sm:w-[200px]" />
           </div>
           <Select value={classId} onValueChange={setClassId}>
-            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[130px] sm:w-[160px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All classes</SelectItem>
               {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.code}</SelectItem>)}
