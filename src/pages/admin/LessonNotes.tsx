@@ -96,7 +96,7 @@ export default function AdminLessonNotes() {
       >
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
           <TabsList>
-            <TabsTrigger value="pending">Pending ({counts.pending})</TabsTrigger>
+            <TabsTrigger value="pending">&nbsp;Pending({counts.pending})</TabsTrigger>
             <TabsTrigger value="approved">Approved ({counts.approved})</TabsTrigger>
             <TabsTrigger value="rejected">Rejected ({counts.rejected})</TabsTrigger>
             <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
