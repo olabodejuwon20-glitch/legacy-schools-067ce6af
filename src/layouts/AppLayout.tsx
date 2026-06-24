@@ -6,7 +6,7 @@ import {
   Wallet, Activity, Sun, Moon, Search, Menu, LogOut, UserSquare2, ListChecks, PencilRuler,
   Building2, Ticket, Upload, Bus, Megaphone, NotebookPen, FolderOpen, UserCog,
   BookOpenCheck, ClipboardList, BarChart3, Award, Mail, Inbox as InboxIcon,
-  Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine, Receipt,
+  Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine, Receipt, Layers,
 } from "lucide-react";
 import { ROLE_META, Role, useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
