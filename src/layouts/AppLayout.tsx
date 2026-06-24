@@ -72,7 +72,7 @@ const SECTION_OF: Record<string, string> = {
   // System
   "settings": "System", "modules": "System", "roles": "System", "/app/help": "System",
   "workspace": "System",
-  "academic-setup": "System", "exam-appeals": "Assessments",
+  "academic-setup": "System", "academic": "Academics", "exam-appeals": "Assessments",
 };
 
 const SECTION_ORDER = [
