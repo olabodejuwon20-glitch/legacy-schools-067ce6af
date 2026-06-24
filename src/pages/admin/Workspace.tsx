@@ -76,8 +76,7 @@ function displayContact(r: { email: string | null; phone: string | null }) {
   if (r.email && !isSyntheticEmail(r.email)) return r.email;
   if (r.phone) return r.phone;
   if (r.email && isSyntheticEmail(r.email)) {
-    const match = r.email.match(/^p(\d+)\./);
-    if (match) return match[1] + "\u00a0";
+    return "\n";
   }
   return "—";
 }
@@ -373,7 +372,7 @@ export default function Workspace() {
               <thead className="text-[11px] uppercase tracking-wider text-muted-foreground bg-muted/20">
                 <tr>
                   <th className="text-left font-medium px-4 py-2.5">Name</th>
-                  <th className="text-left font-medium px-4 py-2.5">Email</th>
+                  <th className="text-left font-medium px-4 py-2.5">Class</th>
                   <th className="text-left font-medium px-4 py-2.5">Role</th>
                   <th className="px-2 py-2.5 w-10"></th>
                 </tr>
