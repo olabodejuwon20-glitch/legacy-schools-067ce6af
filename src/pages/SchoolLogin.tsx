@@ -59,7 +59,7 @@ export default function SchoolLogin() {
             <Input required type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+233 555 000 000" /></div>
           <div className="space-y-2"><Label className="flex items-center gap-1.5"><KeyRound className="size-3.5"/>6-digit PIN</Label>
             <Input required inputMode="numeric" pattern="\d{6}" maxLength={6} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,""))} placeholder="••••••" />
-            <p className="text-[11px] text-muted-foreground">First sign-in with default PIN 123456? You'll be asked to set a new one.</p></div>
+            <p className="text-[11px] text-muted-foreground">{"\u00a0"}</p></div>
           <Button type="submit" className="w-full" disabled={busy}>{busy && <Loader2 className="size-4 animate-spin mr-1.5"/>}Sign in</Button>
           <p className="text-xs text-muted-foreground text-center">First time?{" "}
             <Link to={schoolPath(school.slug, "/join")} className="text-primary font-medium">Use your onboarding code</Link></p>
