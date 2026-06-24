@@ -197,7 +197,7 @@ export default function QuestionBank() {
           <div className="flex items-center gap-2">
             <input ref={fileRef} type="file" accept=".csv,.json" className="hidden" onChange={onImport} />
             <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="size-3.5 mr-1.5" /> Import CSV / JSON</Button>
-            <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-3.5 mr-1.5" /> Add</Button>
+            <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-3.5 mr-1.5" /> +Add</Button>
           </div>
         }
       >
