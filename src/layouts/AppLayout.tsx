@@ -280,9 +280,15 @@ export default function AppLayout() {
     : NAV[activeRole];
   // Restrict sidebar for slotted (sub-)admins. Dashboard ("") and absolute paths stay visible.
   // Billing reuses the `subscription` permission key.
+  // Billing shares the `subscription` gate; academic structure is unlocked by either
+  // the new `academic` permission or the legacy `classes` permission.
   const permKeyFor = (to: string) => (to === "billing" ? "subscription" : to);
   const filteredItems = activeRole === "admin" && !isFullAdmin
-    ? items.filter(it => it.to === "" || it.to.startsWith("/") || allowed.has(permKeyFor(it.to)))
+    ? items.filter(it => {
+        if (!it.to || it.to.startsWith("/")) return true;
+        if (it.to === "academic") return allowed.has("academic") || allowed.has("classes");
+        return allowed.has(permKeyFor(it.to));
+      })
     : items;
   // Group items into sections preserving the role-defined order within each group.
   const grouped = new Map<string, typeof items>();
