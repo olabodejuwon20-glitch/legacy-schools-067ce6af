@@ -81,7 +81,7 @@ export default function BulkUpload() {
         {rows.length > 0 && (
           <div className="rounded-lg border border-border overflow-hidden max-h-64 overflow-y-auto">
             <div className="overflow-x-auto"><table className="w-full text-sm">
-            <thead className="bg-muted/60"><tr><th className="text-left p-2">Name</th><th className="text-left p-2">Phone</th><th className="text-left p-2">PIN</th><th className="text-left p-2">Status</th></tr></thead>
+            <thead className="bg-muted/60"><tr><th className="text-left p-2">Name{"\u00a0 \u00a0\u00a0"}</th><th className="text-left p-2">Phone</th><th className="text-left p-2">PIN</th><th className="text-left p-2">Status</th></tr></thead>
               <tbody>{rows.map((r,i)=>{
                 const res = results?.find(x => x.phone === r.phone.replace(/[^\d+]/g,""));
                 return <tr key={i} className="border-t border-border"><td className="p-2">{r.full_name}</td><td className="p-2 font-mono text-xs">{r.phone}</td>
