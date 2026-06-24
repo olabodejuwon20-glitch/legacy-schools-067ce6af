@@ -476,6 +476,8 @@ function AdminPermissionGuard() {
   const rest = pathname.slice(prefix.length).replace(/^\//, "").split("/")[0];
   if (!rest) return null; // dashboard always visible
   if (rest === "roles") return <Navigate to={prefix} replace />; // full-admin only
+  if (rest === "billing") return allowed.has("subscription") ? null : <Navigate to={prefix} replace />;
+  if (rest === "academic") return (allowed.has("academic") || allowed.has("classes")) ? null : <Navigate to={prefix} replace />;
   if (allowed.has(rest)) return null;
   return <Navigate to={prefix} replace />;
 }
