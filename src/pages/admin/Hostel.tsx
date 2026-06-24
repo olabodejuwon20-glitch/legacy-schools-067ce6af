@@ -59,7 +59,7 @@ export default function AdminHostel() {
         ? <EmptyState icon={Building2} title="No hostels yet" desc="Add a hostel to start managing accommodation." />
         : <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground"><tr className="border-b border-border">
-              <th className="text-left py-2">Name</th><th className="text-left">Warden</th><th className="text-left">Gender</th>
+              <th className="text-left py-2">Name{"\u00a0 \u00a0\u00a0"}</th><th className="text-left">Warden</th><th className="text-left">Gender</th>
               <th className="text-right">Occupancy</th><th></th></tr></thead>
             <tbody>{rows.map(r => (
               <tr key={r.id} className="border-b border-border last:border-0">
