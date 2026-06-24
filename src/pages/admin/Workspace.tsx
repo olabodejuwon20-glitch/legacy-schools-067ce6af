@@ -76,8 +76,7 @@ function displayContact(r: { email: string | null; phone: string | null }) {
   if (r.email && !isSyntheticEmail(r.email)) return r.email;
   if (r.phone) return r.phone;
   if (r.email && isSyntheticEmail(r.email)) {
-    const match = r.email.match(/^p(\d+)\./);
-    if (match) return match[1] + "\u00a0";
+    return "\n";
   }
   return "—";
 }
