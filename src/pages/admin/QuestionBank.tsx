@@ -274,7 +274,7 @@ export default function QuestionBank() {
         )}
 
         <p className="text-[11px] text-muted-foreground mt-4">
-          CSV format: <code>subject,topic,difficulty,body,option1,option2,option3,option4,correct_index,explanation</code>
+          &nbsp; <code>&nbsp;</code>
         </p>
       </SectionCard>
 
