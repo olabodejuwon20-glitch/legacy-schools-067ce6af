@@ -49,7 +49,7 @@ export default function SchoolHome() {
           <SchoolBadge name={school.name} logoUrl={school.logo_url} subtitle="Welcome to your school portal" />
           <div className="text-center -mt-2">
             <div className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground border border-border">
-              <Building2 className="size-3.5 text-primary" /> {buildSchoolUrl(school.slug, "")}
+              <Building2 className="size-3.5 text-primary" /> {"\u00a0"}
             </div>
           </div>
         </div>
