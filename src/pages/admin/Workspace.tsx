@@ -371,7 +371,7 @@ export default function Workspace() {
             <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="text-[11px] uppercase tracking-wider text-muted-foreground bg-muted/20">
                 <tr>
-                  <th className="text-left font-medium px-4 py-2.5">Name</th>
+                  <th className="text-left font-medium px-4 py-2.5">Name{"\u00a0 \u00a0\u00a0"}</th>
                   <th className="text-left font-medium px-4 py-2.5">Class</th>
                   <th className="text-left font-medium px-4 py-2.5">Role</th>
                   <th className="px-2 py-2.5 w-10"></th>
