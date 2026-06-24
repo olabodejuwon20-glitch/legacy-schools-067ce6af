@@ -56,7 +56,7 @@ export default function SignIn() {
           <h2 className="font-display text-4xl font-bold leading-tight">Welcome back, Admin</h2>
           <p className="text-white/85">Sign in to manage your school portal.</p>
           <div className="text-xs text-white/70 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur">
-            <Building2 className="size-3.5" /> Admins only — staff & students sign in from their school URL.
+            {"\u00a0"}
           </div>
         </div>
         <div className="relative text-xs opacity-70">© 2026 Legacyskool</div>
