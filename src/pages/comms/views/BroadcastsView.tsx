@@ -90,11 +90,14 @@ export default function BroadcastsView() {
   };
 
   return (
-    <div className="h-full overflow-auto p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold flex items-center gap-2"><Radio className="size-6"/> Broadcast Center</h1>
+    <div className="h-full overflow-auto p-4 sm:p-6 max-w-5xl mx-auto">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h1 className="text-xl sm:text-2xl font-semibold flex items-center gap-2 min-w-0">
+          <Radio className="size-5 sm:size-6 shrink-0"/>
+          <span className="truncate">Broadcast Center</span>
+        </h1>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="size-4 mr-1"/> New Broadcast</Button></DialogTrigger>
+          <DialogTrigger asChild><Button size="sm" className="shrink-0"><Plus className="size-4 mr-1"/> New Broadcast</Button></DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>New broadcast</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -135,11 +138,11 @@ export default function BroadcastsView() {
       <div className="space-y-2">
         {jobs.map((j) => (
           <div key={j.id} className="rounded-xl border bg-card p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="font-semibold">{j.title}</div>
-              <Badge variant="secondary" className="ml-auto capitalize">{j.status}</Badge>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <div className="font-semibold min-w-0 truncate">{j.title}</div>
+              <Badge variant="secondary" className="capitalize">{j.status}</Badge>
               {(j.status === "draft" || j.status === "scheduled") && (
-                <Button size="sm" variant="outline" disabled={sendingId === j.id} onClick={() => sendNow(j.id)}>
+                <Button size="sm" variant="outline" className="ml-auto" disabled={sendingId === j.id} onClick={() => sendNow(j.id)}>
                   {sendingId === j.id ? <Loader2 className="size-3.5 animate-spin"/> : <Send className="size-3.5"/>}
                   <span className="ml-1">Send now</span>
                 </Button>
