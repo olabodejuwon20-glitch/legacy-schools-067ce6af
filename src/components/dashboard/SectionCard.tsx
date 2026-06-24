@@ -14,7 +14,7 @@ export function SectionCard({ title, action, children, className, description }:
     <section className={cn("rounded-xl bg-card border border-border shadow-card", className)}>
       <header className="flex items-center justify-between px-5 py-4 border-b border-border">
         <div>
-          <h3 className="font-display font-semibold">{title}</h3>
+          <h3 className="font-display font-semibold whitespace-pre-line">{title === "Question Bank" ? "Question\u00a0\u00a0\nbanks" : title}</h3>
           {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
         {action}

@@ -196,7 +196,7 @@ export default function QuestionBank() {
         action={
           <div className="flex items-center gap-2">
             <input ref={fileRef} type="file" accept=".csv,.json" className="hidden" onChange={onImport} />
-            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="size-3.5 mr-1.5" /> Import CSV / JSON</Button>
+            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="size-3.5 mr-1.5" /> Import PDF/CSV{"\u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0\u00a0"}</Button>
             <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-3.5 mr-1.5" /> +Add</Button>
           </div>
         }
@@ -273,8 +273,8 @@ export default function QuestionBank() {
           </ul>
         )}
 
-        <p className="text-[11px] text-muted-foreground mt-4">
-          CSV format: <code>subject,topic,difficulty,body,option1,option2,option3,option4,correct_index,explanation</code>
+        <p className="text-[11px] text-muted-foreground mt-4 whitespace-pre-line">
+          {"\n"}<code></code>
         </p>
       </SectionCard>
 
