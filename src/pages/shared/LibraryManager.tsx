@@ -103,7 +103,7 @@ export default function LibraryManager() {
       </SectionCard>}
 
       <SectionCard
-        title="All resources"
+        title="Materials"
         action={
           <div className="flex gap-2 items-center">
             <div className="relative">
