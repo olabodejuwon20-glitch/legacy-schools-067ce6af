@@ -168,7 +168,7 @@ export default function AdminDashboard() {
           ? <EmptyState icon={Users} title="No students yet" desc="Generate invite codes to onboard students." />
           : <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground"><tr className="border-b border-border">
-                <th className="text-left py-2 w-12">#</th><th className="text-left">Name</th><th className="text-left">Email</th><th className="text-left">Joined</th><th className="text-left">Status</th></tr></thead>
+                <th className="text-left py-2 w-12">#</th><th className="text-left">Name</th><th className="text-left">Class</th><th className="text-left">Joined</th><th className="text-left">Status</th></tr></thead>
               <tbody>{recentStudents.map((s, i) => (
                 <tr key={s.user_id} className="border-b border-border last:border-0">
                   <td className="py-3 text-muted-foreground">{i + 1}</td>
