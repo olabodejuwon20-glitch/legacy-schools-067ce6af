@@ -58,7 +58,7 @@ export default function Landing() {
 
   // The 5 core pillars, in priority order.
   const pillars = [
-    { n: "01", icon: ListChecks,    title: "CBT & exam simulation",       desc: "Run school exams and JAMB / NECO / WAEC mocks online — auto-graded, with real past questions via the ALOC bank." },
+    { n: "01", icon: ListChecks,    title: "CBT & exam simulation",       desc: "Run school exams and JAMB / NECO / WAEC mocks online — auto-graded, with real past questions\u00a0\u00a0" },
     { n: "02", icon: ClipboardCheck, title: "Attendance & student records", desc: "Daily attendance, classes, enrollments and a single source of truth for every student." },
     { n: "03", icon: Award,         title: "Digital CA, tests & results",  desc: "Continuous assessment, term tests, automated report cards and QR-verifiable result slips." },
     { n: "04", icon: Wallet,        title: "Online payments",             desc: "Issue invoices, collect fees online via Paystack, track collections and reconcile in one place." },
@@ -118,8 +118,12 @@ export default function Landing() {
           style={{ backgroundImage: "radial-gradient(circle at 15% 10%, hsl(var(--admin)/0.25), transparent 40%), radial-gradient(circle at 85% 0%, hsl(var(--student)/0.25), transparent 45%), radial-gradient(circle at 50% 100%, hsl(var(--teacher)/0.2), transparent 50%)" }} />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-14 sm:pb-16 grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full bg-secondary/80 text-secondary-foreground border border-border">
-              <Sparkles className="size-3.5 text-primary" /> Built for African schools
+            <div className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-xl bg-secondary/80 text-secondary-foreground border border-border">
+              <Sparkles className="size-3.5 text-primary" />
+              <div className="text-left">
+                The complete school operating system<br />
+                Built for African schools
+              </div>
             </div>
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mt-6 leading-[1.05] text-left px-0 my-0 py-0 break-words">
               Exams, attendance, results and fees —<br />
@@ -132,15 +136,15 @@ export default function Landing() {
               <Button size="lg" asChild>
                  <a href={mailtoOnboard()}>Request Onboarding <ArrowRight className="size-4 ml-1.5" /></a>
               </Button>
-               <Button size="lg" variant="outline" onClick={() => navigate("/register")}>
-                 Register
+               <Button size="lg" variant="outline" onClick={() => navigate("/signin")}>
+                 Sign in
               </Button>
                <Button size="lg" variant="ghost" asChild>
                  <Link to="/refer">Refer a School</Link>
                </Button>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-success" /> Pilot pricing available</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-success" /> Fair pricing model</span>
               <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-success" /> Setup in minutes</span>
               <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-success" /> Onboarding support included</span>
             </div>
@@ -429,7 +433,7 @@ export default function Landing() {
           <p className="mt-3 text-white/90 max-w-xl mx-auto">Pilot pricing is open. Talk to our team or sign up and start exploring today.</p>
           <div className="mt-7 flex flex-wrap gap-3 justify-center">
             <Button size="lg" variant="secondary" asChild><a href={mailtoOnboard()}>Request Onboarding <ArrowRight className="size-4 ml-1.5" /></a></Button>
-            <Button size="lg" variant="outline" className="bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white" onClick={() => navigate("/register")}>Register</Button>
+            <Button size="lg" variant="outline" className="bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white" onClick={() => navigate("/signin")}>Sign in</Button>
             <Button size="lg" variant="ghost" className="text-white hover:bg-white/10 hover:text-white" asChild><Link to="/refer">Refer a School</Link></Button>
           </div>
         </div>
