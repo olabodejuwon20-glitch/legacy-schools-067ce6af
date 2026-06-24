@@ -61,7 +61,7 @@ export default function SchoolAdminLogin() {
           <ShieldCheck className="size-3" /> Admin only
         </div>
         </div>
-        <p className="text-xs text-muted-foreground text-center mb-2">{buildSchoolUrl(school.slug, "")}</p>
+        <p className="text-xs text-muted-foreground text-center mb-2">{"\u00a0"}</p>
         <form onSubmit={submit} className="mt-6 space-y-4">
           <div className="space-y-2"><Label className="flex items-center gap-1.5"><Mail className="size-3.5"/>Email</Label>
             <Input required type="email" value={email} onChange={e=>setEmail(e.target.value)} /></div>
