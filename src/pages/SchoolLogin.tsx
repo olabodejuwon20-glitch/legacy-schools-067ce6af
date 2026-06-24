@@ -53,7 +53,7 @@ export default function SchoolLogin() {
           <ArrowLeft className="size-3.5" /> Back
         </Link>
         <SchoolBadge name={school.name} logoUrl={school.logo_url} subtitle="Sign in to your portal" />
-        <p className="text-sm text-muted-foreground text-center -mt-3 mb-2">{buildSchoolUrl(school.slug, "")}</p>
+        <p className="text-sm text-muted-foreground text-center -mt-3 mb-2">{"\u00a0"}</p>
         <form onSubmit={submit} className="mt-6 space-y-4">
           <div className="space-y-2"><Label className="flex items-center gap-1.5"><Phone className="size-3.5"/>Phone number</Label>
             <Input required type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+233 555 000 000" /></div>
