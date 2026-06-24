@@ -6,7 +6,7 @@ import {
   Wallet, Activity, Sun, Moon, Search, Menu, LogOut, UserSquare2, ListChecks, PencilRuler,
   Building2, Ticket, Upload, Bus, Megaphone, NotebookPen, FolderOpen, UserCog,
   BookOpenCheck, ClipboardList, BarChart3, Award, Mail, Inbox as InboxIcon,
-  Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine, Receipt,
+  Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine, Receipt, Layers,
 } from "lucide-react";
 import { ROLE_META, Role, useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
@@ -72,7 +72,7 @@ const SECTION_OF: Record<string, string> = {
   // System
   "settings": "System", "modules": "System", "roles": "System", "/app/help": "System",
   "workspace": "System",
-  "academic-setup": "System", "exam-appeals": "Assessments",
+  "academic-setup": "System", "academic": "Academics", "exam-appeals": "Assessments",
 };
 
 const SECTION_ORDER = [
@@ -108,6 +108,7 @@ const NAV: Record<Role, { label: string; to: string; icon: any }[]> = {
     { label: "Teachers",  to: "teachers",  icon: GraduationCap },
     { label: "Parents",   to: "parents",   icon: UserSquare2 },
     { label: "Classes",   to: "classes",   icon: BookOpen },
+    { label: "Academic Structure", to: "academic", icon: Layers },
     { label: "Timetable", to: "timetable", icon: Calendar },
     { label: "Attendance", to: "attendance", icon: ClipboardCheck },
     { label: "Library",   to: "library",   icon: Library },
@@ -279,9 +280,15 @@ export default function AppLayout() {
     : NAV[activeRole];
   // Restrict sidebar for slotted (sub-)admins. Dashboard ("") and absolute paths stay visible.
   // Billing reuses the `subscription` permission key.
+  // Billing shares the `subscription` gate; academic structure is unlocked by either
+  // the new `academic` permission or the legacy `classes` permission.
   const permKeyFor = (to: string) => (to === "billing" ? "subscription" : to);
   const filteredItems = activeRole === "admin" && !isFullAdmin
-    ? items.filter(it => it.to === "" || it.to.startsWith("/") || allowed.has(permKeyFor(it.to)))
+    ? items.filter(it => {
+        if (!it.to || it.to.startsWith("/")) return true;
+        if (it.to === "academic") return allowed.has("academic") || allowed.has("classes");
+        return allowed.has(permKeyFor(it.to));
+      })
     : items;
   // Group items into sections preserving the role-defined order within each group.
   const grouped = new Map<string, typeof items>();
@@ -469,6 +476,8 @@ function AdminPermissionGuard() {
   const rest = pathname.slice(prefix.length).replace(/^\//, "").split("/")[0];
   if (!rest) return null; // dashboard always visible
   if (rest === "roles") return <Navigate to={prefix} replace />; // full-admin only
+  if (rest === "billing") return allowed.has("subscription") ? null : <Navigate to={prefix} replace />;
+  if (rest === "academic") return (allowed.has("academic") || allowed.has("classes")) ? null : <Navigate to={prefix} replace />;
   if (allowed.has(rest)) return null;
   return <Navigate to={prefix} replace />;
 }

@@ -54,6 +54,7 @@ import AdminSubscription from "./pages/admin/Subscription";
 import AdminParents from "./pages/admin/Parents";
 import AdminAttendance from "./pages/admin/Attendance";
 import AdminRoles from "./pages/admin/Roles";
+import AdminAcademic from "./pages/admin/academic/Academic";
 import AdminTradExams from "./pages/admin/TradExams";
 import AdminExamCommittee from "./pages/admin/ExamCommittee";
 import AdminTradExamSession from "./pages/admin/TradExamSession";
@@ -294,6 +295,7 @@ const App = () => (
               <Route path="admin/knowledge" element={<RoleGate allow="admin"><AdminKnowledge /></RoleGate>} />
               <Route path="admin/subscription" element={<RoleGate allow="admin"><AdminSubscription /></RoleGate>} />
               <Route path="admin/billing" element={<RoleGate allow="admin"><AdminSubscription initialTab="invoices" /></RoleGate>} />
+              <Route path="admin/academic" element={<RoleGate allow="admin"><AdminAcademic /></RoleGate>} />
               <Route path="admin/roles" element={<RoleGate allow="admin"><AdminRoles /></RoleGate>} />
               <Route path="admin/trad-exams" element={<RoleGate allow="admin"><AdminTradExams /></RoleGate>} />
               <Route path="admin/exam-committee" element={<RoleGate allow="admin"><AdminExamCommittee /></RoleGate>} />
