@@ -54,6 +54,7 @@ import AdminSubscription from "./pages/admin/Subscription";
 import AdminParents from "./pages/admin/Parents";
 import AdminAttendance from "./pages/admin/Attendance";
 import AdminRoles from "./pages/admin/Roles";
+import AdminAcademic from "./pages/admin/academic/Academic";
 import AdminTradExams from "./pages/admin/TradExams";
 import AdminExamCommittee from "./pages/admin/ExamCommittee";
 import AdminTradExamSession from "./pages/admin/TradExamSession";
