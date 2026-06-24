@@ -66,9 +66,9 @@ export default function TeacherBehavior() {
   return (
     <SectionCard title="Behavior & Conduct" description="Log commendations and incidents — visible to parents by default"
       action={
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="flex-1 sm:flex-none sm:w-[140px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               {TYPES.map(t => <SelectItem key={t.v} value={t.v}>{t.v}</SelectItem>)}

@@ -89,10 +89,10 @@ export default function TeacherAttendance() {
         title="Mark Attendance"
         description="Choose a class and date, tap a status for each student, then save."
         action={
-          <div className="flex flex-wrap gap-2 items-center">
-            <Input type="date" value={date} max={new Date().toISOString().slice(0,10)} onChange={e => setDate(e.target.value)} className="w-[160px]" />
+          <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto">
+            <Input type="date" value={date} max={new Date().toISOString().slice(0,10)} onChange={e => setDate(e.target.value)} className="w-[150px]" />
             <Select value={classId} onValueChange={setClassId}>
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Select class" /></SelectTrigger>
+              <SelectTrigger className="flex-1 min-w-[160px] sm:w-[220px] sm:flex-none"><SelectValue placeholder="Select class" /></SelectTrigger>
               <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.code} · {c.name}</SelectItem>)}</SelectContent>
             </Select>
             <Button onClick={save} disabled={!students.length || saving}>{saving ? "Saving…" : "Save"}</Button>
@@ -108,7 +108,7 @@ export default function TeacherAttendance() {
               <span className="px-2 py-1 rounded-md bg-warning/10 text-warning">Late {counts.late}</span>
               <span className="px-2 py-1 rounded-md bg-muted text-muted-foreground">Excused {counts.excused}</span>
               <span className="px-2 py-1 rounded-md border border-dashed">Unmarked {counts.unmarked}</span>
-              <span className="ml-auto flex gap-2">
+              <span className="ml-auto flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => markAll("present")}>Mark all present</Button>
                 <Button size="sm" variant="ghost" onClick={() => setMarks({})}>Reset</Button>
               </span>
