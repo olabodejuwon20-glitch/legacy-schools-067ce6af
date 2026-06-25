@@ -30,7 +30,7 @@ export default function TeacherTradExams() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Traditional Exam Papers"
+        title="Schools Exam"
         description="Papers assigned to you. Build questions manually or upload a document to extract with AI."
       />
       <SectionCard title="My papers" description="You only see papers where you are listed as the author.">
