@@ -356,12 +356,6 @@ export default function AppLayout() {
         </nav>
 
         <div className="p-3 border-t border-sidebar-border">
-          {!collapsed && (
-            <div className="mb-3 rounded-lg border border-sidebar-border p-3 bg-card/50">
-              <div className="flex items-center gap-2"><Building2 className="size-3.5 text-muted-foreground" /><div className="text-xs font-semibold text-foreground truncate">{school.name}</div></div>
-              <div className="text-[11px] text-muted-foreground truncate">{"\n"}</div>
-            </div>
-          )}
           <div className="flex items-center gap-3 px-1">
             <Avatar className="size-9 border border-sidebar-border ring-2 ring-background">
               {photoUrl && <AvatarImage src={photoUrl} alt={userLabel} />}
