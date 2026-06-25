@@ -35,6 +35,8 @@ export default function MockRunner() {
   const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(Date.now());
   const upsertQueue = useRef<Map<string, { selected_index: number | null; marked: boolean; subject_id: string }>>(new Map());
+  const submittingRef = useRef(false);
+  const autoSubmitFiredRef = useRef(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["mock-runner", sessionId],
@@ -105,9 +107,10 @@ export default function MockRunner() {
   const secondsLeft = Math.max(0, Math.floor((endsAt - now) / 1000));
   const isSubmitted = session?.status === "submitted";
 
-  // Auto-submit on timeout
+  // Auto-submit on timeout (fires exactly once)
   useEffect(() => {
-    if (session && !isSubmitted && secondsLeft === 0 && endsAt > 0) {
+    if (session && !isSubmitted && secondsLeft === 0 && endsAt > 0 && !autoSubmitFiredRef.current) {
+      autoSubmitFiredRef.current = true;
       submit(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,6 +133,31 @@ export default function MockRunner() {
     return () => clearInterval(id);
   }, [sessionId]);
 
+  // Flush pending writes on tab hide / unload so progress is never lost.
+  useEffect(() => {
+    if (!sessionId) return;
+    const flush = () => {
+      if (upsertQueue.current.size === 0) return;
+      const batch = Array.from(upsertQueue.current.entries()).map(([question_id, v]) => ({
+        session_id: sessionId,
+        question_id,
+        subject_id: v.subject_id,
+        selected_index: v.selected_index,
+        marked_for_review: v.marked,
+      }));
+      upsertQueue.current.clear();
+      // fire-and-forget — best effort
+      supabase.from("mock_answers").upsert(batch, { onConflict: "session_id,question_id" }).then(() => {});
+    };
+    const onVis = () => { if (document.visibilityState === "hidden") flush(); };
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [sessionId]);
+
   function setAnswer(qId: string, subjectId: string, patch: Partial<{ selected_index: number | null; marked: boolean }>) {
     setAnswers(prev => {
       const cur = prev[qId] ?? { selected_index: null, marked: false };
@@ -141,29 +169,50 @@ export default function MockRunner() {
 
   async function submit(auto = false) {
     if (!session || isSubmitted) return;
+    if (submittingRef.current) return; // guard against rapid double-clicks
     if (!auto && !confirm("Submit your mock? You won't be able to change your answers.")) return;
+    submittingRef.current = true;
     setSubmitting(true);
+    const toastId = toast.loading(auto ? "Time up — submitting your answers…" : "Submitting your answers…");
     try {
-      // Flush pending writes
+      // Flush pending writes (best-effort; don't block submit if it fails)
       if (upsertQueue.current.size > 0) {
         const batch = Array.from(upsertQueue.current.entries()).map(([question_id, v]) => ({
           session_id: sessionId!, question_id, subject_id: v.subject_id,
           selected_index: v.selected_index, marked_for_review: v.marked,
         }));
         upsertQueue.current.clear();
-        await supabase.from("mock_answers").upsert(batch, { onConflict: "session_id,question_id" });
+        try {
+          await supabase.from("mock_answers").upsert(batch, { onConflict: "session_id,question_id" });
+        } catch { /* will retry inside grading */ }
       }
-      const { data: graded, error: gErr } = await supabase.rpc("grade_mock_session", { _session_id: sessionId!, _auto: auto });
-      if (gErr) throw gErr;
-      const total = (graded as any)?.total_score ?? 0;
-      const totalQ = (graded as any)?.total_questions ?? allQuestions.length;
+
+      // Retry grading up to 3 times with backoff so a flaky connection doesn't lose the attempt.
+      let lastErr: any = null;
+      let graded: any = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const { data, error: gErr } = await supabase.rpc("grade_mock_session", { _session_id: sessionId!, _auto: auto });
+        if (!gErr) { graded = data; lastErr = null; break; }
+        lastErr = gErr;
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 800 * attempt));
+      }
+      if (lastErr) throw lastErr;
+
+      const total = graded?.total_score ?? 0;
+      const totalQ = graded?.total_questions ?? allQuestions.length;
+      toast.dismiss(toastId);
       toast.success(auto ? "Time up — auto-submitted" : `Submitted. Score: ${total}/${totalQ}`);
       nav(schoolPath(slug, `/app/student/mock/${sessionId}/result`));
     } catch (e: any) {
-      toast.error(e.message ?? "Submit failed");
-    } finally {
+      toast.dismiss(toastId);
+      // Keep the button enabled so the student can retry. Don't surface raw RPC errors.
+      toast.error("Couldn't submit yet. Your answers are saved — please tap Submit again.");
+      submittingRef.current = false;
       setSubmitting(false);
+      return;
     }
+    submittingRef.current = false;
+    setSubmitting(false);
   }
 
   if (isLoading || !data) {
@@ -171,6 +220,22 @@ export default function MockRunner() {
   }
   if (!session) {
     return <div className="p-8 text-center text-muted-foreground">Session not found.</div>;
+  }
+  if (!allQuestions.length) {
+    return (
+      <div className="min-h-[60vh] grid place-items-center px-6">
+        <div className="max-w-md text-center space-y-3">
+          <div className="text-lg font-semibold">Questions couldn't load</div>
+          <p className="text-sm text-muted-foreground">
+            We couldn't load any questions for this session. This usually means the question bank is still syncing or your connection dropped briefly.
+          </p>
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+            <Button onClick={() => nav(schoolPath(slug, "/app/student/mock"))}>Back to mocks</Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const ModeIcon = session.mode === "neco_sim" ? Award : GraduationCap;
