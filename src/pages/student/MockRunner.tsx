@@ -221,6 +221,22 @@ export default function MockRunner() {
   if (!session) {
     return <div className="p-8 text-center text-muted-foreground">Session not found.</div>;
   }
+  if (!allQuestions.length) {
+    return (
+      <div className="min-h-[60vh] grid place-items-center px-6">
+        <div className="max-w-md text-center space-y-3">
+          <div className="text-lg font-semibold">Questions couldn't load</div>
+          <p className="text-sm text-muted-foreground">
+            We couldn't load any questions for this session. This usually means the question bank is still syncing or your connection dropped briefly.
+          </p>
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+            <Button onClick={() => nav(schoolPath(slug, "/app/student/mock"))}>Back to mocks</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const ModeIcon = session.mode === "neco_sim" ? Award : GraduationCap;
   const modeLabel = session.mode === "neco_sim" ? "NECO CBT Mock" : "JAMB CBT Mock";
