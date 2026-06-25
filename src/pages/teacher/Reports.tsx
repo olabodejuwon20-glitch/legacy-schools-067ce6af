@@ -37,7 +37,7 @@ export default function TeacherReports() {
   const students = new Set(rs.map(r => r.student_id)).size;
 
   if (rs.length === 0) {
-    return <SectionCard title="Class performance"><EmptyState icon={FileBarChart} title="No results recorded yet" desc="Grade students to see NECO-aligned class analytics." /></SectionCard>;
+    return <SectionCard title="Class performance"><EmptyState icon={FileBarChart} title="No results recorded yet" desc="\u00a0" /></SectionCard>;
   }
 
   const exportPDF = () => {
