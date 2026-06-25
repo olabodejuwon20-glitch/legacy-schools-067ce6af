@@ -132,16 +132,50 @@ export default function MockPicker() {
       const selectedIds = Object.keys(selected).filter(id => selected[id]);
       if (useReal) {
         toast.loading("Loading real past questions…", { id: "aloc" });
-        const { data: fr, error: fe } = await supabase.functions.invoke("fetch-aloc-questions", {
-          body: { school_id: school.id, mode, subject_ids: selectedIds },
+        // Hard 25s timeout so a slow ALOC fetch can never freeze the Start button.
+        const fetchWithTimeout = new Promise<any>((resolve) => {
+          let done = false;
+          const t = setTimeout(() => { if (!done) { done = true; resolve({ timeout: true }); } }, 25_000);
+          supabase.functions
+            .invoke("fetch-aloc-questions", { body: { school_id: school.id, mode, subject_ids: selectedIds } })
+            .then((r) => { if (!done) { done = true; clearTimeout(t); resolve(r); } })
+            .catch((err) => { if (!done) { done = true; clearTimeout(t); resolve({ error: err }); } });
         });
+        const fr: any = await fetchWithTimeout;
         toast.dismiss("aloc");
-        if (fe || (fr as any)?.error) {
+        if (fr?.timeout) {
+          toast.warning("Real past questions took too long — using the practice bank instead.");
+        } else if (fr?.error || fr?.data?.error) {
           toast.warning("Couldn't load real past questions — using practice bank.");
         } else {
-          toast.success(`${(fr as any)?.inserted ?? 0} real past questions loaded.`);
+          const n = fr?.data?.inserted ?? 0;
+          if (n > 0) toast.success(`${n} real past questions loaded.`);
         }
       }
+
+      // Safety check — make sure every selected subject actually has questions available.
+      // Without this, the session opens to a blank "0/0" screen which feels broken.
+      const { data: availability, error: availErr } = await supabase
+        .from("mock_questions")
+        .select("subject_id")
+        .in("subject_id", selectedIds)
+        .limit(2000);
+      if (!availErr) {
+        const counts = new Map<string, number>();
+        for (const r of availability ?? []) {
+          counts.set((r as any).subject_id, (counts.get((r as any).subject_id) ?? 0) + 1);
+        }
+        const empty = selectedIds.filter((id) => (counts.get(id) ?? 0) === 0);
+        if (empty.length) {
+          const names = (subjects ?? [])
+            .filter((s: any) => empty.includes(s.id))
+            .map((s: any) => s.name)
+            .join(", ");
+          toast.error(`No questions available yet for: ${names}. Please pick a different subject or try again in a moment.`);
+          return;
+        }
+      }
+
       const { data: session, error } = await supabase
         .from("mock_sessions")
         .insert({
@@ -163,7 +197,7 @@ export default function MockPicker() {
       qc.invalidateQueries({ queryKey: ["mock-sessions"] });
       nav(schoolPath(school.slug, `/app/student/mock/${session.id}`));
     } catch (e: any) {
-      toast.error(e.message ?? "Could not start session");
+      toast.error("Couldn't start the mock right now. Please check your connection and try again.");
     } finally {
       setStarting(false);
     }
