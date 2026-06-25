@@ -23,7 +23,7 @@ function renderHtml(opts: {
           <p style="margin:0;color:#4b5563;font-size:14px;line-height:1.55">${escapeHtml(opts.inviter_name)} has invited you to join <strong>${escapeHtml(opts.school_name)}</strong> on Legacy Schools as <strong>${escapeHtml(opts.role_name)}</strong>.</p>
         </td></tr>
         <tr><td style="padding:22px 28px 6px" align="center">
-          <a href="${opts.invite_url}" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600;font-size:14px">Accept invitation</a>
+          <a href="${escapeHtml(opts.invite_url)}" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600;font-size:14px">Accept invitation</a>
         </td></tr>
         <tr><td style="padding:6px 28px 22px">
           <p style="margin:14px 0 4px;color:#6b7280;font-size:12px">Or use this one-time code on the join page:</p>
@@ -55,6 +55,26 @@ Deno.serve(async (req) => {
     if (!to || !invite_url || !code) return json({ error: "missing_params" }, 400);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json({ error: "invalid_email" }, 400);
 
+    // Validate invite_url is a safe http(s) URL
+    let parsedUrl: URL;
+    try { parsedUrl = new URL(invite_url); } catch { return json({ error: "invalid_invite_url" }, 400); }
+    if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+      return json({ error: "invalid_invite_url" }, 400);
+    }
+
+    // Authorization: caller must be an active admin of the school owning this invite code.
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: inviteRow, error: inviteErr } = await admin
+      .from("invite_codes")
+      .select("school_id, role")
+      .eq("code", code)
+      .maybeSingle();
+    if (inviteErr || !inviteRow) return json({ error: "invalid_code" }, 400);
+    const { data: isAdmin } = await admin.rpc("is_school_admin", {
+      _school: inviteRow.school_id, _user: user.id,
+    } as any);
+    if (!isAdmin) return json({ error: "forbidden" }, 403);
+
     const subject = `You're invited to ${school_name || "the workspace"} as ${role_name || "an admin"}`;
     const html = renderHtml({
       invite_url, code,
@@ -63,8 +83,6 @@ Deno.serve(async (req) => {
       inviter_name: inviter_name || "Your colleague",
     });
     const text = `${inviter_name || "A colleague"} invited you to join ${school_name || "the workspace"} as ${role_name || "Admin"}.\n\nAccept: ${invite_url}\nOr use code: ${code}\n`;
-
-    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     // 1) Try Lovable Emails queue (preferred when email infra is set up)
     try {
