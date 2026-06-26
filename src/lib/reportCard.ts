@@ -17,6 +17,7 @@ export type ReportCardData = {
   schoolMotto?: string | null;
   schoolLogo?: string | null;
   schoolAddress?: string | null;
+  theme?: ReportTheme | null;
   term: string;
   session?: string | null;
   studentName: string;
@@ -33,6 +34,24 @@ export type ReportCardData = {
   nextTermBegins?: string | null;
 };
 
+export type ReportTheme = {
+  primary?: string;
+  accent?: string;
+  gradientFrom?: string;
+  gradientTo?: string;
+};
+
+export const DEFAULT_REPORT_THEME: Required<ReportTheme> = {
+  primary: "#1e3a8a",
+  accent: "#3b82f6",
+  gradientFrom: "#0f172a",
+  gradientTo: "#3b82f6",
+};
+
+function safeColor(v: unknown, fallback: string): string {
+  return typeof v === "string" && /^#[0-9a-fA-F]{3,8}$/.test(v) ? v : fallback;
+}
+
 /**
  * Premium branded report card. Opens a print window with a fully styled,
  * paginated HTML report using the school's logo, name and motto.
@@ -42,6 +61,12 @@ export function openPremiumReportCard(data: ReportCardData) {
   const w = window.open("", "_blank", "width=1000,height=820");
   if (!w) return;
   const e = escapeHtml;
+  const t = {
+    primary: safeColor(data.theme?.primary, DEFAULT_REPORT_THEME.primary),
+    accent: safeColor(data.theme?.accent, DEFAULT_REPORT_THEME.accent),
+    gradientFrom: safeColor(data.theme?.gradientFrom, DEFAULT_REPORT_THEME.gradientFrom),
+    gradientTo: safeColor(data.theme?.gradientTo, DEFAULT_REPORT_THEME.gradientTo),
+  };
   const rows = data.subjects.map((s, i) => `
     <tr class="${i % 2 ? "alt" : ""}">
       <td class="subj">${e(s.subject)}</td>
