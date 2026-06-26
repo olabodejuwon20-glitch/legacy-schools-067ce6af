@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, FilePlus2, Library, Shuffle, Eye, Award, GraduationCap, Sparkles } from "lucide-react";
+import { Plus, Trash2, FilePlus2, Library, Shuffle, Eye, Award, GraduationCap, Sparkles, Send, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -38,6 +38,7 @@ export default function TestBuilder() {
   const [showAnswersAfterEach, setShowAnswersAfterEach] = useState(true);
   const [questions, setQuestions] = useState<Q[]>([{ prompt: "", options: ["", "", "", ""], correct_index: 0 }]);
   const [bankOpen, setBankOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!school || !user) return;
@@ -52,11 +53,12 @@ export default function TestBuilder() {
 
   function update(i: number, patch: Partial<Q>) { setQuestions(qs => qs.map((q, idx) => idx === i ? { ...q, ...patch } : q)); }
 
-  async function publish() {
-    if (!school || !user) return;
+  async function submitForApproval() {
+    if (!school || !user || busy) return;
     if (!title || !questions.length) return toast.error("Title and at least one question required");
     const valid = questions.filter(q => q.prompt.trim() && q.options.filter(o => o.trim()).length >= 2);
     if (!valid.length) return toast.error("Add at least one complete question");
+    setBusy(true);
     const { data: exam, error } = await supabase.from("exams").insert({
       school_id: school.id, class_id: classId || null, title, subject: subject || null,
       duration_minutes: duration, duration_min: duration,
@@ -68,13 +70,19 @@ export default function TestBuilder() {
       mode,
       counts_to_results: mode !== "practice",
       show_answers_after_each: mode === "practice" ? showAnswersAfterEach : false,
-      status: "scheduled", created_by: user.id,
+      status: "draft", created_by: user.id,
+      submitted_at: new Date().toISOString(), submitted_by: user.id,
     }).select("id").single();
-    if (error) return toast.error(error.message);
+    if (error) { setBusy(false); return toast.error("Could not submit. Please try again."); }
     const rows = valid.map((q, i) => ({ exam_id: exam.id, school_id: school.id, position: i, prompt: q.prompt, options: q.options, correct_index: q.correct_index, points: 1 }));
     const { error: e2 } = await supabase.from("exam_questions").insert(rows);
-    if (e2) return toast.error(e2.message);
-    toast.success("Exam published");
+    await supabase.from("exam_review_events").insert({
+      school_id: school.id, exam_kind: "legacy", exam_id: exam.id,
+      action: "submitted", actor_id: user.id,
+    } as any);
+    setBusy(false);
+    if (e2) return toast.error("Could not save questions. Please try again.");
+    toast.success("Submitted to the exam committee for approval");
     setTitle(""); setSubject("");
     setQuestions([{ prompt: "", options: ["", "", "", ""], correct_index: 0 }]);
   }
@@ -94,7 +102,16 @@ export default function TestBuilder() {
   }
 
   return (
-    <SectionCard title="Build a test" action={<Button onClick={publish}>Publish</Button>}>
+    <SectionCard
+      title="Build a test"
+      description="Drafts are sent to the school's exam committee for approval. Admin publishes the paper and schedules the result release."
+      action={
+        <Button onClick={submitForApproval} disabled={busy}>
+          {busy ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Send className="size-4 mr-1.5" />}
+          Submit for approval
+        </Button>
+      }
+    >
       {!classes.length ? <EmptyState icon={FilePlus2} title="No classes" desc="Create a class first." /> :
       <div className="space-y-5">
         <div>
