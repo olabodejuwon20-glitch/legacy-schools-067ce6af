@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { schoolPath } from "@/lib/tenant";
 import { GradingWeightsCard } from "@/components/admin/GradingWeightsCard";
 import { PilotDetailsCard } from "@/components/pilot/PilotDetailsCard";
+import { openPremiumReportCard, DEFAULT_REPORT_THEME, type ReportTheme } from "@/lib/reportCard";
 
 export default function AdminSettings() {
   const { school } = useSchool();
@@ -29,10 +30,12 @@ export default function AdminSettings() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<{ headers: string[]; rows: any[]; total: number } | null>(null);
   const [necoBusy, setNecoBusy] = useState(false);
+  const [theme, setTheme] = useState<Required<ReportTheme>>(DEFAULT_REPORT_THEME);
+  const [savingTheme, setSavingTheme] = useState(false);
 
   useEffect(() => {
     if (!school) return;
-    supabase.from("schools").select("name,email,phone,address,motto,logo_url,current_session,current_term,grading_system,resumption_date,exams_violation_limit,proctoring_default,neco_subject_codes").eq("id", school.id).single()
+    supabase.from("schools").select("name,email,phone,address,motto,logo_url,current_session,current_term,grading_system,resumption_date,exams_violation_limit,proctoring_default,neco_subject_codes,report_theme").eq("id", school.id).single()
       .then(({ data }) => {
         if (!data) return;
         setInfo({ name: data.name, email: data.email ?? "", phone: data.phone ?? "", address: data.address ?? "", motto: data.motto ?? "" });
@@ -46,6 +49,13 @@ export default function AdminSettings() {
         setExam({ exams_violation_limit: data.exams_violation_limit ?? 3, proctoring_default: data.proctoring_default ?? false });
         const codes = (data.neco_subject_codes as Record<string, string>) ?? {};
         setNecoCodes(Object.entries(codes).map(([subject, code]) => ({ subject, code })));
+        const rt = ((data as any).report_theme ?? {}) as ReportTheme;
+        setTheme({
+          primary: rt.primary ?? DEFAULT_REPORT_THEME.primary,
+          accent: rt.accent ?? DEFAULT_REPORT_THEME.accent,
+          gradientFrom: rt.gradientFrom ?? DEFAULT_REPORT_THEME.gradientFrom,
+          gradientTo: rt.gradientTo ?? DEFAULT_REPORT_THEME.gradientTo,
+        });
       });
   }, [school]);
 
