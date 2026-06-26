@@ -201,7 +201,7 @@ export async function fetchReportCardData(
   term: string,
 ): Promise<ReportCardData | null> {
   const { data: school } = await supabase
-    .from("schools").select("name,motto,logo_url,address").eq("id", schoolId).maybeSingle();
+    .from("schools").select("name,motto,logo_url,address,report_theme").eq("id", schoolId).maybeSingle();
   if (!school) return null;
   const { data: prof } = await supabase
     .from("profiles").select("full_name,avatar_url").eq("id", studentId).maybeSingle();
@@ -216,6 +216,7 @@ export async function fetchReportCardData(
     schoolMotto: (school as any).motto,
     schoolLogo: (school as any).logo_url,
     schoolAddress: (school as any).address,
+    theme: (school as any).report_theme ?? null,
     term,
     studentName: (prof as any)?.full_name ?? "Student",
     studentPhoto: (prof as any)?.avatar_url,
