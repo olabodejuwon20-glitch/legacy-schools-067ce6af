@@ -2628,6 +2628,61 @@ export type Database = {
           },
         ]
       }
+      exam_review_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          exam_id: string
+          exam_kind: string
+          id: string
+          notes: string | null
+          school_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          exam_id: string
+          exam_kind: string
+          id?: string
+          notes?: string | null
+          school_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          exam_id?: string
+          exam_kind?: string
+          id?: string
+          notes?: string | null
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_review_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_review_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_review_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_violations: {
         Row: {
           attempt_id: string
@@ -2675,6 +2730,8 @@ export type Database = {
       }
       exams: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           auto_close_at: string | null
           auto_publish_at: string | null
           class_id: string | null
@@ -2689,17 +2746,24 @@ export type Database = {
           proctor_action: string
           proctor_snapshot_interval_sec: number
           proctored: boolean
+          published_at: string | null
+          published_by: string | null
           randomize: boolean
           results_release_at: string | null
+          review_notes: string | null
           scheduled_at: string | null
           school_id: string
           show_answers_after_each: boolean
           status: Database["public"]["Enums"]["exam_status"]
           subject: string | null
+          submitted_at: string | null
+          submitted_by: string | null
           title: string
           violation_limit: number
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           auto_close_at?: string | null
           auto_publish_at?: string | null
           class_id?: string | null
@@ -2714,17 +2778,24 @@ export type Database = {
           proctor_action?: string
           proctor_snapshot_interval_sec?: number
           proctored?: boolean
+          published_at?: string | null
+          published_by?: string | null
           randomize?: boolean
           results_release_at?: string | null
+          review_notes?: string | null
           scheduled_at?: string | null
           school_id: string
           show_answers_after_each?: boolean
           status?: Database["public"]["Enums"]["exam_status"]
           subject?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           title: string
           violation_limit?: number
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           auto_close_at?: string | null
           auto_publish_at?: string | null
           class_id?: string | null
@@ -2739,13 +2810,18 @@ export type Database = {
           proctor_action?: string
           proctor_snapshot_interval_sec?: number
           proctored?: boolean
+          published_at?: string | null
+          published_by?: string | null
           randomize?: boolean
           results_release_at?: string | null
+          review_notes?: string | null
           scheduled_at?: string | null
           school_id?: string
           show_answers_after_each?: boolean
           status?: Database["public"]["Enums"]["exam_status"]
           subject?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           title?: string
           violation_limit?: number
         }
@@ -6711,8 +6787,12 @@ export type Database = {
           id: string
           instructions: string | null
           published_at: string | null
+          published_by: string | null
           rejection_reason: string | null
+          review_notes: string | null
           school_id: string
+          submitted_at: string | null
+          submitted_by: string | null
           timetable_id: string | null
           title: string
           total_marks: number
@@ -6728,8 +6808,12 @@ export type Database = {
           id?: string
           instructions?: string | null
           published_at?: string | null
+          published_by?: string | null
           rejection_reason?: string | null
+          review_notes?: string | null
           school_id: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           timetable_id?: string | null
           title: string
           total_marks?: number
@@ -6745,8 +6829,12 @@ export type Database = {
           id?: string
           instructions?: string | null
           published_at?: string | null
+          published_by?: string | null
           rejection_reason?: string | null
+          review_notes?: string | null
           school_id?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           timetable_id?: string | null
           title?: string
           total_marks?: number
@@ -7264,6 +7352,10 @@ export type Database = {
         Args: { _cost: number; _school_id: string; _tokens: number }
         Returns: undefined
       }
+      can_approve_exams: {
+        Args: { _school: string; _user: string }
+        Returns: boolean
+      }
       can_read_platform_announcement: {
         Args: {
           _announcement: Database["public"]["Tables"]["platform_announcements"]["Row"]
@@ -7722,7 +7814,12 @@ export type Database = {
       question_type: "mcq" | "multi" | "short" | "essay" | "numeric"
       school_plan: "trial" | "basic" | "standard" | "premium" | "enterprise"
       school_status: "active" | "suspended" | "expired" | "trial"
-      trad_draft_status: "draft" | "submitted" | "approved" | "locked"
+      trad_draft_status:
+        | "draft"
+        | "submitted"
+        | "approved"
+        | "locked"
+        | "changes_requested"
       trad_exam_type: "mcq" | "theory" | "mixed"
       trad_question_type: "mcq" | "theory"
       trad_session_status: "planning" | "published" | "locked"
@@ -7908,7 +8005,13 @@ export const Constants = {
       question_type: ["mcq", "multi", "short", "essay", "numeric"],
       school_plan: ["trial", "basic", "standard", "premium", "enterprise"],
       school_status: ["active", "suspended", "expired", "trial"],
-      trad_draft_status: ["draft", "submitted", "approved", "locked"],
+      trad_draft_status: [
+        "draft",
+        "submitted",
+        "approved",
+        "locked",
+        "changes_requested",
+      ],
       trad_exam_type: ["mcq", "theory", "mixed"],
       trad_question_type: ["mcq", "theory"],
       trad_session_status: ["planning", "published", "locked"],
