@@ -270,14 +270,24 @@ function AssessmentEditor({ id, onBack }: { id: string; onBack: () => void }) {
     toast.success("Saved");
   }
 
-  async function publish() {
+  async function submitForApproval() {
     if (!questions.length) return toast.error("Add questions first");
-    if (pending.length) return toast.error(`${pending.length} AI question(s) still need approval`);
+    if (pending.length) return toast.error(`${pending.length} AI question(s) still need your approval`);
+    if (busy) return;
     setBusy(true);
-    const { error } = await supabase.rpc("publish_assessment", { _assessment_id: id });
+    const { error } = await supabase
+      .from("assessments")
+      .update({ status: "in_review" as any })
+      .eq("id", id);
+    if (!error && school && user) {
+      await supabase.from("exam_review_events").insert({
+        school_id: school.id, exam_kind: "legacy", exam_id: id,
+        action: "submitted", actor_id: user.id,
+      } as any);
+    }
     setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Assessment published");
+    if (error) return toast.error("Could not submit. Please try again.");
+    toast.success("Submitted to the exam committee for approval");
     refresh();
   }
 
@@ -305,11 +315,35 @@ function AssessmentEditor({ id, onBack }: { id: string; onBack: () => void }) {
         <Button variant="outline" size="sm" onClick={addBlank}>
           <Plus className="size-3.5 mr-1.5" /> Add question
         </Button>
-        <Button size="sm" onClick={publish} disabled={busy || !questions.length}>
-          {busy ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Send className="size-3.5 mr-1.5" />}
-          Publish
-        </Button>
+        {assessment.status === "draft" && (
+          <Button size="sm" onClick={submitForApproval} disabled={busy || !questions.length}>
+            {busy ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Send className="size-3.5 mr-1.5" />}
+            Submit for approval
+          </Button>
+        )}
+        {assessment.status === "in_review" && (
+          <Badge variant="outline" className="bg-amber-500/15 text-amber-600 border-amber-500/30">
+            Awaiting committee approval
+          </Badge>
+        )}
+        {assessment.status === "scheduled" && (
+          <Badge variant="outline" className="bg-blue-500/15 text-blue-600 border-blue-500/30">
+            Approved · scheduled by admin
+          </Badge>
+        )}
+        {assessment.status === "published" && (
+          <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">
+            Published to students
+          </Badge>
+        )}
       </div>
+
+      {assessment.review_notes && assessment.status === "draft" && (
+        <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3 text-sm">
+          <div className="font-semibold text-amber-700 dark:text-amber-300">Changes requested by the exam committee</div>
+          <div className="text-amber-900 dark:text-amber-100 mt-1 whitespace-pre-line">{assessment.review_notes}</div>
+        </div>
+      )}
 
       {pending.length > 0 && (
         <SectionCard title={
