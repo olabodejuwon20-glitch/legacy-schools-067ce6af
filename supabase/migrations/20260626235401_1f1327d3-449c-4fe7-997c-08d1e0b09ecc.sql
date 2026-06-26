@@ -1,0 +1,1 @@
+ALTER TABLE public.schools ADD COLUMN IF NOT EXISTS report_theme JSONB NOT NULL DEFAULT '{"primary":"#1e3a8a","accent":"#3b82f6","gradientFrom":"#0f172a","gradientTo":"#3b82f6"}'::jsonb;

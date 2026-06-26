@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { schoolPath } from "@/lib/tenant";
 import { GradingWeightsCard } from "@/components/admin/GradingWeightsCard";
 import { PilotDetailsCard } from "@/components/pilot/PilotDetailsCard";
+import { openPremiumReportCard, DEFAULT_REPORT_THEME, type ReportTheme } from "@/lib/reportCard";
 
 export default function AdminSettings() {
   const { school } = useSchool();
@@ -29,10 +30,12 @@ export default function AdminSettings() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<{ headers: string[]; rows: any[]; total: number } | null>(null);
   const [necoBusy, setNecoBusy] = useState(false);
+  const [theme, setTheme] = useState<Required<ReportTheme>>(DEFAULT_REPORT_THEME);
+  const [savingTheme, setSavingTheme] = useState(false);
 
   useEffect(() => {
     if (!school) return;
-    supabase.from("schools").select("name,email,phone,address,motto,logo_url,current_session,current_term,grading_system,resumption_date,exams_violation_limit,proctoring_default,neco_subject_codes").eq("id", school.id).single()
+    supabase.from("schools").select("name,email,phone,address,motto,logo_url,current_session,current_term,grading_system,resumption_date,exams_violation_limit,proctoring_default,neco_subject_codes,report_theme").eq("id", school.id).single()
       .then(({ data }) => {
         if (!data) return;
         setInfo({ name: data.name, email: data.email ?? "", phone: data.phone ?? "", address: data.address ?? "", motto: data.motto ?? "" });
@@ -46,6 +49,13 @@ export default function AdminSettings() {
         setExam({ exams_violation_limit: data.exams_violation_limit ?? 3, proctoring_default: data.proctoring_default ?? false });
         const codes = (data.neco_subject_codes as Record<string, string>) ?? {};
         setNecoCodes(Object.entries(codes).map(([subject, code]) => ({ subject, code })));
+        const rt = ((data as any).report_theme ?? {}) as ReportTheme;
+        setTheme({
+          primary: rt.primary ?? DEFAULT_REPORT_THEME.primary,
+          accent: rt.accent ?? DEFAULT_REPORT_THEME.accent,
+          gradientFrom: rt.gradientFrom ?? DEFAULT_REPORT_THEME.gradientFrom,
+          gradientTo: rt.gradientTo ?? DEFAULT_REPORT_THEME.gradientTo,
+        });
       });
   }, [school]);
 
@@ -125,6 +135,53 @@ export default function AdminSettings() {
     }
   }
 
+  async function saveBranding() {
+    if (!school || savingTheme) return;
+    setSavingTheme(true);
+    const { error } = await supabase.from("schools").update({
+      motto: info.motto,
+      report_theme: theme as any,
+    }).eq("id", school.id);
+    setSavingTheme(false);
+    if (error) toast.error("Could not save branding. Please try again.");
+    else toast.success("Report card branding saved");
+  }
+
+  function previewReportCard() {
+    if (!school) return;
+    openPremiumReportCard({
+      schoolName: info.name || school.name,
+      schoolMotto: info.motto || null,
+      schoolLogo: logoUrl,
+      schoolAddress: info.address || null,
+      theme,
+      term: `${academic.current_term || "Term"} · ${academic.current_session || "Session"}`,
+      studentName: "Sample Student",
+      studentClass: "JSS 2 A",
+      admissionNo: "ADM/000/SAMPLE",
+      subjects: [
+        { subject: "Mathematics", ca1: 18, ca2: 17, exam: 55, total: 90, grade: "A1", position: 1, remark: "Excellent" },
+        { subject: "English Language", ca1: 15, ca2: 16, exam: 48, total: 79, grade: "B2", position: 4, remark: "Very Good" },
+        { subject: "Basic Science", ca1: 14, ca2: 13, exam: 44, total: 71, grade: "B3", position: 6, remark: "Good" },
+      ],
+      attendance: { present: 58, absent: 2, total: 60 },
+      overallPercentage: 80,
+      overallGrade: "A1",
+      classPosition: 2,
+      teacherComment: "A focused and consistent student.",
+      principalComment: "Keep up the excellent work.",
+    });
+  }
+
+  const THEME_PRESETS: { name: string; theme: Required<ReportTheme> }[] = [
+    { name: "Royal Blue",   theme: DEFAULT_REPORT_THEME },
+    { name: "Forest Green", theme: { primary: "#166534", accent: "#22c55e", gradientFrom: "#052e16", gradientTo: "#22c55e" } },
+    { name: "Crimson",      theme: { primary: "#991b1b", accent: "#ef4444", gradientFrom: "#450a0a", gradientTo: "#ef4444" } },
+    { name: "Royal Purple", theme: { primary: "#5b21b6", accent: "#8b5cf6", gradientFrom: "#2e1065", gradientTo: "#8b5cf6" } },
+    { name: "Gold & Black", theme: { primary: "#1f2937", accent: "#d4a017", gradientFrom: "#000000", gradientTo: "#d4a017" } },
+    { name: "Teal",         theme: { primary: "#115e59", accent: "#14b8a6", gradientFrom: "#042f2e", gradientTo: "#14b8a6" } },
+  ];
+
   return (
     <div className="space-y-6">
       {school && (
@@ -148,6 +205,7 @@ export default function AdminSettings() {
       <Tabs defaultValue="academic" className="space-y-4">
         <TabsList>
           <TabsTrigger value="academic">Academic</TabsTrigger>
+          <TabsTrigger value="branding">Report Card</TabsTrigger>
           <TabsTrigger value="neco">Exams & NECO</TabsTrigger>
           <TabsTrigger value="pilot">Pilot</TabsTrigger>
           <TabsTrigger value="help">Help & Guide</TabsTrigger>
@@ -167,6 +225,125 @@ export default function AdminSettings() {
         </form>
           </SectionCard>
           <GradingWeightsCard />
+        </TabsContent>
+
+        <TabsContent value="branding" className="space-y-4">
+          <SectionCard
+            title="Report Card branding"
+            description="Your logo, motto and colours appear on every student report card PDF."
+          >
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Logo + motto */}
+              <div className="space-y-4">
+                <div>
+                  <Label>School logo</Label>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="size-16 rounded-lg border border-border bg-muted/40 grid place-items-center overflow-hidden shrink-0">
+                      {logoUrl
+                        ? <img src={logoUrl} alt="logo" className="size-full object-contain" />
+                        : <ImageIcon className="size-6 text-muted-foreground" />}
+                    </div>
+                    <div className="flex-1">
+                      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onLogoChange} />
+                      <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                        {uploading ? <Loader2 className="size-3.5 mr-1 animate-spin" /> : <Upload className="size-3.5 mr-1" />}
+                        {logoUrl ? "Replace logo" : "Upload logo"}
+                      </Button>
+                      <p className="text-[11px] text-muted-foreground mt-1">PNG / JPG / SVG. Max 2 MB. Square works best.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>School motto</Label>
+                  <Input
+                    value={info.motto}
+                    onChange={e => setInfo({ ...info, motto: e.target.value })}
+                    placeholder="e.g. Knowledge, Character, Service"
+                    maxLength={120}
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">Printed under the school name on the report card.</p>
+                </div>
+              </div>
+
+              {/* Theme */}
+              <div className="space-y-4">
+                <div>
+                  <Label>Colour presets</Label>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {THEME_PRESETS.map(p => (
+                      <button key={p.name} type="button" onClick={() => setTheme(p.theme)}
+                        className="flex items-center gap-2 rounded-full border border-border px-2.5 py-1 text-xs hover:bg-muted/50 transition">
+                        <span className="inline-flex">
+                          <span className="size-3 rounded-l-full" style={{ background: p.theme.gradientFrom }} />
+                          <span className="size-3" style={{ background: p.theme.primary }} />
+                          <span className="size-3 rounded-r-full" style={{ background: p.theme.accent }} />
+                        </span>
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {(["primary", "accent", "gradientFrom", "gradientTo"] as const).map(key => (
+                    <div key={key}>
+                      <Label className="capitalize text-xs">
+                        {key === "gradientFrom" ? "Header start" : key === "gradientTo" ? "Header end" : key}
+                      </Label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={theme[key]}
+                          onChange={e => setTheme({ ...theme, [key]: e.target.value })}
+                          className="h-9 w-12 rounded-md border border-border bg-transparent cursor-pointer"
+                        />
+                        <Input
+                          value={theme[key]}
+                          onChange={e => setTheme({ ...theme, [key]: e.target.value })}
+                          className="font-mono text-xs"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Live mini-preview of the cover */}
+                <div className="rounded-xl overflow-hidden border border-border">
+                  <div
+                    className="p-4 text-white"
+                    style={{ background: `linear-gradient(135deg, ${theme.gradientFrom} 0%, ${theme.primary} 60%, ${theme.gradientTo} 100%)` }}
+                  >
+                    <div className="flex items-center gap-3">
+                      {logoUrl
+                        ? <img src={logoUrl} alt="" className="size-10 rounded-md bg-white p-1 object-contain" />
+                        : <div className="size-10 rounded-md bg-white grid place-items-center font-bold" style={{ color: theme.primary }}>{(info.name || "S").charAt(0)}</div>}
+                      <div className="min-w-0">
+                        <div className="font-bold truncate">{info.name || "Your School Name"}</div>
+                        {info.motto && <div className="text-xs italic opacity-90 truncate">"{info.motto}"</div>}
+                      </div>
+                    </div>
+                    <div className="mt-3 text-xs opacity-90">Student Report Card · Preview</div>
+                  </div>
+                  <div className="p-3 flex items-center justify-between gap-2 text-xs">
+                    <span className="px-2 py-0.5 rounded-full font-semibold text-white" style={{ background: theme.primary }}>Grade A1</span>
+                    <span className="font-semibold" style={{ color: theme.primary }}>Total: 90</span>
+                    <span className="px-2 py-0.5 rounded-full" style={{ background: theme.accent, color: "#fff" }}>Position 1</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="outline" onClick={previewReportCard}>
+                <Eye className="size-4 mr-1" /> Preview full report card
+              </Button>
+              <Button type="button" onClick={saveBranding} disabled={savingTheme}>
+                {savingTheme ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
+                Save branding
+              </Button>
+            </div>
+          </SectionCard>
         </TabsContent>
 
         <TabsContent value="neco" className="space-y-4">

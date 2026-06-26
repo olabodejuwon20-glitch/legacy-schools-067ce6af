@@ -5525,6 +5525,7 @@ export type Database = {
           plan_started_at: string
           platform_notice: string | null
           proctoring_default: boolean
+          report_theme: Json
           resumption_date: string | null
           settings: Json
           slug: string
@@ -5567,6 +5568,7 @@ export type Database = {
           plan_started_at?: string
           platform_notice?: string | null
           proctoring_default?: boolean
+          report_theme?: Json
           resumption_date?: string | null
           settings?: Json
           slug: string
@@ -5609,6 +5611,7 @@ export type Database = {
           plan_started_at?: string
           platform_notice?: string | null
           proctoring_default?: boolean
+          report_theme?: Json
           resumption_date?: string | null
           settings?: Json
           slug?: string

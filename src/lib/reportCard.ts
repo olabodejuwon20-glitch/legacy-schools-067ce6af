@@ -17,6 +17,7 @@ export type ReportCardData = {
   schoolMotto?: string | null;
   schoolLogo?: string | null;
   schoolAddress?: string | null;
+  theme?: ReportTheme | null;
   term: string;
   session?: string | null;
   studentName: string;
@@ -33,6 +34,24 @@ export type ReportCardData = {
   nextTermBegins?: string | null;
 };
 
+export type ReportTheme = {
+  primary?: string;
+  accent?: string;
+  gradientFrom?: string;
+  gradientTo?: string;
+};
+
+export const DEFAULT_REPORT_THEME: Required<ReportTheme> = {
+  primary: "#1e3a8a",
+  accent: "#3b82f6",
+  gradientFrom: "#0f172a",
+  gradientTo: "#3b82f6",
+};
+
+function safeColor(v: unknown, fallback: string): string {
+  return typeof v === "string" && /^#[0-9a-fA-F]{3,8}$/.test(v) ? v : fallback;
+}
+
 /**
  * Premium branded report card. Opens a print window with a fully styled,
  * paginated HTML report using the school's logo, name and motto.
@@ -42,6 +61,12 @@ export function openPremiumReportCard(data: ReportCardData) {
   const w = window.open("", "_blank", "width=1000,height=820");
   if (!w) return;
   const e = escapeHtml;
+  const t = {
+    primary: safeColor(data.theme?.primary, DEFAULT_REPORT_THEME.primary),
+    accent: safeColor(data.theme?.accent, DEFAULT_REPORT_THEME.accent),
+    gradientFrom: safeColor(data.theme?.gradientFrom, DEFAULT_REPORT_THEME.gradientFrom),
+    gradientTo: safeColor(data.theme?.gradientTo, DEFAULT_REPORT_THEME.gradientTo),
+  };
   const rows = data.subjects.map((s, i) => `
     <tr class="${i % 2 ? "alt" : ""}">
       <td class="subj">${e(s.subject)}</td>
@@ -69,7 +94,7 @@ export function openPremiumReportCard(data: ReportCardData) {
   *{box-sizing:border-box}
   body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#0f172a;margin:0;padding:0;background:#f8fafc;}
   .sheet{max-width:820px;margin:0 auto;background:#fff;padding:32px 36px;border-radius:14px;box-shadow:0 4px 24px rgba(15,23,42,.06);}
-  .cover{background:linear-gradient(135deg,#0f172a 0%, #1e3a8a 60%, #3b82f6 100%);color:#fff;border-radius:14px;padding:40px 36px;position:relative;overflow:hidden;margin-bottom:18px;}
+  .cover{background:linear-gradient(135deg, ${t.gradientFrom} 0%, ${t.primary} 60%, ${t.gradientTo} 100%);color:#fff;border-radius:14px;padding:40px 36px;position:relative;overflow:hidden;margin-bottom:18px;}
   .cover::after{content:"";position:absolute;inset:auto -80px -80px auto;width:280px;height:280px;background:radial-gradient(circle,#ffffff33,transparent 70%);border-radius:50%;}
   .cover h1{font-size:28px;margin:0;letter-spacing:.5px;font-weight:800;}
   .cover .motto{font-style:italic;font-size:13px;opacity:.85;margin-top:4px;}
@@ -77,18 +102,18 @@ export function openPremiumReportCard(data: ReportCardData) {
   .cover .title{margin-top:32px;font-size:36px;font-weight:800;letter-spacing:.5px;}
   .head{display:flex;align-items:center;gap:18px;}
   .logo{width:64px;height:64px;border-radius:12px;background:#fff;object-fit:contain;padding:6px;border:1px solid #e2e8f0;}
-  .logo.placeholder{display:flex;align-items:center;justify-content:center;color:#1e3a8a;font-weight:800;font-size:28px;background:#fff;}
+  .logo.placeholder{display:flex;align-items:center;justify-content:center;color:${t.primary};font-weight:800;font-size:28px;background:#fff;}
   .student{display:flex;gap:18px;align-items:center;padding:18px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;margin-bottom:18px;}
   .photo{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 12px rgba(15,23,42,.12);}
-  .photo.placeholder{display:flex;align-items:center;justify-content:center;background:#dbeafe;color:#1e3a8a;font-weight:800;font-size:32px;}
+  .photo.placeholder{display:flex;align-items:center;justify-content:center;background:#dbeafe;color:${t.primary};font-weight:800;font-size:32px;}
   .student .name{font-size:20px;font-weight:700;}
   .student .meta{color:#475569;font-size:12px;margin-top:2px;}
   table.scores{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;}
-  table.scores th{background:linear-gradient(90deg,#1e3a8a,#3b82f6);color:#fff;padding:10px 12px;font-weight:600;text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;}
+  table.scores th{background:linear-gradient(90deg, ${t.primary}, ${t.accent});color:#fff;padding:10px 12px;font-weight:600;text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;}
   table.scores td{padding:10px 12px;border-bottom:1px solid #f1f5f9;}
   table.scores tr.alt td{background:#fafbfd;}
   table.scores td.subj{font-weight:600;}
-  table.scores td.total{font-weight:700;color:#1e3a8a;}
+  table.scores td.total{font-weight:700;color:${t.primary};}
   table.scores td.remark{color:#475569;font-size:11.5px;}
   .grade{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:700;font-size:11px;background:#e2e8f0;color:#0f172a;}
   .grade.g-a, .grade.g-a1, .grade.g-a\\+ { background:#dcfce7;color:#15803d; }
@@ -102,10 +127,10 @@ export function openPremiumReportCard(data: ReportCardData) {
   .stat .val{font-size:22px;font-weight:800;margin-top:4px;color:#0f172a;}
   .comments{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .comment{border:1px solid #e2e8f0;border-radius:12px;padding:14px;background:#fff;}
-  .comment .who{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#1e3a8a;font-weight:700;}
+  .comment .who{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:${t.primary};font-weight:700;}
   .comment .body{margin-top:6px;font-size:13px;line-height:1.5;color:#1f2937;}
   .footer{margin-top:24px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;color:#64748b;font-size:11px;}
-  .watermark{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:.04;font-size:160px;font-weight:900;color:#1e3a8a;z-index:0;transform:rotate(-20deg);}
+  .watermark{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:.04;font-size:160px;font-weight:900;color:${t.primary};z-index:0;transform:rotate(-20deg);}
   @media print{ body{background:#fff;} .sheet{box-shadow:none;border-radius:0;padding:0;} .watermark{opacity:.05;} }
 </style></head>
 <body>
@@ -135,7 +160,7 @@ export function openPremiumReportCard(data: ReportCardData) {
       ${data.overallPercentage != null ? `
         <div style="text-align:right">
           <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Overall</div>
-          <div style="font-size:28px;font-weight:800;color:#1e3a8a">${data.overallPercentage}%</div>
+          <div style="font-size:28px;font-weight:800;color:${t.primary}">${data.overallPercentage}%</div>
           ${data.overallGrade ? `<span class="grade g-${e(data.overallGrade.toLowerCase())}">${e(data.overallGrade)}</span>` : ""}
         </div>` : ""}
     </div>
@@ -176,7 +201,7 @@ export async function fetchReportCardData(
   term: string,
 ): Promise<ReportCardData | null> {
   const { data: school } = await supabase
-    .from("schools").select("name,motto,logo_url,address").eq("id", schoolId).maybeSingle();
+    .from("schools").select("name,motto,logo_url,address,report_theme").eq("id", schoolId).maybeSingle();
   if (!school) return null;
   const { data: prof } = await supabase
     .from("profiles").select("full_name,avatar_url").eq("id", studentId).maybeSingle();
@@ -191,6 +216,7 @@ export async function fetchReportCardData(
     schoolMotto: (school as any).motto,
     schoolLogo: (school as any).logo_url,
     schoolAddress: (school as any).address,
+    theme: (school as any).report_theme ?? null,
     term,
     studentName: (prof as any)?.full_name ?? "Student",
     studentPhoto: (prof as any)?.avatar_url,
