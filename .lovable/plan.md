@@ -1,117 +1,124 @@
-# Academic Structure Engine
 
-A configurable engine that ships with **Nigerian Secondary School** as the default template but stores every level/class/arm/department/subject as data — no hardcoded JSS/SS strings anywhere on the data path. Future templates (Primary, Cambridge, Montessori, K-12, Custom) drop in without schema changes.
+# Exam Workflow Realignment + Premium Report Card
 
-## 1. Data Model (new tables, all `school_id`-scoped with RLS + GRANTs)
+## Goal
 
-```text
-academic_templates          ← global library of starter templates (Nigerian SS, Primary, …)
-  code, name, country, body (jsonb: levels, departments, subjects, arms)
-  is_active (only "nigerian_secondary" is_active=true today; others marked coming_soon)
+One single exam pipeline. Teachers no longer publish exams or release results. They draft questions and submit for approval. Admin (and workspace collaborators with the right permission) review → approve → publish → schedule result release. Students only ever see results after the admin-set release moment. Report cards become a premium, per-school branded PDF.
 
-school_academic_structure   ← one row per school: chosen template + status
-  school_id, template_code, activated_at, settings jsonb
-
-academic_levels             ← Junior Secondary, Senior Secondary (or Lower/Upper Primary, etc.)
-  school_id, code, name, sort_order, promotion_target_level_id
-
-academic_classes            ← JSS1, JSS2, SS1, SS2, … (generated from template)
-  school_id, level_id, code, name, category, capacity, description, status, sort_order
-  promotion_target_class_id (FK self) ← drives JSS1→JSS2 etc.
-
-academic_arms               ← JSS1 A, SS1 Science, SS1 Arts … (unlimited per class)
-  school_id, class_id, name, code, department_id NULL, capacity,
-  class_teacher_user_id NULL, status (active|archived)
-
-academic_departments        ← Science, Arts, Commercial, +custom
-  school_id, code, name, description, status
-
-academic_subjects           ← English, Maths, Physics, … (configurable)
-  school_id, code, name, department_id NULL, category (core|elective|department),
-  description, status
-
-subject_arm_assignments     ← Subject ↔ Arm (inheritance happens here, NOT per-student)
-  school_id, subject_id, arm_id, is_required (true|false ← elective flag),
-  UNIQUE(school_id, subject_id, arm_id)
-
-arm_enrollments             ← Student ↔ Arm (replaces ad-hoc class_enrollments going forward;
-  school_id, arm_id, student_user_id, status, joined_at         existing table stays as legacy view)
-
-teacher_subject_arm         ← Teacher ↔ Subject ↔ Arm
-  school_id, teacher_user_id, subject_id, arm_id, role (lead|assistant)
-
-promotion_rules             ← per school, per level transition
-  school_id, from_level_id, to_level_id, min_average, attendance_pct,
-  require_core_pass jsonb (subject_ids)
-```
-
-All tables: UUID PK, `created_at`, `updated_at` triggers, soft-delete via `status='archived'` (no hard DELETE). Composite indexes on `(school_id, …)`. RLS: school admins full CRUD within their `school_id`, teachers read-only on rows tied to their assignments, students read-only on their own arm and inherited subjects.
-
-## 2. Template Engine
-
-- `academic_templates.body` is the spec:
-  ```json
-  {
-    "levels": [{"code":"jss","name":"Junior Secondary","classes":[{"code":"JSS1"},{"code":"JSS2"},{"code":"JSS3"}]},
-               {"code":"sss","name":"Senior Secondary","classes":[{"code":"SS1"},{"code":"SS2"},{"code":"SS3"}]}],
-    "promotion_chain": ["JSS1","JSS2","JSS3","SS1","SS2","SS3","GRADUATED"],
-    "departments": ["Science","Arts","Commercial"],
-    "subjects": {
-      "core":   ["English Language","Mathematics","Civic Education","Computer Studies"],
-      "junior": ["Basic Science","Basic Technology","Social Studies","Business Studies","Agricultural Science"],
-      "Science":["Physics","Chemistry","Biology","Further Mathematics"],
-      "Commercial":["Economics","Commerce","Financial Accounting"],
-      "Arts":   ["Government","Literature","CRS","IRS","History"]
-    }
-  }
-  ```
-- DB function `apply_academic_template(_school_id, _template_code)` reads `body` and idempotently inserts levels, classes, departments and subjects. Re-running it never duplicates rows.
-- Only **Nigerian Secondary School** has `is_active=true`. UI lists the rest as **Coming Soon** and disables them.
-
-## 3. Onboarding integration
-
-Add a new step ("Academic Structure") to the existing admin onboarding wizard. Default selection is Nigerian Secondary; on confirm we call `apply_academic_template`. Schools already onboarded see the same picker on the new Academic Structure page.
-
-## 4. Admin UI — Airtable-style screens (new under `/app/admin/academic/`)
+## New End-to-End Flow
 
 ```text
-academic/structure      ← template chooser + summary cards (levels, classes, depts, subjects)
-academic/classes        ← table: Class · Arms · Students · Subjects · Class Teacher · Status
-academic/arms           ← table per class with inline create/edit/archive, assign teacher
-academic/departments    ← rename / add / archive
-academic/subjects       ← table: Subject · Code · Department · Category · Classes · Teachers · Status
-academic/assignments    ← matrix: Subject × Arm (toggle required/elective)
-academic/teachers       ← Teacher × Subject × Arm assignment grid
-academic/promotion      ← rules editor + "Run promotion" action
+Teacher (draft)
+   └─ create paper, add/upload questions, set marks/sections
+   └─ Submit for approval ─────────────►
+                                        Exam Committee / Admin (review)
+                                          ├─ Edit / request changes
+                                          ├─ Approve
+                                          └─ Schedule (date, time, duration, venue, class)
+                                                 │
+                                                 ▼
+                                        Admin: Publish to students
+                                                 │
+                                                 ▼
+                                        Student: Take exam in window
+                                                 │
+                                                 ▼
+                                        Auto-grade MCQ · Teacher marks theory
+                                                 │
+                                                 ▼
+                                        Committee validates ─► Admin schedules release
+                                                 │
+                                                 ▼
+                                        Student / Parent: result visible at release_at
+                                                 │
+                                                 ▼
+                                        Premium branded Report Card PDF
 ```
 
-All screens use the existing toolbar/search/filter pattern from the Workspace page (search input, status filter, count, mobile horizontal scroll wrappers). Drawers for detail editing.
+## Scope of Removal (Teacher portal)
 
-## 5. Sidebar + permissions
+Remove from teacher portal:
+- Publishing CA tests / exams to students
+- Scheduling exam dates/times
+- Releasing results to students
+- Any "Make live" / "Open to students" toggles on school exams & CA tests
 
-- Add a new **Academics** sidebar group entry: "Academic Setup" (already exists, renamed to "Academic Structure"), "Classes & Arms", "Subjects", "Departments", "Promotion".
-- New permission key `academic` (view + edit) added to `PERMISSION_GROUPS` under Academics. Old `classes` permission is preserved; new screens are also gated by `classes` for back-compat.
-- Slotted admins respect view/edit just like the rest.
+Teacher portal keeps:
+- Assignments (full create + grade + return — unchanged)
+- Drafting school exam / CA test questions (manual or AI from upload) and **Submit for approval**
+- Marking theory answers after approval (when assigned)
+- Viewing their own gradebook / class analytics (read-only of released results)
 
-## 6. Subject inheritance (critical rule)
+## Scope of Addition (Admin portal + permitted collaborators)
 
-- Students are **never** linked directly to subjects. The student list for a subject is derived: `arm_enrollments` ⋈ `subject_arm_assignments`. A SQL view `student_subjects_v2` exposes this for the teacher/gradebook/report-card modules.
-- Existing modules (attendance, gradebook, exams, results) continue to use their current foreign keys; a thin compatibility layer maps `class_id` → `arm_id` so nothing breaks. The legacy `classes` / `class_enrollments` tables stay; new arms are mirrored into them at creation time so existing exam/result code keeps working unchanged.
+`exams:create` and `exams:approve` permissions (already in admin permissions model) now gate:
+- Create exam/test directly (admin-authored path)
+- Review submitted teacher drafts (approve / send back with notes)
+- Schedule (date, time, duration, class, venue)
+- Publish to students
+- Schedule result release datetime (auto-unlock); manual "Release now" / "Withdraw"
 
-## 7. Promotion
+A new consolidated page **Admin → Assessments → Approvals queue** lists every teacher-submitted paper with status chips (Submitted, Changes requested, Approved, Scheduled, Published, Closed, Results pending, Released).
 
-- `promote_arm(_arm_id)` DB function: for each active student in the arm, evaluate `promotion_rules`, then move them to the matching arm in the next class (`promotion_target_class_id`). Students who fail rules stay; SS3 graduates move to status `graduated`.
-- Admin UI: per-class "Run promotion" with dry-run preview.
+## Data model changes
 
-## 8. Out of scope for this batch
+Reuse existing tables; minimal additions:
 
-- Custom template builder UI (only the engine + Nigerian template ship now).
-- Importing legacy classes into the new arm model (we keep both, mirror new → old).
-- Bulk teacher/subject CSV import (reuse the existing bulk-upload flow later).
+- `trad_exams.draft_status` already supports `draft | submitted | approved | locked` — add `changes_requested` and `published`.
+- `trad_exams` add: `submitted_at`, `submitted_by`, `approved_at`, `approved_by`, `published_at`, `published_by`, `review_notes`.
+- `exams` (legacy CA/test) add the same lifecycle columns + `results_release_at` (already present).
+- Tighten RLS so teachers can only write while `draft_status in ('draft','changes_requested')` and cannot set `published_at` / `results_release_at`.
+- A small `exam_review_events` table for the audit trail (who submitted, who approved, notes, timestamps).
 
-## Technical notes
+## UI work
 
-- One Supabase migration creates all tables + RLS + GRANTs + `apply_academic_template` + `promote_arm` + the `student_subjects_v2` view. A second migration inserts the Nigerian Secondary template row into `academic_templates`.
-- Frontend: new folder `src/pages/admin/academic/` with one page per screen, shared hooks in `src/lib/academic.ts`. Routes registered in `App.tsx` behind `RoleGate allow="admin"`. Sidebar entries added to `AppLayout.tsx` NAV + `SECTION_OF`.
-- Mobile: every table wrapped in `overflow-x-auto` (project rule).
-- No hardcoded JSS/SS strings in components — labels always come from `academic_classes.name`.
+Teacher portal:
+- Replace publish/schedule buttons on `teacher/Assessments.tsx`, `teacher/TestBuilder.tsx`, `teacher/TradExams.tsx` with **Submit for approval** + status badge + "Changes requested" banner with reviewer notes.
+- Hide the "Release results" controls entirely.
+- Keep grading screens for theory marking once approved.
+
+Admin portal:
+- New **Approvals queue** card in `admin/Assessments.tsx`.
+- Review drawer: preview paper, edit, Approve / Request changes (with note).
+- Schedule modal: class, date, time, duration, venue.
+- Publish action (one click after approved + scheduled).
+- Result release: existing `ExamResultsRelease.tsx` extended to cover both legacy `exams` and `trad_exams`.
+
+Student portal:
+- Only sees papers where `published_at is not null` and inside the window.
+- Result page shows lock state until `results_release_at <= now()`.
+
+## Premium Report Card
+
+New utility `src/lib/reportCard.ts` producing a branded multi-page PDF using `jspdf` (already in deps via `exporters.ts`):
+
+- Page 1 — Cover: school logo, school name, motto, academic year/term, student photo, full name, class/arm, admission no.
+- Page 2 — Subjects table: CA1, CA2, Exam, Total, Grade, Position, Remarks per subject; colour-coded grade chips from school's `grading_scales`.
+- Page 3 — Summary: overall %, class position, attendance, behaviour, teacher comment, principal comment, next term begins.
+- Footer on every page: school name + motto + page x/y; subtle watermark of school logo.
+- Reads `schools.name`, `schools.logo_url`, `schools.motto` (add column if missing).
+- Hooked into `components/results/ResultSlipButton.tsx` so any "Download report card" button across admin/teacher/parent/student uses the same premium template; old basic slip generator stays only as a fallback when `results_release_at` is null and caller is staff.
+
+## Files touched (high-level)
+
+- `supabase/migrations/*` — lifecycle columns, `exam_review_events`, tighten RLS, add `schools.motto` if absent.
+- `src/lib/tradExams.ts` — new statuses + helpers (`submitForApproval`, `approve`, `requestChanges`, `publish`).
+- `src/pages/teacher/Assessments.tsx`, `teacher/TestBuilder.tsx`, `teacher/TradExams.tsx` — remove publish/schedule, add submit-for-approval flow + status banner.
+- `src/pages/admin/Assessments.tsx` — add Approvals queue + review drawer + schedule + publish.
+- `src/pages/admin/ExamResultsRelease.tsx` — cover both exam tables.
+- `src/pages/student/TradExams.tsx`, `student/MyAssessments.tsx`, `student/Results.tsx` — gate visibility by `published_at` / `results_release_at`.
+- `src/lib/reportCard.ts` (new) + integrate via `components/results/ResultSlipButton.tsx`.
+- `src/modules/registry.ts` — drop teacher sidebar items that no longer apply (e.g. "Schools Exam" stays as draft list only; remove "Result release" from teacher).
+
+## Out of scope
+
+- Mock exams (JAMB/WAEC/NECO simulations) — student self-practice, unchanged.
+- Assignments — unchanged on teacher side.
+- Workspace/role permission model — already built; we only consume `exams:create` and `exams:approve`.
+
+## Open questions before I build
+
+1. **Changes-requested loop**: when admin sends back, should the teacher get a notification + inbox entry, or just a status flip on the paper?
+2. **Who can mark theory** after approval — original author teacher only, or any teacher the admin assigns? (Today it's the author.)
+3. **Report card trigger**: generate per term automatically when admin releases results, or on-demand download only?
+4. **Motto field** — confirm I can add `schools.motto` (text) if it doesn't exist; otherwise point me to the field you already use.
