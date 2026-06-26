@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, FilePlus2, Library, Shuffle, Eye, Award, GraduationCap, Sparkles, Send, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Trash2, FilePlus2, Library, Shuffle, Eye, Award, GraduationCap, Sparkles, Send, Loader2, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -39,6 +39,8 @@ export default function TestBuilder() {
   const [questions, setQuestions] = useState<Q[]>([{ prompt: "", options: ["", "", "", ""], correct_index: 0 }]);
   const [bankOpen, setBankOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!school || !user) return;
@@ -99,6 +101,50 @@ export default function TestBuilder() {
       return [...cleaned, ...additions];
     });
     toast.success(`Added ${additions.length} questions from bank`);
+  }
+
+  async function importFromFile(file: File) {
+    if (importBusy) return;
+    const allowed = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+    ];
+    if (file.size > 6 * 1024 * 1024) return toast.error("Please upload a file under 6MB");
+    if (file.type && !allowed.includes(file.type)) return toast.error("Only PDF, Word or text files are supported");
+    setImportBusy(true);
+    try {
+      const isText = file.type === "text/plain";
+      const payload: any = { filename: file.name, mime: file.type || "application/pdf" };
+      if (isText) {
+        payload.text = await file.text();
+      } else {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        let bin = "";
+        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        payload.file_b64 = btoa(bin);
+      }
+      const { data, error } = await supabase.functions.invoke("parse-questions-doc", { body: payload });
+      if (error) throw error;
+      const parsed = (data?.questions ?? []) as Array<{ prompt: string; options: string[]; correct_index: number }>;
+      if (!parsed.length) return toast.error("No questions could be extracted from that file");
+      const additions: Q[] = parsed.map((p) => ({
+        prompt: p.prompt,
+        options: (p.options ?? ["", "", "", ""]).slice(0, 4),
+        correct_index: Number.isInteger(p.correct_index) ? p.correct_index : 0,
+      }));
+      setQuestions((qs) => {
+        const cleaned = qs.filter((q) => q.prompt.trim().length > 0);
+        return [...cleaned, ...additions];
+      });
+      toast.success(`Imported ${additions.length} question(s). Review and edit before submitting.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not import that file");
+    } finally {
+      setImportBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   }
 
   return (
@@ -172,7 +218,20 @@ export default function TestBuilder() {
 
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">{questions.filter(q => q.prompt.trim()).length} question(s) staged</div>
-          <Button variant="outline" size="sm" onClick={() => setBankOpen(true)}><Library className="size-3.5 mr-1.5" /> Add from Question Bank</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              hidden
+              accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+              onChange={(e) => e.target.files?.[0] && importFromFile(e.target.files[0])}
+            />
+            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={importBusy}>
+              {importBusy ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Upload className="size-3.5 mr-1.5" />}
+              {importBusy ? "Parsing…" : "Import from PDF / Word"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setBankOpen(true)}><Library className="size-3.5 mr-1.5" /> Add from Question Bank</Button>
+          </div>
         </div>
 
         <div className="space-y-4">
