@@ -182,7 +182,7 @@ export async function fetchReportCardData(
     .from("profiles").select("full_name,avatar_url").eq("id", studentId).maybeSingle();
   const { data: results } = await supabase
     .from("results")
-    .select("subject,ca1,ca2,exam,total,grade,position,remark")
+    .select("subject,ca_score,assignment_score,exam_score,report_score,grade,remarks")
     .eq("student_id", studentId)
     .eq("term", term);
 
@@ -195,8 +195,13 @@ export async function fetchReportCardData(
     studentName: (prof as any)?.full_name ?? "Student",
     studentPhoto: (prof as any)?.avatar_url,
     subjects: ((results as any[]) ?? []).map(r => ({
-      subject: r.subject, ca1: r.ca1, ca2: r.ca2, exam: r.exam,
-      total: r.total, grade: r.grade, position: r.position, remark: r.remark,
+      subject: r.subject,
+      ca1: r.ca_score,
+      ca2: r.assignment_score,
+      exam: r.exam_score,
+      total: r.report_score,
+      grade: r.grade,
+      remark: r.remarks,
     })),
   };
 }
