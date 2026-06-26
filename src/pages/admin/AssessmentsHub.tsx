@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
-import { ScrollText, ClipboardList, ClipboardCheck, ShieldCheck, FileBarChart, Gauge, CalendarClock } from "lucide-react";
+import { ScrollText, ClipboardList, ClipboardCheck, ShieldCheck, FileBarChart, Gauge, CalendarClock, Inbox } from "lucide-react";
 import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import SEO from "@/components/SEO";
 
 const ITEMS = [
+  { to: "assessment-approvals",  icon: Inbox,          title: "Approval inbox",   desc: "Review CA tests & exams submitted by teachers. Approve, publish or send back." },
   { to: "trad-exams",            icon: ScrollText,     title: "Exams",            desc: "Manage exam sessions, papers and timetables." },
   { to: "exam-committee",        icon: ClipboardList,  title: "Exam Committee",   desc: "Plan, schedule and coordinate exam papers across classes." },
   { to: "proctoring",            icon: ClipboardCheck, title: "Proctoring",       desc: "Live monitoring, lockdown and violation evidence." },
