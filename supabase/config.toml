@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.subscription-verify]
 verify_jwt = false
+
+[functions.school-manifest]
+verify_jwt = false
