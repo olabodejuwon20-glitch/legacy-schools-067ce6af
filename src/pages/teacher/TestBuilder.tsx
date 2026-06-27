@@ -41,6 +41,7 @@ export default function TestBuilder() {
   const [busy, setBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const scanRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!school || !user) return;
@@ -111,20 +112,29 @@ export default function TestBuilder() {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "text/plain",
     ];
-    if (file.size > 6 * 1024 * 1024) return toast.error("Please upload a file under 6MB");
-    if (file.type && !allowed.includes(file.type)) return toast.error("Only PDF, Word or text files are supported");
+    const isImage = file.type.startsWith("image/");
+    if (file.size > 8 * 1024 * 1024) return toast.error("Please upload a file under 8MB");
+    if (!isImage && file.type && !allowed.includes(file.type)) {
+      return toast.error("Supported: PDF, Word, text, or image (PNG/JPG) files");
+    }
     setImportBusy(true);
     try {
       const isText = file.type === "text/plain";
       const payload: any = { filename: file.name, mime: file.type || "application/pdf" };
       if (isText) {
         payload.text = await file.text();
+      } else if (isImage) {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        let bin = "";
+        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        payload.images_b64 = [`data:${file.type};base64,${btoa(bin)}`];
       } else {
         const buf = new Uint8Array(await file.arrayBuffer());
         let bin = "";
         for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
         payload.file_b64 = btoa(bin);
       }
+      toast.message(isImage ? "Running OCR on the image…" : "Extracting questions…");
       const { data, error } = await supabase.functions.invoke("parse-questions-doc", { body: payload });
       if (error) throw error;
       const parsed = (data?.questions ?? []) as Array<{ prompt: string; options: string[]; correct_index: number }>;
@@ -144,6 +154,46 @@ export default function TestBuilder() {
     } finally {
       setImportBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function importFromImages(files: FileList) {
+    if (importBusy) return;
+    const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (!list.length) return toast.error("Please pick one or more image files");
+    if (list.length > 20) return toast.error("Maximum 20 images at once");
+    const totalMB = list.reduce((s, f) => s + f.size, 0) / (1024 * 1024);
+    if (totalMB > 12) return toast.error("Combined image size must be under 12MB");
+    setImportBusy(true);
+    try {
+      const images_b64: string[] = [];
+      for (const f of list) {
+        const buf = new Uint8Array(await f.arrayBuffer());
+        let bin = "";
+        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        images_b64.push(`data:${f.type};base64,${btoa(bin)}`);
+      }
+      toast.message(`Running OCR on ${list.length} page(s)…`);
+      const { data, error } = await supabase.functions.invoke("parse-questions-doc", {
+        body: { filename: "scan", mime: "image/*", images_b64 },
+      });
+      if (error) throw error;
+      const parsed = (data?.questions ?? []) as Array<{ prompt: string; options: string[]; correct_index: number }>;
+      if (!parsed.length) return toast.error("No questions could be extracted from those scans");
+      const additions: Q[] = parsed.map((p) => ({
+        prompt: p.prompt,
+        options: (p.options ?? ["", "", "", ""]).slice(0, 4),
+        correct_index: Number.isInteger(p.correct_index) ? p.correct_index : 0,
+      }));
+      setQuestions((qs) => {
+        const cleaned = qs.filter((q) => q.prompt.trim().length > 0);
+        return [...cleaned, ...additions];
+      });
+      toast.success(`OCR imported ${additions.length} question(s). Review before submitting.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not run OCR on those images");
+    } finally {
+      setImportBusy(false);
     }
   }
 
@@ -223,12 +273,23 @@ export default function TestBuilder() {
               ref={fileRef}
               type="file"
               hidden
-              accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+              accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*"
               onChange={(e) => e.target.files?.[0] && importFromFile(e.target.files[0])}
+            />
+            <input
+              ref={scanRef}
+              type="file"
+              hidden
+              multiple
+              accept="image/*"
+              onChange={(e) => e.target.files && e.target.files.length && importFromImages(e.target.files)}
             />
             <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={importBusy}>
               {importBusy ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Upload className="size-3.5 mr-1.5" />}
-              {importBusy ? "Parsing…" : "Import from PDF / Word"}
+              {importBusy ? "Parsing…" : "Import from PDF / Word / Image"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => scanRef.current?.click()} disabled={importBusy}>
+              <Upload className="size-3.5 mr-1.5" /> OCR scanned pages
             </Button>
             <Button variant="outline" size="sm" onClick={() => setBankOpen(true)}><Library className="size-3.5 mr-1.5" /> Add from Question Bank</Button>
           </div>

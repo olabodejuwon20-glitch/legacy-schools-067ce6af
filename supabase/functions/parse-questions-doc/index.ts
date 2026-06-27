@@ -7,6 +7,8 @@ const cors = {
 
 const SYS = `You are a strict exam-paper parser for a Nigerian school platform.
 Convert the supplied document into the platform's standard MCQ format.
+The source may be a scanned/photographed paper or a DOCX whose questions are embedded as images.
+In that case perform OCR on every page/image, preserving question order, and then extract questions.
 Return ONLY valid JSON of the form:
 {"questions":[
   {"prompt":"...","options":["...","...","...","..."],"correct_index":0,"explanation":"..."}
@@ -17,6 +19,7 @@ Rules:
 - Strip leading numbering like "1.", "(a)", "i)" from the prompt.
 - Skip non-question content (instructions, headers, page numbers).
 - Do not invent questions that are not in the document.
+- For low-quality scans, do your best to reconstruct legible text; mark uncertain words with [?].
 - Keep prompts under 1000 chars and each option under 300 chars.`;
 
 function json(body: unknown, status = 200) {
@@ -46,8 +49,11 @@ Deno.serve(async (req) => {
     const mime: string = String(body?.mime ?? "application/pdf");
     const file_b64: string | undefined = body?.file_b64;
     const text: string | undefined = body?.text;
+    const images_b64: string[] | undefined = Array.isArray(body?.images_b64) ? body.images_b64 : undefined;
 
-    if (!file_b64 && !text) return json({ error: "Provide a file or text to parse." }, 400);
+    if (!file_b64 && !text && !(images_b64 && images_b64.length)) {
+      return json({ error: "Provide a file, image(s), or text to parse." }, 400);
+    }
 
     // Cap input size to protect quota (~8MB base64)
     if (file_b64 && file_b64.length > 8_000_000) {
@@ -56,16 +62,31 @@ Deno.serve(async (req) => {
     if (text && text.length > 200_000) {
       return json({ error: "Pasted text is too long. Please trim it." }, 413);
     }
+    if (images_b64) {
+      if (images_b64.length > 20) return json({ error: "Please upload at most 20 images at once." }, 413);
+      const total = images_b64.reduce((s, b) => s + (b?.length || 0), 0);
+      if (total > 16_000_000) return json({ error: "Images are too large. Please reduce size or count." }, 413);
+    }
 
     const userContent: any[] = [
-      { type: "text", text: "Extract every multiple-choice question from this source. Return only the JSON." },
+      { type: "text", text: "OCR the source if it is a scan or image, then extract every multiple-choice question. Return only the JSON." },
     ];
     if (file_b64) {
       userContent.push({
         type: "file",
         file: { filename, file_data: `data:${mime};base64,${file_b64}` },
       });
-    } else if (text) {
+    }
+    if (images_b64 && images_b64.length) {
+      for (const b of images_b64) {
+        const isData = b.startsWith("data:");
+        userContent.push({
+          type: "image_url",
+          image_url: { url: isData ? b : `data:image/png;base64,${b}` },
+        });
+      }
+    }
+    if (text) {
       userContent.push({ type: "text", text });
     }
 
