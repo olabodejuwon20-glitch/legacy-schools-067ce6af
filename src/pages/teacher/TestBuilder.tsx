@@ -41,6 +41,7 @@ export default function TestBuilder() {
   const [busy, setBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const scanRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!school || !user) return;
@@ -272,12 +273,23 @@ export default function TestBuilder() {
               ref={fileRef}
               type="file"
               hidden
-              accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+              accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*"
               onChange={(e) => e.target.files?.[0] && importFromFile(e.target.files[0])}
+            />
+            <input
+              ref={scanRef}
+              type="file"
+              hidden
+              multiple
+              accept="image/*"
+              onChange={(e) => e.target.files && e.target.files.length && importFromImages(e.target.files)}
             />
             <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={importBusy}>
               {importBusy ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Upload className="size-3.5 mr-1.5" />}
-              {importBusy ? "Parsing…" : "Import from PDF / Word"}
+              {importBusy ? "Parsing…" : "Import from PDF / Word / Image"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => scanRef.current?.click()} disabled={importBusy}>
+              <Upload className="size-3.5 mr-1.5" /> OCR scanned pages
             </Button>
             <Button variant="outline" size="sm" onClick={() => setBankOpen(true)}><Library className="size-3.5 mr-1.5" /> Add from Question Bank</Button>
           </div>
