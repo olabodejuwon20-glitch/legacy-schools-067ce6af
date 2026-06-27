@@ -1,124 +1,85 @@
 
-# Exam Workflow Realignment + Premium Report Card
+# Per-school installable app (white-label)
 
-## Goal
+Goal: when a school's portal is installed to a phone home screen, the icon and label show **that school's name and logo** instead of "Legacyskool".
 
-One single exam pipeline. Teachers no longer publish exams or release results. They draft questions and submit for approval. Admin (and workspace collaborators with the right permission) review → approve → publish → schedule result release. Students only ever see results after the admin-set release moment. Report cards become a premium, per-school branded PDF.
+## Scope
 
-## New End-to-End Flow
+Two install paths, same source of truth (the school's branding in the database):
+
+1. **Installable web app (PWA)** — shipped now. Each school portal URL (`/:slug`) serves its own dynamic manifest, icon and head tags. Parents/students "Add to Home Screen" and see the school's name + logo.
+2. **Native app (Capacitor) per school** — documented + scaffolded so a school that wants their own App Store / Play Store listing can be built from the same branding. This is heavy ongoing work (one build, one developer account, one store review per school), so we ship the foundation, not 1000 stores listings.
+
+## What the admin sees
+
+In **Admin → Settings → Branding**, add a new "App install" card:
+
+- **App display name** (new field, max 12 chars recommended) — what shows under the home-screen icon. Defaults to a trimmed version of the school name.
+- **Short description** — optional, used as the install prompt subtitle.
+- Live preview tile showing how the icon + label will look on a phone home screen.
+- Reuses the existing **logo upload** for the icon (no second upload).
+- A note: "Already installed users may need to reinstall after changing this — phones cache the name and icon at install time."
+
+Stored on `schools.settings` (JSON) as `app_install: { display_name, short_description }` — no new table needed.
+
+## How the PWA per-school name works
+
+Today `index.html` references a single static `/manifest.webmanifest` with "Legacyskool". We replace this with a per-tenant dynamic manifest:
+
+1. **Dynamic manifest route** — a small edge function `school-manifest` at `/manifest/:slug.webmanifest` that reads the school's name, app display name, logo URL and theme color, then returns a fully-formed manifest JSON with:
+   - `name`, `short_name` from the admin field
+   - `icons[]` pointing at the school logo (resized via existing storage)
+   - `theme_color` from the school's report theme
+   - `start_url` = `/:slug/app`
+   - `scope` = `/:slug/`
+   - `id` = `/:slug/` (so each school is a distinct installable app on the device)
+
+2. **Per-tenant head tags** — on every school route (`/:slug/*`), a small `<TenantHead>` component (uses the existing `react-helmet-async` setup) injects:
+   - `<link rel="manifest" href="/manifest/<slug>.webmanifest">`
+   - `<link rel="apple-touch-icon" href="<logo>">`
+   - `<meta name="apple-mobile-web-app-title" content="<app display name>">`
+   - `<meta name="theme-color" content="<primary>">`
+   - Title prefix swapped to the school name
+
+3. **Fallback** — visitors on `/` (the platform marketing site) still see the existing Legacyskool manifest and icon. Only school portal routes get the tenant manifest.
+
+4. **Generated icons** — the manifest references the school's already-uploaded logo through an image transform URL (192px and 512px). If a school hasn't uploaded a logo, fall back to a generated initials tile so install never breaks.
+
+## Native (Capacitor) per-school — foundation only
+
+Add `docs/WHITE_LABEL_NATIVE.md` that documents the supported flow when a school asks for their own store app:
+
+- Fork the repo branch per school (or use a single branch with env-driven config).
+- `capacitor.config.ts` is parameterized by env vars: `APP_ID`, `APP_NAME`, `APP_ICON_PATH`, `START_URL` (their `/:slug` portal).
+- Build script `scripts/build-school-app.mjs` reads a `school-build.json` (name, slug, icon, splash, bundle id) and writes the Capacitor config + copies icons into `android/` and `ios/` resource folders before `cap sync`.
+- Each school needs their own Apple Developer + Google Play account (legal requirement); we cannot share one publisher across unrelated schools.
+
+We don't add per-school store automation — just the parameterized config so any school that requests it can be built and shipped without code changes.
+
+## What changes in code
 
 ```text
-Teacher (draft)
-   └─ create paper, add/upload questions, set marks/sections
-   └─ Submit for approval ─────────────►
-                                        Exam Committee / Admin (review)
-                                          ├─ Edit / request changes
-                                          ├─ Approve
-                                          └─ Schedule (date, time, duration, venue, class)
-                                                 │
-                                                 ▼
-                                        Admin: Publish to students
-                                                 │
-                                                 ▼
-                                        Student: Take exam in window
-                                                 │
-                                                 ▼
-                                        Auto-grade MCQ · Teacher marks theory
-                                                 │
-                                                 ▼
-                                        Committee validates ─► Admin schedules release
-                                                 │
-                                                 ▼
-                                        Student / Parent: result visible at release_at
-                                                 │
-                                                 ▼
-                                        Premium branded Report Card PDF
+supabase/functions/school-manifest/index.ts      new — dynamic manifest per :slug
+src/components/TenantHead.tsx                    new — injects per-school head tags
+src/pages/admin/Settings.tsx                     add "App install" card under Branding
+src/lib/reportCard.ts / branding helpers         expose app_install fields
+src/App.tsx or src/layouts/AppLayout.tsx         mount <TenantHead/> on /:slug/* routes
+index.html                                       keep platform manifest as fallback only
+capacitor.config.ts                              env-driven (APP_ID/APP_NAME/icons)
+scripts/build-school-app.mjs                     new — per-school native build helper
+docs/WHITE_LABEL_NATIVE.md                       new — store-publishing guide
 ```
 
-## Scope of Removal (Teacher portal)
+No schema migration is needed — the new settings go into the existing `schools.settings` JSON.
 
-Remove from teacher portal:
-- Publishing CA tests / exams to students
-- Scheduling exam dates/times
-- Releasing results to students
-- Any "Make live" / "Open to students" toggles on school exams & CA tests
+## Caveats I'll surface in the UI
 
-Teacher portal keeps:
-- Assignments (full create + grade + return — unchanged)
-- Drafting school exam / CA test questions (manual or AI from upload) and **Submit for approval**
-- Marking theory answers after approval (when assigned)
-- Viewing their own gradebook / class analytics (read-only of released results)
+- **Renaming after install** doesn't update phones that already installed the app — they must reinstall. Shown as a note next to the field.
+- **iOS** shows `short_name` (≤12 chars works best), so we cap and preview the trimmed value live.
+- **Native store apps** require each school to own their developer accounts; this is unavoidable.
 
-## Scope of Addition (Admin portal + permitted collaborators)
+## Out of scope (ask if you want any of these next)
 
-`exams:create` and `exams:approve` permissions (already in admin permissions model) now gate:
-- Create exam/test directly (admin-authored path)
-- Review submitted teacher drafts (approve / send back with notes)
-- Schedule (date, time, duration, class, venue)
-- Publish to students
-- Schedule result release datetime (auto-unlock); manual "Release now" / "Withdraw"
-
-A new consolidated page **Admin → Assessments → Approvals queue** lists every teacher-submitted paper with status chips (Submitted, Changes requested, Approved, Scheduled, Published, Closed, Results pending, Released).
-
-## Data model changes
-
-Reuse existing tables; minimal additions:
-
-- `trad_exams.draft_status` already supports `draft | submitted | approved | locked` — add `changes_requested` and `published`.
-- `trad_exams` add: `submitted_at`, `submitted_by`, `approved_at`, `approved_by`, `published_at`, `published_by`, `review_notes`.
-- `exams` (legacy CA/test) add the same lifecycle columns + `results_release_at` (already present).
-- Tighten RLS so teachers can only write while `draft_status in ('draft','changes_requested')` and cannot set `published_at` / `results_release_at`.
-- A small `exam_review_events` table for the audit trail (who submitted, who approved, notes, timestamps).
-
-## UI work
-
-Teacher portal:
-- Replace publish/schedule buttons on `teacher/Assessments.tsx`, `teacher/TestBuilder.tsx`, `teacher/TradExams.tsx` with **Submit for approval** + status badge + "Changes requested" banner with reviewer notes.
-- Hide the "Release results" controls entirely.
-- Keep grading screens for theory marking once approved.
-
-Admin portal:
-- New **Approvals queue** card in `admin/Assessments.tsx`.
-- Review drawer: preview paper, edit, Approve / Request changes (with note).
-- Schedule modal: class, date, time, duration, venue.
-- Publish action (one click after approved + scheduled).
-- Result release: existing `ExamResultsRelease.tsx` extended to cover both legacy `exams` and `trad_exams`.
-
-Student portal:
-- Only sees papers where `published_at is not null` and inside the window.
-- Result page shows lock state until `results_release_at <= now()`.
-
-## Premium Report Card
-
-New utility `src/lib/reportCard.ts` producing a branded multi-page PDF using `jspdf` (already in deps via `exporters.ts`):
-
-- Page 1 — Cover: school logo, school name, motto, academic year/term, student photo, full name, class/arm, admission no.
-- Page 2 — Subjects table: CA1, CA2, Exam, Total, Grade, Position, Remarks per subject; colour-coded grade chips from school's `grading_scales`.
-- Page 3 — Summary: overall %, class position, attendance, behaviour, teacher comment, principal comment, next term begins.
-- Footer on every page: school name + motto + page x/y; subtle watermark of school logo.
-- Reads `schools.name`, `schools.logo_url`, `schools.motto` (add column if missing).
-- Hooked into `components/results/ResultSlipButton.tsx` so any "Download report card" button across admin/teacher/parent/student uses the same premium template; old basic slip generator stays only as a fallback when `results_release_at` is null and caller is staff.
-
-## Files touched (high-level)
-
-- `supabase/migrations/*` — lifecycle columns, `exam_review_events`, tighten RLS, add `schools.motto` if absent.
-- `src/lib/tradExams.ts` — new statuses + helpers (`submitForApproval`, `approve`, `requestChanges`, `publish`).
-- `src/pages/teacher/Assessments.tsx`, `teacher/TestBuilder.tsx`, `teacher/TradExams.tsx` — remove publish/schedule, add submit-for-approval flow + status banner.
-- `src/pages/admin/Assessments.tsx` — add Approvals queue + review drawer + schedule + publish.
-- `src/pages/admin/ExamResultsRelease.tsx` — cover both exam tables.
-- `src/pages/student/TradExams.tsx`, `student/MyAssessments.tsx`, `student/Results.tsx` — gate visibility by `published_at` / `results_release_at`.
-- `src/lib/reportCard.ts` (new) + integrate via `components/results/ResultSlipButton.tsx`.
-- `src/modules/registry.ts` — drop teacher sidebar items that no longer apply (e.g. "Schools Exam" stays as draft list only; remove "Result release" from teacher).
-
-## Out of scope
-
-- Mock exams (JAMB/WAEC/NECO simulations) — student self-practice, unchanged.
-- Assignments — unchanged on teacher side.
-- Workspace/role permission model — already built; we only consume `exams:create` and `exams:approve`.
-
-## Open questions before I build
-
-1. **Changes-requested loop**: when admin sends back, should the teacher get a notification + inbox entry, or just a status flip on the paper?
-2. **Who can mark theory** after approval — original author teacher only, or any teacher the admin assigns? (Today it's the author.)
-3. **Report card trigger**: generate per term automatically when admin releases results, or on-demand download only?
-4. **Motto field** — confirm I can add `schools.motto` (text) if it doesn't exist; otherwise point me to the field you already use.
+- Per-school custom domains (e.g. `app.greenfield.edu` instead of `legacy-schools.lovable.app/greenfield`).
+- Auto-generating store screenshots / listing copy.
+- Push notifications branded per school (separate workstream — needs FCM keys per app).
