@@ -4,7 +4,7 @@ import {
   ClipboardCheck, ClipboardList, BarChart3, Award, Mail, FilePlus2, PencilRuler, MessagesSquare,
   FolderOpen, ListChecks, Sparkles, UserSquare2, Activity, Package,
   Bot, Brain, ShieldAlert, Gauge, BookMarked, PenLine,
-  ScrollText, Inbox as InboxIcon,
+  ScrollText, Inbox as InboxIcon, CreditCard, Receipt,
 } from "lucide-react";
 import { UserPlus, Workflow } from "lucide-react";
 import { ModuleManifest } from "./types";
@@ -244,6 +244,13 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
   {
     slug: "admin-reports", name: "Reports", category: "operations", icon: FileBarChart, core: true,
     sidebar: [{ label: "Reports", to: "reports", icon: FileBarChart, roles: ["admin"] }],
+  },
+  {
+    slug: "subscription", name: "Subscription & Billing", category: "finance", icon: CreditCard, core: true,
+    sidebar: [
+      { label: "Subscription", to: "subscription", icon: CreditCard, roles: ["admin"] },
+      { label: "Billing",      to: "billing",      icon: Receipt,     roles: ["admin"] },
+    ],
   },
   {
     slug: "proctoring", name: "Exam Proctoring", category: "academics", icon: ClipboardCheck,
