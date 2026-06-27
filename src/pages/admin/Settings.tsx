@@ -376,6 +376,67 @@ export default function AdminSettings() {
               </Button>
             </div>
           </SectionCard>
+
+          <SectionCard title="App install (home-screen)" description="What your school's app is called when parents and students install your portal to their phone home screen.">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <Label>App display name</Label>
+                  <Input
+                    value={appInstall.display_name}
+                    onChange={e => setAppInstall({ ...appInstall, display_name: e.target.value })}
+                    placeholder={info.name || school?.name || "Your School"}
+                    maxLength={45}
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">Shown on the install prompt. Defaults to your school name.</p>
+                </div>
+                <div>
+                  <Label>Short name <span className="text-muted-foreground font-normal">(≤ 12 chars)</span></Label>
+                  <Input
+                    value={appInstall.short_name}
+                    onChange={e => setAppInstall({ ...appInstall, short_name: e.target.value.slice(0, 12) })}
+                    placeholder={(appInstall.display_name || info.name || "School").slice(0, 12)}
+                    maxLength={12}
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">This is the label under the icon on the home screen.</p>
+                </div>
+                <div>
+                  <Label>Short description</Label>
+                  <Input
+                    value={appInstall.short_description}
+                    onChange={e => setAppInstall({ ...appInstall, short_description: e.target.value })}
+                    placeholder="Classes, results & fees in one place"
+                    maxLength={120}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Note: Phones cache the name and icon at install time. Users who already installed your portal will need to reinstall to see changes.
+                </p>
+              </div>
+
+              {/* Live preview of a home-screen tile */}
+              <div className="rounded-2xl p-6 bg-muted/40 border border-border grid place-items-center">
+                <div className="text-center">
+                  <div className="mx-auto w-20 h-20 rounded-[22px] shadow-lg overflow-hidden border border-border bg-white grid place-items-center">
+                    {logoUrl
+                      ? <img src={logoUrl} alt="" className="w-full h-full object-contain p-1.5" />
+                      : <div className="w-full h-full grid place-items-center text-white font-bold text-2xl" style={{ background: theme.primary }}>{(info.name || school?.name || "S").charAt(0)}</div>}
+                  </div>
+                  <div className="mt-2 text-xs font-medium text-foreground max-w-[88px] mx-auto leading-tight break-words">
+                    {(appInstall.short_name || appInstall.display_name || info.name || school?.name || "School").slice(0, 12)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-3">Home-screen preview</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <Button type="button" onClick={saveAppInstall} disabled={savingAppInstall}>
+                {savingAppInstall ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
+                Save app install
+              </Button>
+            </div>
+          </SectionCard>
         </TabsContent>
 
         <TabsContent value="neco" className="space-y-4">
