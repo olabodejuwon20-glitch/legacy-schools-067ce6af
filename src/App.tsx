@@ -37,6 +37,9 @@ import AdminInvites from "./pages/admin/Invites";
 import AdminBulkUpload from "./pages/admin/BulkUpload";
 import AdminHostel from "./pages/admin/Hostel";
 import AdminTransport from "./pages/admin/Transport";
+import DriverTrip from "./pages/driver/DriverTrip";
+import ParentBusTracking from "./pages/parent/BusTracking";
+import StudentBusTracking from "./pages/student/BusTracking";
 import AdminTimetable from "./pages/admin/Timetable";
 import AdminAnnouncements from "./pages/admin/Announcements";
 import AdminFees from "./pages/admin/Fees";
@@ -411,6 +414,9 @@ const App = () => (
               <Route path="parent/teacher-comms" element={<RoleGate allow="parent"><ParentTeacherComms /></RoleGate>} />
               <Route path="parent/inbox" element={<RoleGate allow="parent"><Inbox /></RoleGate>} />
               <Route path="parent/copilot" element={<RoleGate allow="parent"><PremiumGate feature="Parent Copilot"><AdminCopilot /></PremiumGate></RoleGate>} />
+              <Route path="parent/transport" element={<RoleGate allow="parent"><ParentBusTracking /></RoleGate>} />
+              <Route path="student/transport" element={<RoleGate allow="student"><StudentBusTracking /></RoleGate>} />
+              <Route path="driver/trip" element={<DriverTrip />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
