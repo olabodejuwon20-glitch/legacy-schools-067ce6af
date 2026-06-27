@@ -124,8 +124,10 @@ Deno.serve(async (req) => {
       .single();
     if (verErr) console.error("[generate-result-slip] verification insert failed", verErr);
 
-    const origin = req.headers.get("origin") || "https://legacy-skool.lovable.app";
-    const verifyUrl = ver?.id ? `${origin}/verify/${ver.id}` : origin;
+    // Use a server-controlled canonical base URL so the QR code embedded in the
+    // PDF cannot be redirected to an attacker domain via the request Origin header.
+    const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || "https://legacy-schools.lovable.app";
+    const verifyUrl = ver?.id ? `${APP_BASE_URL}/verify/${ver.id}` : APP_BASE_URL;
     let qrBytes: Uint8Array | null = null;
     try {
       const qrDataUrl = await QRCode.toDataURL(verifyUrl, { errorCorrectionLevel: "M", margin: 1, width: 256 });
