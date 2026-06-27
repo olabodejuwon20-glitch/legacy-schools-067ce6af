@@ -12,6 +12,7 @@ import AppLayout from "./layouts/AppLayout";
 import NotFound from "./pages/NotFound";
 import Landing from "./pages/Landing";
 import AnalyticsTracker from "./components/AnalyticsTracker";
+import TenantHead from "./components/TenantHead";
 import Register from "./pages/Register";
 import SignIn from "./pages/SignIn";
 import SchoolHome from "./pages/SchoolHome";
@@ -218,6 +219,7 @@ const App = () => (
       <SchoolProvider>
         <BrowserRouter>
           <AnalyticsTracker />
+          <TenantHead />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/register" element={<Register />} />
