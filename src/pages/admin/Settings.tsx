@@ -32,10 +32,12 @@ export default function AdminSettings() {
   const [necoBusy, setNecoBusy] = useState(false);
   const [theme, setTheme] = useState<Required<ReportTheme>>(DEFAULT_REPORT_THEME);
   const [savingTheme, setSavingTheme] = useState(false);
+  const [appInstall, setAppInstall] = useState({ display_name: "", short_name: "", short_description: "" });
+  const [savingAppInstall, setSavingAppInstall] = useState(false);
 
   useEffect(() => {
     if (!school) return;
-    supabase.from("schools").select("name,email,phone,address,motto,logo_url,current_session,current_term,grading_system,resumption_date,exams_violation_limit,proctoring_default,neco_subject_codes,report_theme").eq("id", school.id).single()
+    supabase.from("schools").select("name,email,phone,address,motto,logo_url,current_session,current_term,grading_system,resumption_date,exams_violation_limit,proctoring_default,neco_subject_codes,report_theme,settings").eq("id", school.id).single()
       .then(({ data }) => {
         if (!data) return;
         setInfo({ name: data.name, email: data.email ?? "", phone: data.phone ?? "", address: data.address ?? "", motto: data.motto ?? "" });
@@ -55,6 +57,12 @@ export default function AdminSettings() {
           accent: rt.accent ?? DEFAULT_REPORT_THEME.accent,
           gradientFrom: rt.gradientFrom ?? DEFAULT_REPORT_THEME.gradientFrom,
           gradientTo: rt.gradientTo ?? DEFAULT_REPORT_THEME.gradientTo,
+        });
+        const ai = (((data as any).settings ?? {}).app_install ?? {}) as any;
+        setAppInstall({
+          display_name: ai.display_name ?? "",
+          short_name: ai.short_name ?? "",
+          short_description: ai.short_description ?? "",
         });
       });
   }, [school]);
@@ -145,6 +153,30 @@ export default function AdminSettings() {
     setSavingTheme(false);
     if (error) toast.error("Could not save branding. Please try again.");
     else toast.success("Report card branding saved");
+  }
+
+  async function saveAppInstall() {
+    if (!school || savingAppInstall) return;
+    setSavingAppInstall(true);
+    try {
+      const { data: row } = await supabase.from("schools").select("settings").eq("id", school.id).maybeSingle();
+      const current = ((row?.settings ?? {}) as any);
+      const next = {
+        ...current,
+        app_install: {
+          display_name: appInstall.display_name.trim(),
+          short_name: appInstall.short_name.trim(),
+          short_description: appInstall.short_description.trim(),
+        },
+      };
+      const { error } = await supabase.from("schools").update({ settings: next as any }).eq("id", school.id);
+      if (error) throw error;
+      toast.success("App install settings saved");
+    } catch {
+      toast.error("Could not save app install settings. Please try again.");
+    } finally {
+      setSavingAppInstall(false);
+    }
   }
 
   function previewReportCard() {
