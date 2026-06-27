@@ -17,7 +17,7 @@ export default function DriverTrip() {
   const [buses, setBuses] = useState<any[]>([]);
   const [stops, setStops] = useState<any[]>([]);
   const [busId, setBusId] = useState("");
-  const [direction, setDirection] = useState<"to_school" | "from_school">("to_school");
+  const [direction, setDirection] = useState<string>("pickup");
   const [trip, setTrip] = useState<any | null>(null);
   const [pos, setPos] = useState<GeolocationPosition | null>(null);
   const [trail, setTrail] = useState<{ lat: number; lng: number }[]>([]);
@@ -49,9 +49,10 @@ export default function DriverTrip() {
   }, [school, busId]);
 
   async function startTrip() {
-    if (!school || !busId) return;
+    if (!school || !busId || !me) return;
     const { data, error } = await supabase.from("transport_trips").insert({
-      school_id: school.id, bus_id: busId, direction, status: "active", started_at: new Date().toISOString(),
+      school_id: school.id, bus_id: busId, driver_user_id: me, direction,
+      status: "active", started_at: new Date().toISOString(),
     }).select().single();
     if (error) return toast.error(error.message);
     setTrip(data); setTrail([]); visitedStops.current.clear();
@@ -86,12 +87,13 @@ export default function DriverTrip() {
     const ll = { lat: latitude, lng: longitude };
     setTrail(t => [...t.slice(-200), ll]);
     await supabase.from("transport_trip_locations").insert({
-      trip_id: trip.id, bus_id: trip.bus_id, school_id: trip.school_id,
-      lat: latitude, lng: longitude, speed_mps: speed, heading_deg: heading, accuracy_m: accuracy,
-    });
+      trip_id: trip.id, school_id: trip.school_id,
+      lat: latitude, lng: longitude,
+      speed: speed ?? null, heading: heading ?? null, accuracy: accuracy ?? null,
+    } as any);
     await supabase.from("transport_trips").update({
       last_lat: latitude, last_lng: longitude, last_speed: speed, last_heading: heading, last_ping_at: new Date().toISOString(),
-    }).eq("id", trip.id);
+    } as any).eq("id", trip.id);
     // Geofence detection
     for (const s of stops) {
       if (visitedStops.current.has(s.id)) continue;
@@ -100,7 +102,7 @@ export default function DriverTrip() {
         visitedStops.current.add(s.id);
         await supabase.from("transport_trip_events").insert({
           school_id: trip.school_id, trip_id: trip.id, bus_id: trip.bus_id, stop_id: s.id,
-          kind: direction === "to_school" ? "stop_pickup" : "stop_dropoff",
+          kind: "arrived_stop",
           note: `Arrived at ${s.name}`,
         });
       }
@@ -142,8 +144,9 @@ export default function DriverTrip() {
             <Select value={direction} onValueChange={(v: any) => setDirection(v)} disabled={!!trip}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="to_school">Morning pickup (to school)</SelectItem>
-                <SelectItem value="from_school">Afternoon dropoff (from school)</SelectItem>
+                <SelectItem value="pickup">Morning pickup (to school)</SelectItem>
+                <SelectItem value="dropoff">Afternoon dropoff (from school)</SelectItem>
+                <SelectItem value="other">Other trip</SelectItem>
               </SelectContent>
             </Select>
           </div>
