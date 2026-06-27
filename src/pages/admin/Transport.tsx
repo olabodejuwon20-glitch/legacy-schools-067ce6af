@@ -116,12 +116,17 @@ function Buses({ schoolId }: { schoolId?: string }) {
 
   async function load() {
     if (!schoolId) return;
-    const [a, b, c] = await Promise.all([
+    const [a, b, mem] = await Promise.all([
       supabase.from("transport_buses").select("*").eq("school_id", schoolId).order("name"),
       supabase.from("transport_routes").select("id,name").eq("school_id", schoolId),
-      supabase.from("memberships").select("user_id, profile:profiles!memberships_user_id_fkey(full_name)").eq("school_id", schoolId).eq("status", "active").in("role", ["teacher", "admin"]),
+      supabase.from("memberships").select("user_id").eq("school_id", schoolId).eq("status", "active").in("role", ["teacher", "admin"]),
     ]);
-    setRows(a.data ?? []); setRoutes(b.data ?? []); setDrivers(c.data ?? []);
+    setRows(a.data ?? []); setRoutes(b.data ?? []);
+    const ids = (mem.data ?? []).map((m: any) => m.user_id);
+    if (ids.length) {
+      const { data: ps } = await supabase.from("profiles").select("id,full_name").in("id", ids);
+      setDrivers((ps ?? []).map((p: any) => ({ user_id: p.id, full_name: p.full_name })));
+    } else setDrivers([]);
   }
   useEffect(() => { load(); }, [schoolId]);
 
@@ -164,7 +169,7 @@ function Buses({ schoolId }: { schoolId?: string }) {
             <div><Label>Driver (staff account)</Label>
               <Select value={form.driver_user_id} onValueChange={v => setForm({ ...form, driver_user_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Pick driver from staff" /></SelectTrigger>
-                <SelectContent>{drivers.map((d: any) => <SelectItem key={d.user_id} value={d.user_id}>{d.profile?.full_name ?? "Staff member"}</SelectItem>)}</SelectContent>
+              <SelectContent>{drivers.map((d: any) => <SelectItem key={d.user_id} value={d.user_id}>{d.full_name ?? "Staff member"}</SelectItem>)}</SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">Driver must sign in with their account to stream GPS.</p>
             </div>
@@ -355,13 +360,18 @@ function Riders({ schoolId }: { schoolId?: string }) {
 
   async function load() {
     if (!schoolId) return;
-    const [s, b, st, a] = await Promise.all([
-      supabase.from("memberships").select("user_id, profile:profiles!memberships_user_id_fkey(full_name)").eq("school_id", schoolId).eq("role", "student").eq("status", "active"),
+    const [mem, b, st, a] = await Promise.all([
+      supabase.from("memberships").select("user_id").eq("school_id", schoolId).eq("role", "student").eq("status", "active"),
       supabase.from("transport_buses").select("id,name,route_id").eq("school_id", schoolId),
       supabase.from("transport_stops").select("id,name,route_id").eq("school_id", schoolId),
       supabase.from("transport_student_stops").select("*").eq("school_id", schoolId),
     ]);
-    setStudents(s.data ?? []); setBuses(b.data ?? []); setStops(st.data ?? []); setAssignments(a.data ?? []);
+    setBuses(b.data ?? []); setStops(st.data ?? []); setAssignments(a.data ?? []);
+    const ids = (mem.data ?? []).map((m: any) => m.user_id);
+    if (ids.length) {
+      const { data: ps } = await supabase.from("profiles").select("id,full_name").in("id", ids);
+      setStudents((ps ?? []).map((p: any) => ({ user_id: p.id, full_name: p.full_name })));
+    } else setStudents([]);
   }
   useEffect(() => { load(); }, [schoolId]);
 
@@ -393,7 +403,7 @@ function Riders({ schoolId }: { schoolId?: string }) {
         <div><Label className="text-xs">Student</Label>
           <Select value={studentId} onValueChange={setStudentId}>
             <SelectTrigger><SelectValue placeholder="Student" /></SelectTrigger>
-            <SelectContent>{students.map((s: any) => <SelectItem key={s.user_id} value={s.user_id}>{s.profile?.full_name ?? "Student"}</SelectItem>)}</SelectContent>
+            <SelectContent>{students.map((s: any) => <SelectItem key={s.user_id} value={s.user_id}>{s.full_name ?? "Student"}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div><Label className="text-xs">Bus</Label>
@@ -427,7 +437,7 @@ function Riders({ schoolId }: { schoolId?: string }) {
             const d = stops.find(x => x.id === a.dropoff_stop_id);
             return (
               <tr key={a.id} className="border-b border-border last:border-0">
-                <td className="py-2">{st?.profile?.full_name ?? "Student"}</td>
+                <td className="py-2">{st?.full_name ?? "Student"}</td>
                 <td className="text-muted-foreground">{b?.name ?? "—"}</td>
                 <td className="text-muted-foreground">{p?.name ?? "—"}</td>
                 <td className="text-muted-foreground">{d?.name ?? "—"}</td>
