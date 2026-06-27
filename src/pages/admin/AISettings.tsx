@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Settings2, Save, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
+import { Settings2, Save, CheckCircle2, XCircle, ExternalLink, Cpu, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
@@ -12,6 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { AI_MODELS, AI_TASKS, AI_ROLES, TIER_BADGE, AI_MODEL_BY_ID } from "@/lib/aiModels";
 
 type Quota = {
   school_id: string;
@@ -31,14 +34,18 @@ export default function AISettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<number>(0);
+  // routing: { [`${kind}:${role}`]: model }
+  const [routing, setRouting] = useState<Record<string, string>>({});
+  const [savingRouting, setSavingRouting] = useState(false);
 
   async function load() {
     if (!school) return;
     setLoading(true);
-    const [{ data: quota }, { count }] = await Promise.all([
+    const [{ data: quota }, { count }, { data: routes }] = await Promise.all([
       supabase.from("school_ai_quotas").select("*").eq("school_id", school.id).maybeSingle(),
       supabase.from("ai_approvals").select("id", { count: "exact", head: true })
         .eq("school_id", school.id).eq("status", "pending"),
+      supabase.from("ai_model_routing").select("task_kind, role, model").eq("school_id", school.id),
     ]);
     setQ((quota as Quota) ?? {
       school_id: school.id,
@@ -49,6 +56,9 @@ export default function AISettings() {
       period_start: new Date().toISOString().slice(0, 10),
     });
     setPending(count ?? 0);
+    const map: Record<string, string> = {};
+    (routes ?? []).forEach((r: any) => { map[`${r.task_kind}:${r.role}`] = r.model; });
+    setRouting(map);
     setLoading(false);
   }
 
@@ -68,6 +78,42 @@ export default function AISettings() {
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("AI settings saved");
+  }
+
+  async function saveRouting() {
+    if (!school) return;
+    setSavingRouting(true);
+    try {
+      const rows = Object.entries(routing)
+        .filter(([, model]) => !!model)
+        .map(([key, model]) => {
+          const [task_kind, role] = key.split(":");
+          return { school_id: school.id, task_kind, role, model };
+        });
+      // Delete cleared rows then upsert the rest.
+      const { error: delErr } = await supabase
+        .from("ai_model_routing").delete().eq("school_id", school.id);
+      if (delErr) throw delErr;
+      if (rows.length) {
+        const { error: insErr } = await supabase.from("ai_model_routing").insert(rows);
+        if (insErr) throw insErr;
+      }
+      toast.success("Model routing saved");
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not save model routing");
+    } finally {
+      setSavingRouting(false);
+    }
+  }
+
+  function setRoute(kind: string, role: string, model: string) {
+    setRouting((prev) => {
+      const next = { ...prev };
+      const key = `${kind}:${role}`;
+      if (!model || model === "__unset__") delete next[key];
+      else next[key] = model;
+      return next;
+    });
   }
 
   if (loading || !q) {
@@ -160,6 +206,93 @@ export default function AISettings() {
         >
           <Settings2 className="w-4 h-4" /> Open AI Activity dashboard
         </Link>
+      </SectionCard>
+
+      <SectionCard
+        title="AI model routing"
+        description="Pick which model powers each task. Leave a cell blank to inherit the Default for that task. Heavier models give better answers but cost more."
+        action={
+          <Button onClick={saveRouting} size="sm" disabled={savingRouting}>
+            <Save className="w-3.5 h-3.5 mr-1" /> {savingRouting ? "Saving…" : "Save routing"}
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+            <Info className="w-3.5 h-3.5 mt-0.5 text-amber-500 shrink-0" />
+            <div>
+              You can mix <strong>Gemini</strong> and <strong>GPT-5</strong> families today.
+              Specialist providers like <em>Anthropic Claude Sonnet</em> or <em>Google Vertex AI</em> aren't part of the included gateway — they need a separate paid integration. Ask in chat if you want one of those wired in.
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs min-w-[760px]">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-2 font-medium">Task</th>
+                  {AI_ROLES.map((r) => (
+                    <th key={r.id} className="text-left py-2 px-2 font-medium">{r.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {AI_TASKS.map((task) => (
+                  <tr key={task.kind} className="border-b last:border-0 align-top">
+                    <td className="py-2 px-2">
+                      <div className="flex items-center gap-2">
+                        <Cpu className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <div>
+                          <div className="font-medium text-foreground">{task.label}</div>
+                          <div className="text-[10px] text-muted-foreground">{task.description}</div>
+                          <Badge variant="outline" className={`mt-1 text-[10px] ${TIER_BADGE[task.suggestedTier]}`}>
+                            Suggested: {task.suggestedTier}
+                          </Badge>
+                        </div>
+                      </div>
+                    </td>
+                    {AI_ROLES.map((r) => {
+                      const key = `${task.kind}:${r.id}`;
+                      const value = routing[key] ?? "__unset__";
+                      const info = AI_MODEL_BY_ID[routing[key] ?? ""];
+                      return (
+                        <td key={r.id} className="py-2 px-2 min-w-[180px]">
+                          <Select value={value} onValueChange={(v) => setRoute(task.kind, r.id, v)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder={r.id === "default" ? "System default" : "Inherit"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__unset__">
+                                {r.id === "default" ? "System default" : "Inherit Default"}
+                              </SelectItem>
+                              <SelectGroup>
+                                <SelectLabel>Google Gemini</SelectLabel>
+                                {AI_MODELS.filter((m) => m.vendor === "Google").map((m) => (
+                                  <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                              <SelectGroup>
+                                <SelectLabel>OpenAI GPT</SelectLabel>
+                                {AI_MODELS.filter((m) => m.vendor === "OpenAI").map((m) => (
+                                  <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                          {info && (
+                            <div className="mt-1 text-[10px] text-muted-foreground line-clamp-2">
+                              {info.blurb}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </SectionCard>
     </div>
   );

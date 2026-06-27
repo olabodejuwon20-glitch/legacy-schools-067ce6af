@@ -27,6 +27,8 @@ export interface AiCallOptions {
   userId?: string | null;
   kind: string;                       // e.g. "lesson_plan", "mark_essay", "principal_query"
   model?: string;                     // default: gemini-3-flash-preview
+  /** Caller's role — used to pick a per-role override from ai_model_routing. */
+  role?: "admin" | "teacher" | "student" | "parent" | "default";
   messages: any[];
   tools?: any[];
   tool_choice?: any;
@@ -116,11 +118,39 @@ export async function checkQuota(schoolId: string): Promise<string | null> {
 }
 
 /**
+ * Resolve which model to use for (schoolId, kind, role) from ai_model_routing.
+ * Falls back to role='default' for the kind, then to the system default.
+ */
+export async function resolveModel(
+  schoolId: string,
+  kind: string,
+  role: string = "default",
+  fallback = "google/gemini-3-flash-preview",
+): Promise<string> {
+  try {
+    const { data } = await admin()
+      .from("ai_model_routing")
+      .select("role, model")
+      .eq("school_id", schoolId)
+      .eq("task_kind", kind)
+      .in("role", [role, "default"]);
+    if (data && data.length) {
+      const exact = data.find((r: any) => r.role === role);
+      if (exact) return exact.model;
+      const def = data.find((r: any) => r.role === "default");
+      if (def) return def.model;
+    }
+  } catch (_) { /* ignore */ }
+  return fallback;
+}
+
+/**
  * Non-streaming AI call. Logs to ai_jobs. Returns the reply text + tool calls.
  * Throws on gateway error (caller converts to HTTP response).
  */
 export async function aiCall(opts: AiCallOptions): Promise<AiCallResult> {
-  const model = opts.model ?? "google/gemini-3-flash-preview";
+  const model = opts.model
+    ?? await resolveModel(opts.schoolId, opts.kind, opts.role ?? "default");
   const t0 = Date.now();
 
   // Cache lookup (skip for streaming or when explicitly bypassed).
