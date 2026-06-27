@@ -929,6 +929,58 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_model_routing: {
+        Row: {
+          created_at: string
+          id: string
+          model: string
+          role: string
+          school_id: string
+          task_kind: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          model: string
+          role?: string
+          school_id: string
+          task_kind: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          model?: string
+          role?: string
+          school_id?: string
+          task_kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_model_routing_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_model_routing_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_model_routing_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
