@@ -74,6 +74,7 @@ import AdminAssessmentsHub from "./pages/admin/AssessmentsHub";
 import AdminAssessmentApprovals from "./pages/admin/AssessmentApprovals";
 import AdminAIOpsHub from "./pages/admin/AIOpsHub";
 import AdminWorkspace from "./pages/admin/Workspace";
+import AdminOnboardingCenter from "./pages/admin/OnboardingCenter";
 import TradUnlockResult from "./pages/shared/TradUnlockResult";
 import SubscriptionCallback from "./pages/SubscriptionCallback";
 import HelpPage from "./pages/Help";
