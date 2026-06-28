@@ -37,10 +37,22 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await admin.rpc("is_school_admin", { _school: school_id, _user: user.id });
     if (!roleOk && !isAdmin) return json({ error: "Forbidden" }, 403);
 
+    // Tenant-isolate: confirm the target student is actually a member of the caller's school
+    // before pulling any profile / attendance data with the service-role client.
+    const { data: studentMembership } = await admin
+      .from("memberships")
+      .select("id")
+      .eq("user_id", student_id)
+      .eq("school_id", school_id)
+      .eq("role", "student")
+      .eq("status", "active")
+      .maybeSingle();
+    if (!studentMembership) return json({ error: "Student not found in this school" }, 404);
+
     const [{ data: profile }, { data: results }, { data: attendance }] = await Promise.all([
       admin.from("profiles").select("full_name").eq("id", student_id).maybeSingle(),
       admin.from("results").select("subject,score,grade,term").eq("student_id", student_id).eq("school_id", school_id).order("created_at", { ascending: false }).limit(40),
-      admin.from("attendance").select("status").eq("student_id", student_id).limit(200),
+      admin.from("attendance").select("status").eq("student_id", student_id).eq("school_id", school_id).limit(200),
     ]);
 
     const filtered = (results ?? []).filter((r: any) =>

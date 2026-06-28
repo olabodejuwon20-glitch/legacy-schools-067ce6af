@@ -52,8 +52,10 @@ Deno.serve(async (req) => {
     if (amount < 100) return json({ error: "invalid_amount" }, 400);
 
     const reference = `sub_${inv.id.slice(0, 8)}_${Date.now()}`;
-    const origin = new URL(req.url).origin.replace(/\/functions\/.*/, "");
-    const callback_url = `${req.headers.get("origin") || origin}/subscription/callback?ref=${reference}`;
+    // Never trust the Origin header for redirect targets (open-redirect / phishing risk).
+    // Use a server-side canonical base URL instead.
+    const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || "https://legacy-schools.lovable.app";
+    const callback_url = `${APP_BASE_URL.replace(/\/+$/, "")}/subscription/callback?ref=${reference}`;
 
     const init = await paystackInit({
       email: user.email,
