@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/comms/NotificationBell";
 import { RealtimeNotifier } from "@/components/comms/RealtimeNotifier";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { HelpCircle, CreditCard } from "lucide-react";
 import { warmSchoolCache } from "@/lib/dataCache";
 import { useAdminPermissions } from "@/lib/adminPermissions";
@@ -319,6 +320,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen flex bg-background">
       <RealtimeNotifier />
+      <PWAInstallPrompt schoolName={school?.name} />
       <aside className={cn(
         "fixed lg:sticky lg:top-0 lg:h-screen lg:self-start inset-y-0 left-0 z-40 flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
         collapsed ? "w-[76px]" : "w-[260px]",

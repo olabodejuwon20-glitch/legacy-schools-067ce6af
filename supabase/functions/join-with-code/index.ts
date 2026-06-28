@@ -16,6 +16,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   try {
     const body = await req.json();
+    const preview = body.preview === true;
     const fullName = (body.fullName ?? "").toString().trim();
     const phone = normPhone((body.phone ?? "").toString());
     const code = (body.code ?? "").toString().trim().toUpperCase();
@@ -23,9 +24,11 @@ Deno.serve(async (req) => {
     const schoolSlug = (body.schoolSlug ?? "").toString().trim().toLowerCase();
     const bio = body.bio ?? {};
 
-    if (!fullName) return json({ error: "Full name is required" }, 400);
-    if (!phone || phone.length < 6) return json({ error: "Invalid phone" }, 400);
-    if (!isPin(pin)) return json({ error: "PIN must be 6 digits" }, 400);
+    if (!preview) {
+      if (!fullName) return json({ error: "Full name is required" }, 400);
+      if (!phone || phone.length < 6) return json({ error: "Invalid phone" }, 400);
+      if (!isPin(pin)) return json({ error: "PIN must be 6 digits" }, 400);
+    }
     if (!code) return json({ error: "Code is required" }, 400);
     if (!schoolSlug) return json({ error: "Open the correct school portal to join." }, 400);
 
@@ -45,6 +48,10 @@ Deno.serve(async (req) => {
     if (!school) return json({ error: "School not found" }, 400);
     if (school.slug !== schoolSlug) {
       return json({ error: "Invalid or expired onboarding code." }, 403);
+    }
+
+    if (preview) {
+      return json({ ok: true, role: invite.role, schoolSlug: school.slug, schoolName: school.name });
     }
 
     const email = fakeEmail(phone, school.slug);
