@@ -76,7 +76,7 @@ export default function Join() {
     setVerifying(true);
     try {
       const { data, error } = await supabase.functions.invoke("join-with-code", {
-        body: { preview: true, code, schoolSlug: school?.slug },
+        body: { preview: true, code, schoolSlug: school?.slug, role: chosenRole },
       });
       if (error) throw new Error(await friendlyInvokeError(error, "We couldn't verify that code."));
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -92,11 +92,21 @@ export default function Join() {
     if (pin !== confirmPin) return toast.error("PINs don't match");
     setBusy(true);
     try {
+      const customRole = customRoles.find((r) => r.key === chosenRole);
       const { data, error } = await supabase.functions.invoke("join-with-code", {
         body: {
           code, fullName, phone, pin,
           schoolSlug: school?.slug,
-          bio: { gender, dob: dob || null, address, photo_url: null, profile_data: {} },
+          role: chosenRole,
+          customRoleKey: customRole?.key ?? null,
+          bio: {
+            gender, dob: dob || null, address, photo_url: null,
+            profile_data: {
+              selected_role: chosenRole,
+              selected_role_label: chosenLabel,
+              custom_role_key: customRole?.key ?? null,
+            },
+          },
         },
       });
       if (error) throw new Error(await friendlyInvokeError(error, "We couldn't process your onboarding code. Please check and try again."));

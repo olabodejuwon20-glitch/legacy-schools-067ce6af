@@ -22,6 +22,8 @@ Deno.serve(async (req) => {
     const code = (body.code ?? "").toString().trim().toUpperCase();
     const pin = (body.pin ?? "").toString().trim();
     const schoolSlug = (body.schoolSlug ?? "").toString().trim().toLowerCase();
+    const selectedRole = (body.role ?? "").toString().trim().toLowerCase() || null;
+    const customRoleKey = (body.customRoleKey ?? "").toString().trim() || null;
     const bio = body.bio ?? {};
 
     if (!preview) {
@@ -50,8 +52,26 @@ Deno.serve(async (req) => {
       return json({ error: "Invalid or expired onboarding code." }, 403);
     }
 
+    // Resolve custom role (if any) against this school's enabled custom roles
+    let customRole: { key: string; label: string; base_role: string } | null = null;
+    if (customRoleKey) {
+      const { data: cr } = await admin.from("school_custom_roles")
+        .select("key,label,base_role,enabled")
+        .eq("school_id", school.id).eq("key", customRoleKey).maybeSingle();
+      if (!cr || cr.enabled === false) {
+        return json({ error: "That role isn't available for this school." }, 400);
+      }
+      customRole = { key: cr.key, label: cr.label, base_role: cr.base_role };
+      // Custom role's base must match the invite's role to prevent privilege jumps
+      if (cr.base_role !== invite.role) {
+        return json({ error: "This code doesn't match the selected role." }, 400);
+      }
+    } else if (selectedRole && selectedRole !== invite.role) {
+      return json({ error: "This code doesn't match the selected role." }, 400);
+    }
+
     if (preview) {
-      return json({ ok: true, role: invite.role, schoolSlug: school.slug, schoolName: school.name });
+      return json({ ok: true, role: invite.role, customRole, schoolSlug: school.slug, schoolName: school.name });
     }
 
     const email = fakeEmail(phone, school.slug);
@@ -70,13 +90,20 @@ Deno.serve(async (req) => {
       id: uid, full_name: fullName, email, phone,
       gender: bio.gender || null, dob: bio.dob || null, address: bio.address || null, photo_url: bio.photo_url || null,
     });
+    const incomingProfileData = (bio.profile_data && typeof bio.profile_data === "object") ? bio.profile_data : {};
+    const mergedProfileData = {
+      ...incomingProfileData,
+      selected_role: selectedRole ?? invite.role,
+      custom_role_key: customRole?.key ?? null,
+      custom_role_label: customRole?.label ?? null,
+    };
     await admin.from("memberships").upsert(
       {
         school_id: school.id, user_id: uid, role: invite.role,
         admin_slot: invite.role === "admin" ? (invite.admin_slot ?? null) : null,
         status: "active",
         bio_completed: true, must_change_pin: false,
-        profile_data: bio.profile_data ?? {},
+        profile_data: mergedProfileData,
       },
       { onConflict: "school_id,user_id,role" } as any,
     );
@@ -86,11 +113,11 @@ Deno.serve(async (req) => {
     try {
       await admin.from("onboarding_events").insert({
         school_id: school.id, code_id: (invite as any).id, user_id: uid, role: invite.role,
-        event: "joined", metadata: { phone, full_name: fullName },
+        event: "joined", metadata: { phone, full_name: fullName, custom_role: customRole?.key ?? null },
       });
     } catch (_) { /* best-effort */ }
 
-    return json({ ok: true, email, schoolSlug: school.slug, role: invite.role });
+    return json({ ok: true, email, schoolSlug: school.slug, role: invite.role, customRole });
   } catch (e) {
     console.error('[join-with-code] error:', e); return json({ error: 'An internal error occurred' }, 500);
   }
