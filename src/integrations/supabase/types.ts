@@ -3126,36 +3126,45 @@ export type Database = {
       invite_codes: {
         Row: {
           admin_slot: number | null
+          assigned_to_user_id: string | null
           code: string
           created_at: string
           created_by: string
           expires_at: string | null
           id: string
           max_uses: number
+          metadata: Json
+          revoked_at: string | null
           role: Database["public"]["Enums"]["member_role"]
           school_id: string
           uses: number
         }
         Insert: {
           admin_slot?: number | null
+          assigned_to_user_id?: string | null
           code: string
           created_at?: string
           created_by: string
           expires_at?: string | null
           id?: string
           max_uses?: number
+          metadata?: Json
+          revoked_at?: string | null
           role: Database["public"]["Enums"]["member_role"]
           school_id: string
           uses?: number
         }
         Update: {
           admin_slot?: number | null
+          assigned_to_user_id?: string | null
           code?: string
           created_at?: string
           created_by?: string
           expires_at?: string | null
           id?: string
           max_uses?: number
+          metadata?: Json
+          revoked_at?: string | null
           role?: Database["public"]["Enums"]["member_role"]
           school_id?: string
           uses?: number
@@ -4099,6 +4108,68 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      onboarding_events: {
+        Row: {
+          code_id: string | null
+          created_at: string
+          event: string
+          id: string
+          metadata: Json
+          role: string | null
+          school_id: string
+          user_id: string | null
+        }
+        Insert: {
+          code_id?: string | null
+          created_at?: string
+          event: string
+          id?: string
+          metadata?: Json
+          role?: string | null
+          school_id: string
+          user_id?: string | null
+        }
+        Update: {
+          code_id?: string | null
+          created_at?: string
+          event?: string
+          id?: string
+          metadata?: Json
+          role?: string | null
+          school_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_events_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "invite_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       page_views: {
         Row: {
@@ -5251,6 +5322,64 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      school_custom_roles: {
+        Row: {
+          base_role: string
+          created_at: string
+          deleted_at: string | null
+          enabled: boolean
+          id: string
+          key: string
+          label: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          base_role: string
+          created_at?: string
+          deleted_at?: string | null
+          enabled?: boolean
+          id?: string
+          key: string
+          label: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          base_role?: string
+          created_at?: string
+          deleted_at?: string | null
+          enabled?: boolean
+          id?: string
+          key?: string
+          label?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_custom_roles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_custom_roles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_custom_roles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       school_invoices: {
         Row: {
@@ -8305,7 +8434,13 @@ export type Database = {
         | "overdue"
         | "waived"
         | "cancelled"
-      member_role: "admin" | "teacher" | "student" | "parent"
+      member_role:
+        | "admin"
+        | "teacher"
+        | "student"
+        | "parent"
+        | "driver"
+        | "staff"
       payment_audience: "school" | "level" | "class" | "custom"
       payment_category:
         | "tuition"
@@ -8495,7 +8630,7 @@ export const Constants = {
         "waived",
         "cancelled",
       ],
-      member_role: ["admin", "teacher", "student", "parent"],
+      member_role: ["admin", "teacher", "student", "parent", "driver", "staff"],
       payment_audience: ["school", "level", "class", "custom"],
       payment_category: [
         "tuition",

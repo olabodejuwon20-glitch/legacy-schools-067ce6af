@@ -33,8 +33,11 @@ Deno.serve(async (req) => {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(url, service, { auth: { persistSession: false } });
 
-    const { data: invite } = await admin.from("invite_codes").select("school_id, role, admin_slot, expires_at, uses, max_uses").eq("code", code).maybeSingle();
+    const { data: invite } = await admin.from("invite_codes")
+      .select("id, school_id, role, admin_slot, expires_at, uses, max_uses, revoked_at")
+      .eq("code", code).maybeSingle();
     if (!invite) return json({ error: "Invalid code" }, 400);
+    if (invite.revoked_at) return json({ error: "This code has been revoked. Ask your school for a new one." }, 400);
     if (invite.expires_at && new Date(invite.expires_at) < new Date()) return json({ error: "Code expired" }, 400);
     if (invite.uses >= invite.max_uses) return json({ error: "Code exhausted" }, 400);
 
@@ -71,6 +74,14 @@ Deno.serve(async (req) => {
       { onConflict: "school_id,user_id,role" } as any,
     );
     await admin.from("invite_codes").update({ uses: invite.uses + 1 }).eq("code", code);
+
+    // Audit
+    try {
+      await admin.from("onboarding_events").insert({
+        school_id: school.id, code_id: (invite as any).id, user_id: uid, role: invite.role,
+        event: "joined", metadata: { phone, full_name: fullName },
+      });
+    } catch (_) { /* best-effort */ }
 
     return json({ ok: true, email, schoolSlug: school.slug, role: invite.role });
   } catch (e) {

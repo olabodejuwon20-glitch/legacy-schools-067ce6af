@@ -41,6 +41,13 @@ export const MODULE_MANIFESTS: ModuleManifest[] = [
       { label: "Admission", to: "admission", icon: UserPlus, roles: ["admin"] },
     ],
   },
+  // ---- Onboarding Center (QR, activation codes, identity, role config) ----
+  {
+    slug: "onboarding-center", name: "Onboarding Center", category: "operations", icon: UserPlus, core: true,
+    sidebar: [
+      { label: "Onboarding Center", to: "onboarding-center", icon: UserPlus, roles: ["admin"] },
+    ],
+  },
   // ---- Assessments hub (single parent nav grouping exams, proctoring, approvals, results) ----
   {
     slug: "assessments-hub", name: "Assessments", category: "academics", icon: ClipboardList, core: true,

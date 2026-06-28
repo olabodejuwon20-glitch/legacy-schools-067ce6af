@@ -74,6 +74,7 @@ import AdminAssessmentsHub from "./pages/admin/AssessmentsHub";
 import AdminAssessmentApprovals from "./pages/admin/AssessmentApprovals";
 import AdminAIOpsHub from "./pages/admin/AIOpsHub";
 import AdminWorkspace from "./pages/admin/Workspace";
+import AdminOnboardingCenter from "./pages/admin/OnboardingCenter";
 import TradUnlockResult from "./pages/shared/TradUnlockResult";
 import SubscriptionCallback from "./pages/SubscriptionCallback";
 import HelpPage from "./pages/Help";
@@ -318,6 +319,7 @@ const App = () => (
               <Route path="admin/assessment-approvals" element={<RoleGate allow="admin"><AdminAssessmentApprovals /></RoleGate>} />
               <Route path="admin/ai-ops" element={<RoleGate allow="admin"><AdminAIOpsHub /></RoleGate>} />
               <Route path="admin/workspace" element={<RoleGate allow="admin"><AdminWorkspace /></RoleGate>} />
+              <Route path="admin/onboarding-center" element={<RoleGate allow="admin"><AdminOnboardingCenter /></RoleGate>} />
               <Route path="trad-unlock/:resultId" element={<TradUnlockResult />} />
               <Route path="help" element={<HelpPage />} />
 
