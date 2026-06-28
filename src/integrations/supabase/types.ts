@@ -8434,7 +8434,13 @@ export type Database = {
         | "overdue"
         | "waived"
         | "cancelled"
-      member_role: "admin" | "teacher" | "student" | "parent"
+      member_role:
+        | "admin"
+        | "teacher"
+        | "student"
+        | "parent"
+        | "driver"
+        | "staff"
       payment_audience: "school" | "level" | "class" | "custom"
       payment_category:
         | "tuition"
@@ -8624,7 +8630,7 @@ export const Constants = {
         "waived",
         "cancelled",
       ],
-      member_role: ["admin", "teacher", "student", "parent"],
+      member_role: ["admin", "teacher", "student", "parent", "driver", "staff"],
       payment_audience: ["school", "level", "class", "custom"],
       payment_category: [
         "tuition",
