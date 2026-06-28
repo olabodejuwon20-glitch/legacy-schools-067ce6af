@@ -319,6 +319,7 @@ const App = () => (
               <Route path="admin/assessment-approvals" element={<RoleGate allow="admin"><AdminAssessmentApprovals /></RoleGate>} />
               <Route path="admin/ai-ops" element={<RoleGate allow="admin"><AdminAIOpsHub /></RoleGate>} />
               <Route path="admin/workspace" element={<RoleGate allow="admin"><AdminWorkspace /></RoleGate>} />
+              <Route path="admin/onboarding-center" element={<RoleGate allow="admin"><AdminOnboardingCenter /></RoleGate>} />
               <Route path="trad-unlock/:resultId" element={<TradUnlockResult />} />
               <Route path="help" element={<HelpPage />} />
 
