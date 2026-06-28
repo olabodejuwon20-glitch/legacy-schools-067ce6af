@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { GraduationCap, Loader2, User, Phone, KeyRound, Hash } from "lucide-react";
+import { GraduationCap, Loader2, User, Phone, KeyRound, Hash, Users2, BookOpen, Bus, Briefcase, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,38 @@ export default function Join() {
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
   const [address, setAddress] = useState("");
+  const [chosenRole, setChosenRole] = useState<string | null>(params.get("role"));
+  const [customRoles, setCustomRoles] = useState<{ key: string; label: string; base_role: string }[]>([]);
+  const [enabledRoles, setEnabledRoles] = useState<Record<string, boolean>>({});
+  const [welcomeMessage, setWelcomeMessage] = useState<string>("");
 
   useEffect(() => { if (!schoolLoading && !school) navigate("/", { replace: true }); }, [school, schoolLoading, navigate]);
+
+  useEffect(() => {
+    if (!school?.id) return;
+    supabase.from("schools").select("settings").eq("id", school.id).maybeSingle()
+      .then(({ data }) => {
+        const s = (data?.settings as any) ?? {};
+        setEnabledRoles((s.onboarding?.enabled_roles ?? { student: true, teacher: true, parent: true, driver: true, staff: true }));
+        setWelcomeMessage(s.identity?.welcome_message ?? "");
+      });
+    supabase.from("school_custom_roles").select("key,label,base_role,enabled,deleted_at").eq("school_id", school.id)
+      .then(({ data }) => setCustomRoles((data ?? []).filter((r: any) => r.enabled && !r.deleted_at)));
+  }, [school?.id]);
+
+  const roleOptions = useMemo(() => {
+    const base = [
+      { key: "student", label: "Student",  icon: Users2 },
+      { key: "teacher", label: "Teacher",  icon: BookOpen },
+      { key: "parent",  label: "Parent",   icon: Heart },
+      { key: "driver",  label: "Driver",   icon: Bus },
+      { key: "staff",   label: "Staff",    icon: Briefcase },
+    ].filter((r) => enabledRoles[r.key] !== false);
+    return [
+      ...base,
+      ...customRoles.map((r) => ({ key: r.key, label: r.label, icon: Briefcase })),
+    ];
+  }, [enabledRoles, customRoles]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,11 +101,38 @@ export default function Join() {
         </div>
       </header>
       <main className="mx-auto max-w-2xl px-6 py-10">
-        <SchoolBadge name={school.name} logoUrl={school.logo_url} subtitle="Set up your account — one time only" />
+        <SchoolBadge name={school.name} logoUrl={school.logo_url} subtitle={welcomeMessage || "Set up your account — one time only"} />
+
+        {!chosenRole ? (
+          <Card className="mt-6 p-6">
+            <div className="text-sm font-semibold mb-1">Who are you joining as?</div>
+            <p className="text-xs text-muted-foreground mb-4">Pick the role your school assigned to you.</p>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {roleOptions.map(({ key, label, icon: Icon }) => (
+                <button key={key} type="button" onClick={() => setChosenRole(key)}
+                  className="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/40 hover:bg-muted/40 transition text-left">
+                  <div className="size-10 rounded-md bg-primary/10 text-primary grid place-items-center"><Icon className="size-5" /></div>
+                  <div>
+                    <div className="text-sm font-medium">{label}</div>
+                    <div className="text-[11px] text-muted-foreground">Join as {label.toLowerCase()}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </Card>
+        ) : (
         <Card className="mt-6 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm">
+              Joining as <span className="font-semibold capitalize">{chosenRole}</span>
+            </div>
+            <button type="button" onClick={() => setChosenRole(null)} className="text-xs text-muted-foreground hover:text-foreground underline">
+              Change role
+            </button>
+          </div>
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-2"><Label className="flex items-center gap-1.5"><Hash className="size-3.5"/>Onboarding code</Label>
-              <Input required value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="STU-XXXXX / TCH-XX / PRT-XX" /></div>
+              <Input required value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="Activation code from your school" /></div>
             <div className="space-y-2"><Label className="flex items-center gap-1.5"><User className="size-3.5"/>Full name</Label>
               <Input required value={fullName} onChange={e=>setFullName(e.target.value)} /></div>
             <div className="space-y-2"><Label className="flex items-center gap-1.5"><Phone className="size-3.5"/>Phone number</Label>
@@ -96,6 +153,7 @@ export default function Join() {
             <Button type="submit" className="w-full" disabled={busy}>{busy && <Loader2 className="size-4 animate-spin"/>} Join school</Button>
           </form>
         </Card>
+        )}
       </main>
     </div>
   );
