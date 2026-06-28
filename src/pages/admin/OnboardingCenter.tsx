@@ -217,11 +217,11 @@ function CodesTab({ school, user, cfg }: any) {
       const payload = Array.from({ length: Math.max(1, Math.min(qty, 200)) }).map(() => ({
         school_id: school.id,
         code: `${PREFIX[role]}-${rand(role === "student" ? 5 : 4)}-${rand(3)}`,
-        role, max_uses: 1, uses: 0,
+        role: role as any, max_uses: 1, uses: 0,
         created_by: user.id, expires_at,
         metadata: {},
       }));
-      const { error } = await supabase.from("invite_codes").insert(payload);
+      const { error } = await supabase.from("invite_codes").insert(payload as any);
       if (error) throw error;
       toast.success(`${payload.length} code${payload.length > 1 ? "s" : ""} generated`);
       setOpen(false);
