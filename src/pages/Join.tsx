@@ -43,8 +43,8 @@ export default function Join() {
         setEnabledRoles((s.onboarding?.enabled_roles ?? { student: true, teacher: true, parent: true, driver: true, staff: true }));
         setWelcomeMessage(s.identity?.welcome_message ?? "");
       });
-    supabase.from("school_custom_roles").select("key,label,base_role,enabled,deleted_at").eq("school_id", school.id)
-      .then(({ data }) => setCustomRoles((data ?? []).filter((r: any) => r.enabled && !r.deleted_at)));
+    supabase.rpc("get_school_custom_roles", { _school_id: school.id })
+      .then(({ data }) => setCustomRoles((data ?? []) as any));
   }, [school?.id]);
 
   const roleOptions = useMemo(() => {
