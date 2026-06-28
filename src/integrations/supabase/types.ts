@@ -8137,6 +8137,14 @@ export type Database = {
           slug: string
         }[]
       }
+      get_school_custom_roles: {
+        Args: { _school_id: string }
+        Returns: {
+          base_role: string
+          key: string
+          label: string
+        }[]
+      }
       grade_mock_session: {
         Args: { _auto?: boolean; _session_id: string }
         Returns: Json
