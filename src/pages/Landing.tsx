@@ -13,6 +13,7 @@ import { Slider } from "@/components/ui/slider";
 import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath, getCurrentSchoolSlug } from "@/lib/tenant";
 import SEO from "@/components/SEO";
+import { FaqLd, BreadcrumbLd } from "@/components/seo/JsonLd";
 import PortalDemo from "@/components/landing/PortalDemo";
 import WhatsAppFab from "@/components/landing/WhatsAppFab";
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_SLA, mailtoOnboard, waLink } from "@/lib/contact";
@@ -87,6 +88,14 @@ export default function Landing() {
         description="The school operating system for Africa: CBT and JAMB/NECO simulation, attendance, digital results, online fee collection and AI for teachers and students."
         path="/"
       />
+      <BreadcrumbLd items={[{ name: "Home", path: "/" }]} />
+      <FaqLd faqs={[
+        { q: "What is Legacyskool?", a: "A modern school management platform for African schools covering CBT exams, attendance, digital results, fee collection and parent communication." },
+        { q: "Does Legacyskool support JAMB and NECO practice?", a: "Yes. Students can practice with realistic JAMB and NECO simulations from a large question bank with instant scoring." },
+        { q: "How do parents see their child's progress?", a: "Parents get a dedicated portal showing attendance, behavior notes, results and fee balances the moment they are posted." },
+        { q: "Can teachers create exams online?", a: "Teachers draft CA tests and exams which are approved by the school's exam committee before publishing to students." },
+        { q: "How do schools collect fees?", a: "Legacyskool supports online payments and offline proofs, with automatic receipts and reconciliations for the bursar." },
+      ]} />
       {/* Header */}
       <header className="border-b border-border/60 backdrop-blur sticky top-0 z-30 bg-background/80">
         <div className="mx-auto max-w-7xl px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
