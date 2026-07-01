@@ -6,6 +6,7 @@ import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, Shop
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Helmet } from "react-helmet-async";
 
 const NAV = [
   { group: "Overview", items: [
@@ -96,6 +97,7 @@ export default function SuperLayout() {
 
   return (
     <SuperGuard>
+      <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
       <div className="min-h-screen flex bg-background">
         {/* Sidebar */}
         <aside className={cn("border-r border-border bg-card flex flex-col transition-[width] duration-200", collapsed ? "w-[68px]" : "w-[240px]")}>
