@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await supa.auth.getUser();
     if (!user) return json({ error: "unauthorized" }, 401);
 
-    const { batch_id, callback_url } = await req.json();
+    const { batch_id } = await req.json();
     if (!batch_id) return json({ error: "missing_batch" }, 400);
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -31,12 +31,14 @@ Deno.serve(async (req) => {
     if (!count || count < 1) return json({ error: "sold_out" }, 410);
 
     const reference = `lscard_${batch.id.slice(0, 8)}_${Date.now()}`;
+    const APP_BASE_URL = (Deno.env.get("APP_BASE_URL") || "https://legacy-schools.lovable.app").replace(/\/+$/, "");
+    const callback_url = `${APP_BASE_URL}/${batch.school_id}/trad-cards/verify?ref=${reference}`;
     const init = await paystackInit({
       email: user.email,
       amount: batch.price_kobo,
       currency: "NGN",
       reference,
-      callback_url: callback_url || undefined,
+      callback_url,
       metadata: { kind: "trad_card", batch_id: batch.id, school_id: batch.school_id, buyer_user_id: user.id },
     });
 
