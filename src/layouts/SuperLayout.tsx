@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSchool } from "@/contexts/SchoolContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronLeft, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap } from "lucide-react";
+import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronLeft, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ const NAV = [
     { to: "/super/security", icon: ShieldCheck, label: "Security Center" },
     { to: "/super/errors", icon: AlertCircle, label: "Live Errors", badgeKey: "errors" },
     { to: "/super/quotas", icon: Zap, label: "AI Quotas" },
+    { to: "/super/feature-flags", icon: Flag, label: "Feature Flags" },
     { to: "/super/logs", icon: ScrollText, label: "System Logs" },
     { to: "/super/settings", icon: Cog, label: "Platform Settings" },
   ]},
