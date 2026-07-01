@@ -56,7 +56,9 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/~oauth/],
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.mode === "navigate",
@@ -64,6 +66,8 @@ export default defineConfig(({ mode }) => ({
             options: {
               cacheName: "html",
               networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
           {
