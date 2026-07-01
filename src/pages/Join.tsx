@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import SEO from "@/components/SEO";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { schoolPath } from "@/lib/tenant";
@@ -126,6 +127,7 @@ export default function Join() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO title={`Join ${school.name} — set up your account`} description={`Redeem your activation code to join ${school.name} on Legacyskool.`} path={`/${school.slug}/join`} noindex />
       <PWAInstallPrompt schoolName={school.name} />
       <header className="border-b border-border">
         <div className="mx-auto max-w-3xl px-6 h-16 flex items-center justify-between">

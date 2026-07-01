@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import SEO from "@/components/SEO";
 
 type Article = { q: string; a: string };
 type Section = { icon: any; title: string; items: Article[] };
@@ -89,6 +90,7 @@ export default function HelpPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <SEO title="Help Center — Legacyskool guides for schools, teachers & parents" description="Short role-based guides for using Legacyskool: onboarding, exams, attendance, results, fees and communication." path="/help" noindex />
       <div className="flex items-start gap-3">
         <div className="size-10 rounded-lg bg-primary/10 text-primary grid place-items-center"><HelpCircle className="size-5" /></div>
         <div>

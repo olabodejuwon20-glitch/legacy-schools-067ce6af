@@ -27,6 +27,7 @@ import { warmSchoolCache } from "@/lib/dataCache";
 import { useAdminPermissions } from "@/lib/adminPermissions";
 import { ShieldCheck } from "lucide-react";
 import { PilotReadOnlyBanner } from "@/components/pilot/PilotReadOnlyBanner";
+import { Helmet } from "react-helmet-async";
 
 // Group every sidebar destination into a labelled section.
 // Keys are the `to` field used by NAV / module manifests.
@@ -319,6 +320,7 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen flex bg-background">
+      <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
       <RealtimeNotifier />
       <PWAInstallPrompt schoolName={school?.name} />
       <aside className={cn(
