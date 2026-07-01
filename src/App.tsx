@@ -173,6 +173,7 @@ import SuperTickets from "./pages/super/Tickets";
 import SuperSecurity from "./pages/super/Security";
 import SuperLogs from "./pages/super/Logs";
 import SuperErrors from "./pages/super/Errors";
+import SuperQuotas from "./pages/super/Quotas";
 import SuperSettings from "./pages/super/Settings";
 import SuperAcademicDefaults from "./pages/super/AcademicDefaults";
 import ComingSoon from "./pages/super/_ComingSoon";
@@ -261,6 +262,7 @@ const App = () => (
             <Route path="security" element={<SuperSecurity />} />
             <Route path="logs" element={<SuperLogs />} />
             <Route path="errors" element={<SuperErrors />} />
+            <Route path="quotas" element={<SuperQuotas />} />
             <Route path="settings" element={<SuperSettings />} />
             <Route path="academic-defaults" element={<SuperAcademicDefaults />} />
           </Route>
