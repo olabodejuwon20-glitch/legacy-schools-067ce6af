@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Building2, MoreHorizontal, ExternalLink, Eye, PauseCircle, PlayCircle, Download, Search, ShieldAlert } from "lucide-react";
+import { Building2, MoreHorizontal, ExternalLink, Eye, PauseCircle, PlayCircle, Download, Search, ShieldAlert, UserCog } from "lucide-react";
 import { superAction, timeAgo } from "@/lib/super";
 import { buildSchoolUrl } from "@/lib/tenant";
 import { toast } from "sonner";
+import ImpersonateDialog from "@/components/super/ImpersonateDialog";
 
 const PAGE_SIZE = 25;
 const PLANS = ["trial", "basic", "standard", "premium", "enterprise"];
@@ -46,6 +47,7 @@ type School = {
 
 export default function SuperSchools() {
   const [rows, setRows] = useState<School[] | null>(null);
+  const [impSchool, setImpSchool] = useState<School | null>(null);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
@@ -215,6 +217,7 @@ export default function SuperSchools() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild><Link to={`/super/schools/${s.id}`}><Eye className="size-4 mr-2" />View details</Link></DropdownMenuItem>
                       <DropdownMenuItem onClick={() => window.open(buildSchoolUrl(s.slug, "/"), "_blank")}><ExternalLink className="size-4 mr-2" />Open portal</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setImpSchool(s)} className="text-red-600 focus:text-red-700"><UserCog className="size-4 mr-2" />Login as…</DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {s.status === "suspended"
                         ? <DropdownMenuItem onClick={() => reactivate(s)}><PlayCircle className="size-4 mr-2" />Reactivate</DropdownMenuItem>
@@ -239,6 +242,13 @@ export default function SuperSchools() {
           </div>
         </div>
       </div>
+      {impSchool && (
+        <ImpersonateDialog
+          open={!!impSchool}
+          onOpenChange={(v) => { if (!v) setImpSchool(null); }}
+          school={{ id: impSchool.id, name: impSchool.name, slug: impSchool.slug }}
+        />
+      )}
     </div>
   );
 }
