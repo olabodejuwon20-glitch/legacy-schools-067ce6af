@@ -320,6 +320,7 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen flex bg-background">
+      <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
       <RealtimeNotifier />
       <PWAInstallPrompt schoolName={school?.name} />
       <aside className={cn(
