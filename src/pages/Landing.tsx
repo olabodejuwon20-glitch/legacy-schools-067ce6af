@@ -135,7 +135,7 @@ export default function Landing() {
               </div>
             </div>
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mt-6 leading-[1.05] text-left px-0 my-0 py-0 break-words">
-              Exams, attendance, results and fees —<br />
+              Exams, attendance, results and fees&nbsp;<br />
               <span className="bg-gradient-to-r from-[hsl(var(--admin))] via-[hsl(var(--student))] to-[hsl(var(--teacher))] bg-clip-text text-transparent">run your school from one place.</span>
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground mt-5 sm:mt-6 max-w-lg">
