@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSchool } from "@/contexts/SchoolContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronLeft, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag } from "lucide-react";
+import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronsLeft, ChevronsRight, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag, Sparkles, Bell, Activity, Command } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,35 +13,63 @@ const NAV = [
     { to: "/super", icon: LayoutDashboard, label: "Dashboard", end: true },
     { to: "/super/analytics", icon: BarChart3, label: "Analytics" },
   ]},
-  { group: "Tenants", items: [
+  { group: "Customers", items: [
     { to: "/super/schools", icon: Building2, label: "Schools" },
     { to: "/super/pilots", icon: Rocket, label: "Pilot Program" },
     { to: "/super/users", icon: Users, label: "Users & Roles" },
   ]},
-  { group: "Catalog", items: [
+  { group: "Products", items: [
     { to: "/super/modules", icon: Package, label: "Modules & Plugins" },
     { to: "/super/licensing", icon: KeyRound, label: "Feature Licensing" },
     { to: "/super/configurations", icon: Settings2, label: "Tenant Config" },
     { to: "/super/academic-defaults", icon: Settings2, label: "Academic Defaults" },
     { to: "/super/marketplace", icon: ShoppingBag, label: "Marketplace" },
   ]},
-  { group: "Revenue", items: [
+  { group: "Business", items: [
     { to: "/super/subscriptions", icon: CreditCard, label: "Subscriptions" },
     { to: "/super/billing", icon: Receipt, label: "Billing & Revenue" },
   ]},
   { group: "Operations", items: [
     { to: "/super/announcements", icon: Megaphone, label: "Announcements" },
     { to: "/super/tickets", icon: LifeBuoy, label: "Support Tickets" },
-  ]},
-  { group: "Platform", items: [
-    { to: "/super/security", icon: ShieldCheck, label: "Security Center" },
     { to: "/super/errors", icon: AlertCircle, label: "Live Errors", badgeKey: "errors" },
+  ]},
+  { group: "Intelligence", items: [
     { to: "/super/quotas", icon: Zap, label: "AI Quotas" },
     { to: "/super/feature-flags", icon: Flag, label: "Feature Flags" },
+  ]},
+  { group: "Security", items: [
+    { to: "/super/security", icon: ShieldCheck, label: "Security Center" },
+  ]},
+  { group: "Platform Settings", items: [
     { to: "/super/logs", icon: ScrollText, label: "System Logs" },
-    { to: "/super/settings", icon: Cog, label: "Platform Settings" },
+    { to: "/super/settings", icon: Cog, label: "Preferences" },
   ]},
 ];
+
+const BREADCRUMB_LABELS: Record<string, string> = {
+  super: "Platform",
+  schools: "Schools",
+  pilots: "Pilot Program",
+  users: "Users & Roles",
+  modules: "Modules & Plugins",
+  licensing: "Feature Licensing",
+  configurations: "Tenant Config",
+  "academic-defaults": "Academic Defaults",
+  marketplace: "Marketplace",
+  subscriptions: "Subscriptions",
+  billing: "Billing & Revenue",
+  announcements: "Announcements",
+  tickets: "Support Tickets",
+  errors: "Live Errors",
+  quotas: "AI Quotas",
+  "feature-flags": "Feature Flags",
+  security: "Security Center",
+  logs: "System Logs",
+  settings: "Preferences",
+  analytics: "Analytics",
+  claim: "Claim Access",
+};
 
 function useIsSuperAdmin() {
   const { user, loading } = useSchool();
@@ -97,43 +125,88 @@ export default function SuperLayout() {
     return () => { alive = false; supabase.removeChannel(channel); };
   }, []);
 
+  const segments = pathname.split("/").filter(Boolean);
+  const crumbs = segments.map((seg, i) => ({
+    label: BREADCRUMB_LABELS[seg] ?? seg.replace(/-/g, " "),
+    to: "/" + segments.slice(0, i + 1).join("/"),
+  }));
+
   return (
     <SuperGuard>
       <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
-      <div className="min-h-screen flex bg-background">
+      <div className="min-h-screen flex bg-[hsl(var(--background))] text-foreground selection:bg-primary/20">
         {/* Sidebar */}
-        <aside className={cn("border-r border-border bg-card flex flex-col transition-[width] duration-200", collapsed ? "w-[68px]" : "w-[240px]")}>
-          <div className="h-14 px-4 flex items-center gap-2 border-b border-border">
-            <div className="size-7 rounded-md bg-foreground text-background grid place-items-center text-xs font-bold">E</div>
-            {!collapsed && <div className="text-sm font-semibold tracking-tight">Legacyskool <span className="text-muted-foreground font-normal">OS</span></div>}
+        <aside className={cn(
+          "sticky top-0 h-screen border-r border-border/70 bg-card/40 backdrop-blur flex flex-col transition-[width] duration-200 shrink-0",
+          collapsed ? "w-[60px]" : "w-[232px]"
+        )}>
+          <div className="h-12 px-3 flex items-center gap-2 border-b border-border/70">
+            <div className="size-6 rounded-md bg-gradient-to-br from-foreground to-foreground/70 text-background grid place-items-center text-[10px] font-bold shadow-sm">L</div>
+            {!collapsed && (
+              <div className="flex items-baseline gap-1.5 min-w-0">
+                <span className="text-[13px] font-semibold tracking-tight">Legacyskool</span>
+                <span className="text-[10px] font-medium text-muted-foreground tracking-wider uppercase">OS</span>
+              </div>
+            )}
           </div>
-          <nav className="flex-1 overflow-y-auto py-3 space-y-4">
+          <nav className="flex-1 overflow-y-auto py-2 space-y-3 scrollbar-thin">
             {NAV.map(group => (
               <SuperGroup key={group.group} group={group} collapsed={collapsed} pathname={pathname} badges={{ errors: openErrors ?? 0 }} />
             ))}
           </nav>
-          <button onClick={() => setCollapsed(c => !c)} className="h-10 border-t border-border text-muted-foreground hover:bg-muted flex items-center justify-center text-xs gap-1">
-            {collapsed ? <ChevronRight className="size-4" /> : <><ChevronLeft className="size-4" /> Collapse</>}
+          <button onClick={() => setCollapsed(c => !c)} className="h-9 border-t border-border/70 text-muted-foreground hover:bg-muted/60 hover:text-foreground flex items-center justify-center text-[11px] gap-1.5 transition-colors">
+            {collapsed ? <ChevronsRight className="size-3.5" /> : <><ChevronsLeft className="size-3.5" /> Collapse</>}
           </button>
         </aside>
 
         {/* Main */}
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur flex items-center px-6 gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search schools, modules, tickets…" className="pl-9 h-9 bg-muted/40 border-transparent focus-visible:bg-background" />
+          <header className="h-12 sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur-md flex items-center px-4 gap-3">
+            <div className="relative flex-1 max-w-xl group">
+              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Search schools, modules, tickets, users…" className="pl-8 pr-16 h-8 text-[13px] bg-muted/40 border-transparent focus-visible:bg-background focus-visible:border-border rounded-md" />
+              <kbd className="hidden md:inline-flex absolute right-2 top-1/2 -translate-y-1/2 h-5 items-center gap-0.5 px-1.5 rounded border border-border bg-muted/60 text-[10px] font-mono text-muted-foreground pointer-events-none">
+                <Command className="size-2.5" />K
+              </kbd>
             </div>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-card">
-                <span className="size-1.5 rounded-full bg-success" /> Live
-              </span>
-              <span className="hidden md:inline text-muted-foreground">{email}</span>
-              <Button variant="ghost" size="sm" onClick={signOut} title="Sign out"><LogOut className="size-4" /></Button>
+            <div className="flex items-center gap-1 text-xs">
+              <button className="hidden md:inline-flex items-center gap-1.5 px-2 h-7 rounded-md border border-border/70 bg-card/60 hover:bg-muted text-[11px] text-muted-foreground transition-colors" title="Platform status">
+                <span className="relative flex size-1.5">
+                  <span className="absolute inline-flex size-full rounded-full bg-success opacity-75 animate-ping" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-success" />
+                </span>
+                <Activity className="size-3" /> All systems normal
+              </button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="AI Assistant"><Sparkles className="size-3.5" /></Button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 relative" title="Notifications">
+                <Bell className="size-3.5" />
+                {(openErrors ?? 0) > 0 && <span className="absolute top-1 right-1 size-1.5 rounded-full bg-destructive" />}
+              </Button>
+              <div className="hidden md:flex items-center gap-2 pl-2 ml-1 border-l border-border/70">
+                <div className="size-6 rounded-full bg-gradient-to-br from-primary/80 to-primary/40 text-primary-foreground grid place-items-center text-[10px] font-semibold uppercase">
+                  {(email?.[0] ?? "s")}
+                </div>
+                <span className="text-[11px] text-muted-foreground max-w-[140px] truncate">{email}</span>
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={signOut} title="Sign out"><LogOut className="size-3.5" /></Button>
             </div>
           </header>
-          <main className="flex-1 px-6 py-8 overflow-x-auto">
-            <div className="max-w-7xl mx-auto">
+          {crumbs.length > 1 && (
+            <div className="px-6 pt-3 pb-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+              {crumbs.map((c, i) => (
+                <span key={c.to} className="flex items-center gap-1">
+                  {i > 0 && <ChevronRight className="size-3 opacity-50" />}
+                  {i === crumbs.length - 1 ? (
+                    <span className="text-foreground font-medium capitalize">{c.label}</span>
+                  ) : (
+                    <NavLink to={c.to} className="hover:text-foreground capitalize transition-colors">{c.label}</NavLink>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+          <main className="flex-1 px-6 pt-4 pb-10 overflow-x-auto">
+            <div className="max-w-[1400px] mx-auto">
               <Outlet key={pathname} />
             </div>
           </main>
@@ -164,32 +237,34 @@ function SuperGroup({ group, collapsed, pathname, badges }: { group: { group: st
   });
 
   return (
-    <div>
+    <div className="px-1.5">
       {!collapsed && (
         isCollapsible ? (
           <button type="button" onClick={toggle} aria-expanded={open}
-            className="w-full flex items-center justify-between px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 hover:text-foreground transition-colors">
+            className="w-full flex items-center justify-between px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60 hover:text-foreground transition-colors">
             <span>{group.group}</span>
-            <ChevronRight className={cn("size-3 transition-transform", open && "rotate-90")} />
+            <ChevronRight className={cn("size-2.5 transition-transform opacity-60", open && "rotate-90")} />
           </button>
         ) : (
-          <div className="px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{group.group}</div>
+          <div className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60">{group.group}</div>
         )
       )}
       {(collapsed || !isCollapsible || open) && (
-        <div className="space-y-0.5 px-2">
+        <div className="space-y-px">
           {group.items.map((item: any) => (
             <NavLink key={item.to} to={item.to} end={item.end}
               className={({ isActive }) => cn(
-                "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors",
-                isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                "group flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] font-medium transition-colors relative",
+                isActive
+                  ? "bg-muted text-foreground before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-foreground"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
               )}
               title={collapsed ? item.label : undefined}
             >
-              <item.icon className="size-4 shrink-0" />
+              <item.icon className="size-3.5 shrink-0 opacity-80 group-hover:opacity-100" />
               {!collapsed && <span className="truncate">{item.label}</span>}
               {!collapsed && item.badgeKey && (badges?.[item.badgeKey] ?? 0) > 0 && (
-                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">
+                <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground min-w-[16px] text-center">
                   {badges![item.badgeKey]}
                 </span>
               )}
