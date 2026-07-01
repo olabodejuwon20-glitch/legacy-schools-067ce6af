@@ -3132,6 +3132,73 @@ export type Database = {
         }
         Relationships: []
       }
+      impersonation_sessions: {
+        Row: {
+          actions: Json
+          created_at: string
+          end_reason: string | null
+          ended_at: string | null
+          expires_at: string
+          id: string
+          reason: string
+          school_id: string | null
+          started_at: string
+          super_admin_id: string
+          target_role: string | null
+          target_user_id: string
+        }
+        Insert: {
+          actions?: Json
+          created_at?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          expires_at: string
+          id?: string
+          reason: string
+          school_id?: string | null
+          started_at?: string
+          super_admin_id: string
+          target_role?: string | null
+          target_user_id: string
+        }
+        Update: {
+          actions?: Json
+          created_at?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          expires_at?: string
+          id?: string
+          reason?: string
+          school_id?: string | null
+          started_at?: string
+          super_admin_id?: string
+          target_role?: string | null
+          target_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impersonation_sessions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "impersonation_sessions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "impersonation_sessions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inbox_stars: {
         Row: {
           created_at: string
@@ -8075,6 +8142,10 @@ export type Database = {
         Args: { _cycle?: string; _plan: string; _school_id: string }
         Returns: string
       }
+      end_impersonation: {
+        Args: { _reason?: string; _session_id: string }
+        Returns: undefined
+      }
       get_assessment_questions_for_attempt: {
         Args: { _attempt_id: string }
         Returns: {
@@ -8214,6 +8285,10 @@ export type Database = {
         Args: { _payment_type_id: string; _student_ids?: string[] }
         Returns: number
       }
+      log_impersonation_action: {
+        Args: { _action: Json; _session_id: string }
+        Returns: undefined
+      }
       log_mock_integrity_event: {
         Args: { _detail?: Json; _kind: string; _session_id: string }
         Returns: undefined
@@ -8311,6 +8386,15 @@ export type Database = {
         }[]
       }
       start_assessment: { Args: { _assessment_id: string }; Returns: string }
+      start_impersonation: {
+        Args: {
+          _duration_minutes?: number
+          _reason: string
+          _school_id: string
+          _target_user: string
+        }
+        Returns: string
+      }
       submit_assessment: { Args: { _attempt_id: string }; Returns: Json }
       super_admin_exists: { Args: never; Returns: boolean }
       super_ai_cache_stats: { Args: never; Returns: Json }
