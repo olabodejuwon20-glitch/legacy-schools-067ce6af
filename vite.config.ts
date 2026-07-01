@@ -138,21 +138,14 @@ export default defineConfig(({ mode }) => ({
     ],
   },
   build: {
-    // Split third-party libraries into their own chunks so the app shell stays small
-    // and heavy libs (charts, pdf, maps) only download when their pages are visited.
+    // Keep third-party dependencies in one shared vendor chunk. Splitting React,
+    // Radix and shared helper libraries into separate manual chunks created a
+    // circular production import chain that could leave React undefined before
+    // the app mounted, resulting in a blank published page.
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          if (!id.includes("node_modules")) return;
-          if (id.includes("react-router")) return "vendor-router";
-          if (id.includes("@tanstack")) return "vendor-query";
-          if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
-          if (id.includes("jspdf") || id.includes("pdf-lib") || id.includes("html2canvas")) return "vendor-pdf";
-          if (id.includes("mapbox-gl") || id.includes("leaflet")) return "vendor-map";
-          if (id.includes("@radix-ui")) return "vendor-radix";
-          if (id.includes("lucide-react")) return "vendor-icons";
-          if (id.includes("react-dom") || id.includes("scheduler") || /[\\/]react[\\/]/.test(id)) return "vendor-react";
-          return "vendor";
+          if (id.includes("node_modules")) return "vendor";
         },
       },
     },
