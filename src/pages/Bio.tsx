@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import SEO from "@/components/SEO";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
@@ -107,6 +108,7 @@ export default function Bio() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO title="Complete your profile — Legacyskool" description="Add your photo and details to finish setting up your account." path={`/${school.slug}/bio`} noindex />
       <header className="border-b border-border">
         <div className="mx-auto max-w-3xl px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
