@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSchool } from "@/contexts/SchoolContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronLeft, ChevronRight, Search, LogOut, Rocket } from "lucide-react";
+import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronLeft, ChevronRight, Search, LogOut, Rocket, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ const NAV = [
   ]},
   { group: "Platform", items: [
     { to: "/super/security", icon: ShieldCheck, label: "Security Center" },
+    { to: "/super/errors", icon: AlertCircle, label: "Live Errors", badgeKey: "errors" },
     { to: "/super/logs", icon: ScrollText, label: "System Logs" },
     { to: "/super/settings", icon: Cog, label: "Platform Settings" },
   ]},
@@ -74,6 +75,24 @@ export default function SuperLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const { pathname } = useLocation();
   const { signOut, email } = useSchool();
+  const [openErrors, setOpenErrors] = useState<number | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      const { count } = await supabase
+        .from("client_errors")
+        .select("id", { count: "exact", head: true })
+        .eq("resolution_status", "open");
+      if (alive) setOpenErrors(count ?? 0);
+    }
+    void load();
+    const channel = supabase
+      .channel("super-layout-errors")
+      .on("postgres_changes", { event: "*", schema: "public", table: "client_errors" }, () => void load())
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(channel); };
+  }, []);
 
   return (
     <SuperGuard>
@@ -86,7 +105,7 @@ export default function SuperLayout() {
           </div>
           <nav className="flex-1 overflow-y-auto py-3 space-y-4">
             {NAV.map(group => (
-              <SuperGroup key={group.group} group={group} collapsed={collapsed} pathname={pathname} />
+              <SuperGroup key={group.group} group={group} collapsed={collapsed} pathname={pathname} badges={{ errors: openErrors ?? 0 }} />
             ))}
           </nav>
           <button onClick={() => setCollapsed(c => !c)} className="h-10 border-t border-border text-muted-foreground hover:bg-muted flex items-center justify-center text-xs gap-1">
@@ -120,7 +139,7 @@ export default function SuperLayout() {
   );
 }
 
-function SuperGroup({ group, collapsed, pathname }: { group: { group: string; items: any[] }; collapsed: boolean; pathname: string }) {
+function SuperGroup({ group, collapsed, pathname, badges }: { group: { group: string; items: any[] }; collapsed: boolean; pathname: string; badges?: Record<string, number> }) {
   const isCollapsible = group.items.length > 1 && group.group !== "Overview";
   const containsActive = group.items.some(it => (it.end ? pathname === it.to : pathname === it.to || pathname.startsWith(it.to + "/")));
   const storageKey = `super-sidebar:open:${group.group}`;
@@ -165,6 +184,11 @@ function SuperGroup({ group, collapsed, pathname }: { group: { group: string; it
             >
               <item.icon className="size-4 shrink-0" />
               {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && item.badgeKey && (badges?.[item.badgeKey] ?? 0) > 0 && (
+                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">
+                  {badges![item.badgeKey]}
+                </span>
+              )}
             </NavLink>
           ))}
         </div>

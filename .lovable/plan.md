@@ -1,124 +1,112 @@
+# SaaS Operations Foundation
 
-# SaaS Operations Foundation — Plan (Items 1–5)
+Build the internal tooling that lets you run LegacySkool like a professional SaaS: catch bugs before users complain, fix one school without touching others, control costs, and roll out risky changes safely.
 
-Goal: run Legacyskool like a real SaaS. See every bug the moment it happens, fix a single school without touching the platform, roll changes out safely, and cap runaway cost.
-
----
-
-## 1. Live error console for Super Admin
-
-**What you get:** a real-time feed of every error happening across every school — who hit it, on what page, and the technical trace (for you only).
-
-**Build**
-- Reuse existing `public.client_errors` table + `reportError()` (already installed globally).
-- Extend the table with: `school_id`, `role`, `browser`, `resolved_at`, `resolved_by`, `fingerprint` (hash of message+route for grouping).
-- New page `src/pages/super/ErrorConsole.tsx`:
-  - Live tab (realtime subscription) — new rows stream in.
-  - Grouped tab — dedupe by fingerprint, show count + last-seen + affected schools.
-  - Filters: school, role, route, severity, time range.
-  - Row detail drawer: stack trace, user, route, browser, "Mark resolved", "Open impersonation" (→ item 2).
-- Add server-side errors too: shared helper `logEdgeError()` used by all edge functions, writing to same table with `source='edge'`.
-- Add sidebar entry under Super → "Error Console".
-
-**Success test:** trigger a bad request as a student, see it appear in Super console within 2 seconds, tagged with that school.
+Five modules, built in order. Each is independently useful — you can stop after any step.
 
 ---
 
-## 2. "Login as school admin" impersonation with audit trail
+## 1. Live Error Console (Super Admin)
 
-**What you get:** open any school's admin portal exactly as their principal sees it, read-only or read-write, with every action logged.
+**Goal:** See every error happening across every school, in real time, grouped so you're not drowning in duplicates.
 
-**Build**
-- Table `public.impersonation_sessions` (id, super_user_id, target_user_id, school_id, reason, started_at, ended_at, mode ['read'|'write'], actions jsonb[]).
-- Edge function `super-impersonate`:
-  - Verifies caller is super admin.
-  - Requires `reason` (min 10 chars) — enforced.
-  - Mints a short-lived (30 min) JWT scoped to target user via admin API; returns session URL.
-  - Inserts row into `impersonation_sessions`.
-- On the app side: `ImpersonationBanner.tsx` — sticky red bar shown when `sessionStorage.impersonating=true`: "You are viewing as {name} @ {school}. Reason: …  [End session]".
-- Client middleware: while impersonating, write every mutation to the session's `actions[]` array.
-- Super page `Impersonation.tsx`: list past/active sessions with full audit; "End all active".
-- Add "Impersonate admin" button on `super/SchoolDetail.tsx` and from Error Console rows.
+**What you get:**
+- New page at `/app/super/errors` showing a live feed of client + edge function errors.
+- Errors are **grouped by fingerprint** (same error + same file + same line = one row with a count), not one row per occurrence.
+- Filters: school, role (student/teacher/admin/parent), route, browser, time range, resolved/unresolved.
+- Click a group → see all occurrences, stack trace, affected users, breadcrumb of what they did before it broke.
+- Mark as **Resolved** / **Ignored** / **Investigating** with a note. Resolved errors auto-reopen if they happen again after the fix.
+- Realtime badge in the sidebar showing unresolved error count (red if new errors in last 5 min).
 
-**Guardrails:** default mode = read; write mode requires typing school name to confirm; auto-expire after 30 min; email notification to the real admin ("A support engineer accessed your account for reason: …").
-
----
-
-## 3. Feature flags with staged rollout
-
-**What you get:** ship risky features to 1 school → 10% → everyone, and kill switches when something breaks.
-
-**Build**
-- Table `public.feature_flags` (key, description, default_enabled, rollout_pct, enabled_schools uuid[], disabled_schools uuid[], updated_at).
-- RPC `flag_enabled(_key text, _school_id uuid) → bool` using stable hash(school_id + key) < rollout_pct.
-- Client hook `useFlag('bus_tracking_v2')`; server helper `flagEnabled()` for edge functions.
-- Super page `super/FeatureFlags.tsx`:
-  - Table of all flags, inline toggle for global, slider for %, add/remove schools.
-  - "Kill switch" red button = set rollout_pct=0 immediately.
-- Seed initial flags for existing risk areas: `ai_essay_marking`, `bus_realtime`, `exam_lockdown_v2`.
-
-**Success test:** turn `bus_realtime` on for one pilot school only; other schools see the old view; flip global on when confident.
+**Technical:**
+- Extend `client_errors` table: add `role`, `browser`, `os`, `fingerprint`, `occurrence_count`, `first_seen_at`, `last_seen_at`, `resolved_at`, `resolved_by`, `resolution_status`, `resolution_note`.
+- Add a `report_client_error` RPC that computes fingerprint (hash of message + top stack frame) and upserts, incrementing count.
+- Global `window.onerror` + React ErrorBoundary + edge function try/catch → send to RPC. User never sees the technical error (already sanitized in earlier work), but you see everything.
+- Enable Supabase Realtime on `client_errors` for the super admin dashboard.
 
 ---
 
-## 4. Per-school AI usage quotas (enforced)
+## 2. School Impersonation ("Login as")
 
-**What you get:** no single school can burn your entire AI budget by looping a script.
+**Goal:** When a school reports "my dashboard is broken," you log in as their admin, reproduce the bug, fix it — without asking them for passwords or breaking anything for other schools.
 
-**Build (mostly wiring existing pieces)**
-- Table `school_ai_quotas` already exists (see `AISettings.tsx`) with `monthly_token_cap`, `monthly_cost_cap_usd`, `tokens_used`, `cost_used_usd`.
-- What's missing: **hard enforcement** in `_shared/ai-call.ts`.
-  - Before each call: `SELECT enabled, caps, used FROM school_ai_quotas`.
-  - If disabled or over cap → return sanitized error `"AI features are paused for your school this month. Contact your admin."` (user-safe).
-  - After each call: increment `tokens_used` + `cost_used_usd` atomically via RPC `bump_ai_usage(school_id, tokens, cost)`.
-- Cron edge function `ai-quota-alerts` (daily): email admin at 70% / 90% / 100%.
-- Super view `super/AIUsage.tsx`: table of every school's usage this month, sortable, red highlight at ≥90%.
-- Super can override cap per-school (temp bump for a paying school).
+**What you get:**
+- On any school row in `/app/super/schools`, an **"Impersonate"** button (super admin only).
+- Opens a modal: pick which admin/teacher/student to log in as, type a reason (required — auditing), duration (default 30 min, max 4 hours).
+- New browser tab opens with you logged in as that user. A red banner across the top: **"IMPERSONATING [name] at [school]. End session"**.
+- Everything you do is logged to `impersonation_sessions` with before/after diffs on any writes.
+- Auto-expires after the duration. School admin gets a notification that a support session happened (transparency).
 
-**Success test:** set cap to 100 tokens on a test school → next AI call returns the friendly pause message; super sees the school flagged red.
-
----
-
-## 5. Sentry integration (external error tracking)
-
-**What you get:** professional-grade alerts, release tracking, and stack traces you can share with contractors — free up to 5k errors/month.
-
-**Build**
-- Add secret `SENTRY_DSN` (I'll prompt you when starting).
-- `bun add @sentry/react`.
-- Init in `src/main.tsx` after `installGlobalErrorReporter()`:
-  - `beforeSend` runs the message through `error-sanitizer` — never send raw stack traces that contain user emails or tokens.
-  - `tracesSampleRate: 0.1`, `environment` from `import.meta.env.MODE`, `release` from git SHA.
-  - Tag every event with `school_id`, `role`, `route`.
-- Edge functions: init `@sentry/deno` in a shared helper, wrap every function handler.
-- Set up Slack/email alerts in Sentry dashboard (out of scope for code — I'll give you the checklist).
-
-**Success test:** throw a test error, see it in your Sentry dashboard within 30s with school tag.
+**Technical:**
+- New `impersonation_sessions` table (super_admin_id, target_user_id, school_id, reason, started_at, expires_at, ended_at, actions_jsonb).
+- Edge function `start-impersonation` — verifies caller is super admin, mints a scoped JWT with a custom claim `impersonated_by`, logs the session.
+- Client detects the claim and shows the red banner + tracks writes.
+- All existing RLS keeps working because you're using a real session for that user.
 
 ---
 
-## Order of work & rollout
+## 3. Feature Flags & Staged Rollouts
 
-1. Item 1 (Error Console) — highest leverage, no risk.
-2. Item 4 (AI Quotas enforcement) — protects your wallet immediately.
-3. Item 3 (Feature Flags) — needed before items 2 & 5 go live safely.
-4. Item 5 (Sentry) — 30 min once DSN is added.
-5. Item 2 (Impersonation) — most sensitive, ship last behind a flag.
+**Goal:** Ship risky features to 1 school first, then 10, then everyone. Kill a broken feature instantly without a redeploy.
 
----
+**What you get:**
+- New page `/app/super/feature-flags` — list of flags with toggles.
+- Each flag: name, description, status (off / on / rollout), target rules (all schools / specific schools / % rollout / specific plan tier).
+- Global kill switch per flag — flip to off, everyone loses access in <5 seconds.
+- Code uses `useFeatureFlag('new-bus-tracking-v2')` hook — returns true/false per current school.
+- Audit log of every flag change (who, when, from/to).
 
-## Technical notes (for reference)
-
-- All new admin surfaces go under `src/pages/super/` and are registered in existing Super sidebar in `SuperLayout.tsx`.
-- RLS on every new table: super-admin-only for `impersonation_sessions`, `feature_flags`; per-school for `school_ai_quotas`; append-only for `client_errors`.
-- Every new table follows the standard `GRANT SELECT/INSERT ON … TO authenticated` + `GRANT ALL … TO service_role` pattern.
-- Impersonation JWT minting uses the service role inside the edge function only — never client-side.
-- Sentry DSN is a publishable value, but we still store it as a secret so it's not baked into the git history.
+**Technical:**
+- Extend `feature_flags` table + new `feature_flag_targets` for per-school/percentage rules.
+- `resolve_feature_flag` RPC — takes flag key + school_id, returns boolean. Cached client-side for 60s.
+- Realtime subscription for instant kill-switch.
 
 ---
 
-## What I need from you before starting
+## 4. Per-School AI Quotas & Cost Guardrails
 
-- Confirm you want these 5 in this order (or reorder).
-- For item 5: a Sentry account (free tier) so you can hand me the DSN when I ask.
-- For item 2: confirm the 30-min session length and the "email the admin" notification behavior — some SaaS teams prefer silent access for security investigations.
+**Goal:** One school can't burn your entire AI budget. Costs are predictable and capped.
+
+**What you get:**
+- Per-school monthly quota (tokens or ₦ cost) — set default per plan tier (Basic/Standard/Premium), override per school.
+- Live meter in `/app/super/schools/[id]` showing usage this month + burn rate.
+- When a school hits 80% → email their admin. At 100% → AI calls return a friendly "monthly AI limit reached" message (not a crash).
+- Per-model routing (already built in `ai_model_routing`) is respected — cheap models for cheap tasks stays enforced.
+- Super admin can grant a one-time top-up.
+
+**Technical:**
+- Extend `school_ai_quotas`: `monthly_limit_tokens`, `monthly_limit_cost_ngn`, `current_period_start`, `current_usage_tokens`, `current_usage_cost`, `alert_sent_at`.
+- Atomic `consume_ai_quota` RPC called by every AI edge function before the model call. Uses `FOR UPDATE` lock so parallel requests can't overshoot.
+- Nightly cron resets quotas at start of new billing period.
+- Simple graph in the school detail page (last 30 days usage).
+
+---
+
+## 5. Sentry Integration (Professional Error Tracking)
+
+**Goal:** Your Live Error Console (step 1) shows what's happening now. Sentry gives you deep post-mortem tooling — stack traces with source maps, release tracking, alerts to email/Slack, performance monitoring.
+
+**What you get:**
+- Sentry captures every client + edge function error automatically.
+- Source maps uploaded on every deploy → stack traces show your actual code, not minified junk.
+- Email/Slack alert when: new error type appears, error spike (10x normal rate), specific school crosses error threshold.
+- Session replay on errors — watch a video of what the user did before it broke.
+- Tag every event with `school_id`, `role`, `plan_tier` — filter and alert per school.
+
+**Technical:**
+- Add `@sentry/react` + `@sentry/node` (for edge functions).
+- Requires Sentry account (free tier: 5k errors/month — plenty for launch). I'll walk you through it and need a DSN.
+- Environment-aware: only ships events from production, not preview.
+- Also forwards to our own `client_errors` table so step 1 still works offline.
+
+---
+
+## Order & rough scope
+
+1. **Live Error Console** — 1 build session. Immediate value. No external accounts needed.
+2. **Impersonation** — 1 session. Second most valuable, unlocks real support.
+3. **Feature Flags** — 1 session.
+4. **AI Quotas** — 1 session.
+5. **Sentry** — needs your Sentry account first.
+
+Say **"start"** and I'll build #1. Or say a number to jump to that one.
