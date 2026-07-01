@@ -12,5 +12,16 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /app/
+Disallow: /super
+Disallow: /super/
+Disallow: /admin-signin
+Disallow: /subscription/callback
+Disallow: /*/app/
+Disallow: /*/admin
+Disallow: /*/join
+Disallow: /*/bio
+Disallow: /*/change-pin
+Disallow: /*/onboarding
 
 Sitemap: https://legacy-skool.lovable.app/sitemap.xml
