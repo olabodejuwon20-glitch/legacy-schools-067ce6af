@@ -4,6 +4,7 @@ import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import SEO from "@/components/SEO";
+import AiQuotaCard from "@/components/admin/AiQuotaCard";
 
 const ITEMS = [
   { to: "copilot",        icon: Brain,       title: "Copilot",         desc: "Ask anything about your school — backed by live data." },
@@ -18,6 +19,7 @@ export default function AIOpsHub() {
   return (
     <>
       <SEO title="AI Operation Center" description="Copilot, alerts, knowledge and governance." path="/admin/ai-ops" />
+      <div className="mb-4"><AiQuotaCard /></div>
       <SectionCard title="AI Operation Center" description="Every AI surface in one place — ask, monitor, govern.">
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {ITEMS.map(({ to, icon: Icon, title, desc }) => (
