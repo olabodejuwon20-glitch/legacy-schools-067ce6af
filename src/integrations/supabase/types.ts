@@ -2086,13 +2086,20 @@ export type Database = {
       }
       client_errors: {
         Row: {
+          affected_users: string[]
           browser: string | null
           cause: string | null
           context: Json | null
           created_at: string
           fingerprint: string | null
+          first_seen_at: string
           id: string
+          last_seen_at: string
           message: string
+          occurrence_count: number
+          os: string | null
+          resolution_note: string | null
+          resolution_status: string
           resolved_at: string | null
           resolved_by: string | null
           role: string | null
@@ -2105,13 +2112,20 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          affected_users?: string[]
           browser?: string | null
           cause?: string | null
           context?: Json | null
           created_at?: string
           fingerprint?: string | null
+          first_seen_at?: string
           id?: string
+          last_seen_at?: string
           message: string
+          occurrence_count?: number
+          os?: string | null
+          resolution_note?: string | null
+          resolution_status?: string
           resolved_at?: string | null
           resolved_by?: string | null
           role?: string | null
@@ -2124,13 +2138,20 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          affected_users?: string[]
           browser?: string | null
           cause?: string | null
           context?: Json | null
           created_at?: string
           fingerprint?: string | null
+          first_seen_at?: string
           id?: string
+          last_seen_at?: string
           message?: string
+          occurrence_count?: number
+          os?: string | null
+          resolution_note?: string | null
+          resolution_status?: string
           resolved_at?: string | null
           resolved_by?: string | null
           role?: string | null
@@ -8258,6 +8279,20 @@ export type Database = {
         Returns: number
       }
       redeem_invite: { Args: { _code: string }; Returns: string }
+      report_client_error: {
+        Args: {
+          _browser?: string
+          _message: string
+          _metadata?: Json
+          _os?: string
+          _role?: string
+          _route?: string
+          _school_id?: string
+          _source?: string
+          _stack?: string
+        }
+        Returns: string
+      }
       resolve_academic_policy: {
         Args: { _kind: string; _school: string }
         Returns: Json
