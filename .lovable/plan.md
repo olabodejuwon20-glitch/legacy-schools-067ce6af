@@ -1,82 +1,51 @@
-# SEO Optimization Plan — Legacyskool
 
-## 1. Audit summary (current state)
+# Performance Optimization Plan
 
-- `index.html` has decent title/description/OG/Twitter and Organization+WebSite+SoftwareApplication JSON-LD. Good baseline.
-- `public/robots.txt` and `public/sitemap.xml` exist but are minimal (only `/`, `/signin`, `/register`).
-- `SEO.tsx` exists but is only used on a few admin/hub pages — most public routes (Landing, Register, SignIn, Join, Bio, Privacy, Terms, Help, Refer, VerifyResult) have no per-route title/description/canonical.
-- No `og:image` per route; a single sitewide preview image is set.
-- No lazy-loading defaults on images; no `alt` audit performed.
-- No breadcrumb JSON-LD, no FAQ JSON-LD on landing.
-- `sitemap.xml` is hand-edited and stale.
+Based on live DB metrics (`slow_queries` + `db_health`) and a scan of the codebase. Compute is healthy (58% mem, 5/60 conns) — the pain is **query patterns and client chatter**, not capacity. Fix those and both cost and UX improve.
 
-## 2. What I'll implement
+## Findings (by real impact)
 
-### A. Head metadata & per-route SEO
-- Add `<SEO>` component (or Helmet) to every public route: `Landing`, `SignIn`, `Register`, `Join`, `Bio`, `Privacy`, `Terms`, `Help`, `Refer`, `VerifyResult`, `SchoolHome`, `NotFound` (with noindex).
-- Each gets: unique `<title>` (<60 chars, keyword-front-loaded), `<meta description>` (<160 chars), self-referencing `<link rel="canonical">`, matching `og:title/description/url/type`, `twitter:card=summary_large_image`.
-- Remove sitewide `<link rel="canonical">` from `index.html` once per-route canonicals are in place; keep sitewide OG as fallback for non-JS crawlers.
-- Add `noindex` on auth-gated `/app/*` routes via a small `<Helmet><meta name="robots" content="noindex" /></Helmet>` in `AppLayout`.
+| # | Symptom | Evidence |
+|---|---|---|
+| 1 | `mock_questions` full-table scan — no WHERE, no pagination | 34 calls, **495 ms avg**, 742 ms max |
+| 2 | `page_views` inserts firing on every navigation | **3,784 calls**, 8.2 s total |
+| 3 | `auth_events` inserts too chatty | **3,125 calls**, 8.3 s total |
+| 4 | `profiles` single-row select repeated per render | **7,638 calls** |
+| 5 | `memberships` re-fetched across pages | 6,057 + 1,576 calls |
+| 6 | `school_modules` joined on every route mount | 1,396 calls |
+| 7 | `results` selected without student/exam filter | 418 calls, 15 ms avg |
+| 8 | 39,316 rolled-back txns since boot — likely RLS denials from stale sessions | db_health |
+| 9 | Single JS bundle (~3.2 MB) — no manual code splitting; 271 pages/components all eager | vite.config |
 
-### B. Structured data (JSON-LD)
-- Keep Organization + WebSite + SoftwareApplication in `index.html`.
-- Add `BreadcrumbList` JSON-LD helper used on Landing, Register, Help.
-- Add `FAQPage` JSON-LD on Landing (from existing FAQ section if present, else add 4–6 school-focused Q&As).
-- Add `WebSite` `potentialAction` SearchAction pointing at `/help?q={search_term_string}` if a search route exists — otherwise skip.
+## Fixes
 
-### C. Headings & semantic HTML
-- Audit Landing, Register, SignIn, Help, Bio, VerifyResult and enforce one `<h1>` per page, logical `h2`/`h3` order, `<main>`, `<nav>`, `<footer>` landmarks where missing.
+### A. Database (migrations)
+1. **`mock_questions`** — add app-side pagination (`.range()`) and require `subject_id`/`session_id` filter. Add composite index `(subject_id, created_at DESC)`.
+2. **`results`** — audit call sites; add index `(student_id, exam_id)` and stop selecting the whole table.
+3. **`page_views` / `auth_events`** — add `(school_id, created_at DESC)` indexes only if we query them; primary win is on the client (below).
+4. **`memberships`** — confirm index on `(user_id, status)` exists; add if missing.
 
-### D. Images: alt text + lazy loading
-- Sweep `<img>` usage in `src/pages/Landing.tsx`, `src/components/landing/*`, marketing surfaces. Add descriptive `alt=""` (empty for decorative), `loading="lazy"` and `decoding="async"` on non-LCP images, `fetchpriority="high"` on the LCP hero image.
-- Ensure `<img>` has explicit `width`/`height` to prevent CLS.
+### B. Client — cut request volume
+5. **Batch analytics**: buffer `page_views` and `auth_events` writes in a queue, flush every 10 s or on `visibilitychange`. Cuts ~7k inserts/day to ~500.
+6. **Cache profile + memberships** in React Query with `staleTime: 5 min`, keyed on `userId`. Add a single `useSession()` hook that everything reads from — eliminates the 7,638 profile fetches.
+7. **Cache `school_modules`** in React Query with `staleTime: 10 min` (rarely changes).
+8. **Debounce realtime status pings** and drop duplicate `auth_events` on the same session.
 
-### E. Sitemap & robots
-- Convert `public/sitemap.xml` → generator `scripts/generate-sitemap.ts` wired via `predev`/`prebuild` scripts. Entries: `/`, `/register`, `/signin`, `/join`, `/help`, `/privacy`, `/terms`, `/refer`, `/verify-result`. Base URL: `https://legacy-schools.lovable.app`.
-- `robots.txt`: keep `Allow: /`, add `Disallow: /app/`, `Disallow: /super/`, `Disallow: /admin-signin`, keep `Sitemap:` line.
+### C. Client — reduce re-renders
+9. Wrap heavy list rows (results tables, question lists, roster tables) in `React.memo`; stabilise handlers with `useCallback`.
+10. Replace `useState`+`useEffect` data fetches with `useQuery` where still lingering (found in a handful of admin pages).
+11. Split large context providers (Auth + Tenant + Theme) so tenant/theme changes don't re-render the auth tree.
 
-### F. Friendly URLs & canonicals
-- Confirm all public routes use lowercase, hyphenated paths (already the case). Ensure canonical URLs strip query strings and trailing slashes consistently in the `SEO` component.
+### D. Bundle
+12. Convert route imports in `src/App.tsx` to `React.lazy` for `admin/*`, `super/*`, `driver/*`, `parent/*`, `teacher/*`, `student/*` groups. Wrap in `<Suspense>` with the existing skeleton.
+13. Add `build.rollupOptions.output.manualChunks` in `vite.config.ts` for `react`, `@tanstack/react-query`, `recharts`, `pdf` libs, `mapbox/leaflet`. Target < 500 KB initial JS.
+14. Lazy-load `exporters.ts` / `reportCard.ts` (pdf-lib is heavy) only when export buttons are clicked.
 
-### G. Performance / Core Web Vitals
-- Preload LCP hero image in `index.html` with `<link rel="preload" as="image" fetchpriority="high">` once identified.
-- Add `loading="lazy"` to below-the-fold imagery.
-- Confirm Google Fonts already preconnected (they are). Add `font-display: swap` via `&display=swap` (already present).
-- Ensure heavy routes (`AdminHub`, exam simulations) remain code-split — verify no eager imports in `App.tsx` for admin/super pages; convert to `React.lazy` where missing.
+## Out of scope
+- No functional changes, no UI redesign, no schema changes beyond indexes.
+- Won't touch auth, RLS policies, or edge functions unless a specific query above requires it.
 
-### H. Accessibility (helps SEO)
-- Add `aria-label` to icon-only buttons in landing/nav.
-- Ensure form fields on `SignIn`/`Register`/`Join` have associated `<label>`s (audit and fix).
-- Skip-to-content link on `Landing`.
-- Color contrast: leave tokens as-is (already themed).
-
-### I. Internal linking strategy
-- Landing footer: link to `/help`, `/privacy`, `/terms`, `/refer`, `/register`, `/signin`, `/verify-result`.
-- Register/SignIn: cross-link to each other and to Help.
-- Help page: link back to Landing + Register with descriptive anchor text ("Create your school account", not "click here").
-- Bio and VerifyResult: link to Landing with branded anchor.
-
-## 3. Files to add/change
-
-Add:
-- `scripts/generate-sitemap.ts`
-- `src/components/seo/JsonLd.tsx` (helper for BreadcrumbList / FAQPage)
-
-Edit:
-- `index.html` (preload LCP, remove sitewide canonical, add `Disallow` reflections not needed here)
-- `public/robots.txt`
-- `package.json` (`predev`/`prebuild` sitemap hooks)
-- `src/pages/Landing.tsx`, `SignIn.tsx`, `Register.tsx`, `Join.tsx`, `Bio.tsx`, `Privacy.tsx`, `Terms.tsx`, `Help.tsx`, `Refer.tsx`, `VerifyResult.tsx`, `NotFound.tsx`, `SchoolHome.tsx` — add `<SEO>` + heading/alt/lazy fixes
-- `src/layouts/AppLayout.tsx` — add `noindex` for authed area
-- `src/components/landing/*` — alt text, lazy loading, LCP hints
-
-Delete:
-- `public/sitemap.xml` (replaced by generator output; generator writes back to same path pre-build)
-
-## 4. Verification
-
-- Build succeeds; `sitemap.xml` regenerated with all public routes.
-- Manual check: each public route ships unique `<title>` and canonical.
-- Trigger SEO scan after implementation to confirm findings clear.
-
-Reply **go** to implement, or tell me what to adjust (skip sections, add pages, change base URL, etc.).
+## Verification
+- Re-run `slow_queries` after deploy — expect top 5 to drop by >70%.
+- Check bundle report (`vite build`) — initial chunk under 500 KB.
+- Spot-check console: no double-fetches of `profiles` / `memberships` on route change.
