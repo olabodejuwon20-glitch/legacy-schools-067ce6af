@@ -2086,11 +2086,16 @@ export type Database = {
       }
       client_errors: {
         Row: {
+          browser: string | null
           cause: string | null
           context: Json | null
           created_at: string
+          fingerprint: string | null
           id: string
           message: string
+          resolved_at: string | null
+          resolved_by: string | null
+          role: string | null
           route: string | null
           school_id: string | null
           severity: string | null
@@ -2100,11 +2105,16 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          browser?: string | null
           cause?: string | null
           context?: Json | null
           created_at?: string
+          fingerprint?: string | null
           id?: string
           message: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          role?: string | null
           route?: string | null
           school_id?: string | null
           severity?: string | null
@@ -2114,11 +2124,16 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          browser?: string | null
           cause?: string | null
           context?: Json | null
           created_at?: string
+          fingerprint?: string | null
           id?: string
           message?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          role?: string | null
           route?: string | null
           school_id?: string | null
           severity?: string | null
