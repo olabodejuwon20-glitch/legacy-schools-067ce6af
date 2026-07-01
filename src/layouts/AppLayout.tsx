@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useEnabledModules } from "@/modules/useModules";
+import { useFeatureFlag } from "@/lib/featureFlags";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -259,6 +260,7 @@ export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: enabledModules } = useEnabledModules(school?.id);
   const { isFullAdmin, allowed, slotRow } = useAdminPermissions();
+  const { enabled: busTrackingEnabled, loading: busFlagLoading } = useFeatureFlag(school?.id, "transport.bus_tracking");
 
   useEffect(() => {
     if (school?.id) warmSchoolCache(school.id, activeRole);
@@ -295,9 +297,13 @@ export default function AppLayout() {
         return allowed.has(permKeyFor(it.to));
       })
     : items;
+  // Hide Transport / Bus tracking / Driver mode entries when the feature flag is off.
+  const busGatedItems = (busFlagLoading || busTrackingEnabled !== false)
+    ? filteredItems
+    : filteredItems.filter(it => it.to !== "transport" && it.to !== "/app/driver/trip");
   // Group items into sections preserving the role-defined order within each group.
   const grouped = new Map<string, typeof items>();
-  filteredItems.forEach((it) => {
+  busGatedItems.forEach((it) => {
     const key = sectionFor(it.to);
     if (!grouped.has(key)) grouped.set(key, [] as any);
     (grouped.get(key) as any).push(it);
