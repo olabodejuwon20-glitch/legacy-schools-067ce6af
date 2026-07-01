@@ -1,112 +1,82 @@
-# SaaS Operations Foundation
+# SEO Optimization Plan — Legacyskool
 
-Build the internal tooling that lets you run LegacySkool like a professional SaaS: catch bugs before users complain, fix one school without touching others, control costs, and roll out risky changes safely.
+## 1. Audit summary (current state)
 
-Five modules, built in order. Each is independently useful — you can stop after any step.
+- `index.html` has decent title/description/OG/Twitter and Organization+WebSite+SoftwareApplication JSON-LD. Good baseline.
+- `public/robots.txt` and `public/sitemap.xml` exist but are minimal (only `/`, `/signin`, `/register`).
+- `SEO.tsx` exists but is only used on a few admin/hub pages — most public routes (Landing, Register, SignIn, Join, Bio, Privacy, Terms, Help, Refer, VerifyResult) have no per-route title/description/canonical.
+- No `og:image` per route; a single sitewide preview image is set.
+- No lazy-loading defaults on images; no `alt` audit performed.
+- No breadcrumb JSON-LD, no FAQ JSON-LD on landing.
+- `sitemap.xml` is hand-edited and stale.
 
----
+## 2. What I'll implement
 
-## 1. Live Error Console (Super Admin)
+### A. Head metadata & per-route SEO
+- Add `<SEO>` component (or Helmet) to every public route: `Landing`, `SignIn`, `Register`, `Join`, `Bio`, `Privacy`, `Terms`, `Help`, `Refer`, `VerifyResult`, `SchoolHome`, `NotFound` (with noindex).
+- Each gets: unique `<title>` (<60 chars, keyword-front-loaded), `<meta description>` (<160 chars), self-referencing `<link rel="canonical">`, matching `og:title/description/url/type`, `twitter:card=summary_large_image`.
+- Remove sitewide `<link rel="canonical">` from `index.html` once per-route canonicals are in place; keep sitewide OG as fallback for non-JS crawlers.
+- Add `noindex` on auth-gated `/app/*` routes via a small `<Helmet><meta name="robots" content="noindex" /></Helmet>` in `AppLayout`.
 
-**Goal:** See every error happening across every school, in real time, grouped so you're not drowning in duplicates.
+### B. Structured data (JSON-LD)
+- Keep Organization + WebSite + SoftwareApplication in `index.html`.
+- Add `BreadcrumbList` JSON-LD helper used on Landing, Register, Help.
+- Add `FAQPage` JSON-LD on Landing (from existing FAQ section if present, else add 4–6 school-focused Q&As).
+- Add `WebSite` `potentialAction` SearchAction pointing at `/help?q={search_term_string}` if a search route exists — otherwise skip.
 
-**What you get:**
-- New page at `/app/super/errors` showing a live feed of client + edge function errors.
-- Errors are **grouped by fingerprint** (same error + same file + same line = one row with a count), not one row per occurrence.
-- Filters: school, role (student/teacher/admin/parent), route, browser, time range, resolved/unresolved.
-- Click a group → see all occurrences, stack trace, affected users, breadcrumb of what they did before it broke.
-- Mark as **Resolved** / **Ignored** / **Investigating** with a note. Resolved errors auto-reopen if they happen again after the fix.
-- Realtime badge in the sidebar showing unresolved error count (red if new errors in last 5 min).
+### C. Headings & semantic HTML
+- Audit Landing, Register, SignIn, Help, Bio, VerifyResult and enforce one `<h1>` per page, logical `h2`/`h3` order, `<main>`, `<nav>`, `<footer>` landmarks where missing.
 
-**Technical:**
-- Extend `client_errors` table: add `role`, `browser`, `os`, `fingerprint`, `occurrence_count`, `first_seen_at`, `last_seen_at`, `resolved_at`, `resolved_by`, `resolution_status`, `resolution_note`.
-- Add a `report_client_error` RPC that computes fingerprint (hash of message + top stack frame) and upserts, incrementing count.
-- Global `window.onerror` + React ErrorBoundary + edge function try/catch → send to RPC. User never sees the technical error (already sanitized in earlier work), but you see everything.
-- Enable Supabase Realtime on `client_errors` for the super admin dashboard.
+### D. Images: alt text + lazy loading
+- Sweep `<img>` usage in `src/pages/Landing.tsx`, `src/components/landing/*`, marketing surfaces. Add descriptive `alt=""` (empty for decorative), `loading="lazy"` and `decoding="async"` on non-LCP images, `fetchpriority="high"` on the LCP hero image.
+- Ensure `<img>` has explicit `width`/`height` to prevent CLS.
 
----
+### E. Sitemap & robots
+- Convert `public/sitemap.xml` → generator `scripts/generate-sitemap.ts` wired via `predev`/`prebuild` scripts. Entries: `/`, `/register`, `/signin`, `/join`, `/help`, `/privacy`, `/terms`, `/refer`, `/verify-result`. Base URL: `https://legacy-schools.lovable.app`.
+- `robots.txt`: keep `Allow: /`, add `Disallow: /app/`, `Disallow: /super/`, `Disallow: /admin-signin`, keep `Sitemap:` line.
 
-## 2. School Impersonation ("Login as")
+### F. Friendly URLs & canonicals
+- Confirm all public routes use lowercase, hyphenated paths (already the case). Ensure canonical URLs strip query strings and trailing slashes consistently in the `SEO` component.
 
-**Goal:** When a school reports "my dashboard is broken," you log in as their admin, reproduce the bug, fix it — without asking them for passwords or breaking anything for other schools.
+### G. Performance / Core Web Vitals
+- Preload LCP hero image in `index.html` with `<link rel="preload" as="image" fetchpriority="high">` once identified.
+- Add `loading="lazy"` to below-the-fold imagery.
+- Confirm Google Fonts already preconnected (they are). Add `font-display: swap` via `&display=swap` (already present).
+- Ensure heavy routes (`AdminHub`, exam simulations) remain code-split — verify no eager imports in `App.tsx` for admin/super pages; convert to `React.lazy` where missing.
 
-**What you get:**
-- On any school row in `/app/super/schools`, an **"Impersonate"** button (super admin only).
-- Opens a modal: pick which admin/teacher/student to log in as, type a reason (required — auditing), duration (default 30 min, max 4 hours).
-- New browser tab opens with you logged in as that user. A red banner across the top: **"IMPERSONATING [name] at [school]. End session"**.
-- Everything you do is logged to `impersonation_sessions` with before/after diffs on any writes.
-- Auto-expires after the duration. School admin gets a notification that a support session happened (transparency).
+### H. Accessibility (helps SEO)
+- Add `aria-label` to icon-only buttons in landing/nav.
+- Ensure form fields on `SignIn`/`Register`/`Join` have associated `<label>`s (audit and fix).
+- Skip-to-content link on `Landing`.
+- Color contrast: leave tokens as-is (already themed).
 
-**Technical:**
-- New `impersonation_sessions` table (super_admin_id, target_user_id, school_id, reason, started_at, expires_at, ended_at, actions_jsonb).
-- Edge function `start-impersonation` — verifies caller is super admin, mints a scoped JWT with a custom claim `impersonated_by`, logs the session.
-- Client detects the claim and shows the red banner + tracks writes.
-- All existing RLS keeps working because you're using a real session for that user.
+### I. Internal linking strategy
+- Landing footer: link to `/help`, `/privacy`, `/terms`, `/refer`, `/register`, `/signin`, `/verify-result`.
+- Register/SignIn: cross-link to each other and to Help.
+- Help page: link back to Landing + Register with descriptive anchor text ("Create your school account", not "click here").
+- Bio and VerifyResult: link to Landing with branded anchor.
 
----
+## 3. Files to add/change
 
-## 3. Feature Flags & Staged Rollouts
+Add:
+- `scripts/generate-sitemap.ts`
+- `src/components/seo/JsonLd.tsx` (helper for BreadcrumbList / FAQPage)
 
-**Goal:** Ship risky features to 1 school first, then 10, then everyone. Kill a broken feature instantly without a redeploy.
+Edit:
+- `index.html` (preload LCP, remove sitewide canonical, add `Disallow` reflections not needed here)
+- `public/robots.txt`
+- `package.json` (`predev`/`prebuild` sitemap hooks)
+- `src/pages/Landing.tsx`, `SignIn.tsx`, `Register.tsx`, `Join.tsx`, `Bio.tsx`, `Privacy.tsx`, `Terms.tsx`, `Help.tsx`, `Refer.tsx`, `VerifyResult.tsx`, `NotFound.tsx`, `SchoolHome.tsx` — add `<SEO>` + heading/alt/lazy fixes
+- `src/layouts/AppLayout.tsx` — add `noindex` for authed area
+- `src/components/landing/*` — alt text, lazy loading, LCP hints
 
-**What you get:**
-- New page `/app/super/feature-flags` — list of flags with toggles.
-- Each flag: name, description, status (off / on / rollout), target rules (all schools / specific schools / % rollout / specific plan tier).
-- Global kill switch per flag — flip to off, everyone loses access in <5 seconds.
-- Code uses `useFeatureFlag('new-bus-tracking-v2')` hook — returns true/false per current school.
-- Audit log of every flag change (who, when, from/to).
+Delete:
+- `public/sitemap.xml` (replaced by generator output; generator writes back to same path pre-build)
 
-**Technical:**
-- Extend `feature_flags` table + new `feature_flag_targets` for per-school/percentage rules.
-- `resolve_feature_flag` RPC — takes flag key + school_id, returns boolean. Cached client-side for 60s.
-- Realtime subscription for instant kill-switch.
+## 4. Verification
 
----
+- Build succeeds; `sitemap.xml` regenerated with all public routes.
+- Manual check: each public route ships unique `<title>` and canonical.
+- Trigger SEO scan after implementation to confirm findings clear.
 
-## 4. Per-School AI Quotas & Cost Guardrails
-
-**Goal:** One school can't burn your entire AI budget. Costs are predictable and capped.
-
-**What you get:**
-- Per-school monthly quota (tokens or ₦ cost) — set default per plan tier (Basic/Standard/Premium), override per school.
-- Live meter in `/app/super/schools/[id]` showing usage this month + burn rate.
-- When a school hits 80% → email their admin. At 100% → AI calls return a friendly "monthly AI limit reached" message (not a crash).
-- Per-model routing (already built in `ai_model_routing`) is respected — cheap models for cheap tasks stays enforced.
-- Super admin can grant a one-time top-up.
-
-**Technical:**
-- Extend `school_ai_quotas`: `monthly_limit_tokens`, `monthly_limit_cost_ngn`, `current_period_start`, `current_usage_tokens`, `current_usage_cost`, `alert_sent_at`.
-- Atomic `consume_ai_quota` RPC called by every AI edge function before the model call. Uses `FOR UPDATE` lock so parallel requests can't overshoot.
-- Nightly cron resets quotas at start of new billing period.
-- Simple graph in the school detail page (last 30 days usage).
-
----
-
-## 5. Sentry Integration (Professional Error Tracking)
-
-**Goal:** Your Live Error Console (step 1) shows what's happening now. Sentry gives you deep post-mortem tooling — stack traces with source maps, release tracking, alerts to email/Slack, performance monitoring.
-
-**What you get:**
-- Sentry captures every client + edge function error automatically.
-- Source maps uploaded on every deploy → stack traces show your actual code, not minified junk.
-- Email/Slack alert when: new error type appears, error spike (10x normal rate), specific school crosses error threshold.
-- Session replay on errors — watch a video of what the user did before it broke.
-- Tag every event with `school_id`, `role`, `plan_tier` — filter and alert per school.
-
-**Technical:**
-- Add `@sentry/react` + `@sentry/node` (for edge functions).
-- Requires Sentry account (free tier: 5k errors/month — plenty for launch). I'll walk you through it and need a DSN.
-- Environment-aware: only ships events from production, not preview.
-- Also forwards to our own `client_errors` table so step 1 still works offline.
-
----
-
-## Order & rough scope
-
-1. **Live Error Console** — 1 build session. Immediate value. No external accounts needed.
-2. **Impersonation** — 1 session. Second most valuable, unlocks real support.
-3. **Feature Flags** — 1 session.
-4. **AI Quotas** — 1 session.
-5. **Sentry** — needs your Sentry account first.
-
-Say **"start"** and I'll build #1. Or say a number to jump to that one.
+Reply **go** to implement, or tell me what to adjust (skip sections, add pages, change base URL, etc.).
