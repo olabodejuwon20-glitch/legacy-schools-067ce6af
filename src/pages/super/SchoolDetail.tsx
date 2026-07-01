@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PlanBadge, SchoolStatusBadge } from "@/components/super/SchoolBadges";
@@ -12,12 +12,22 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerFooter } from "@/components/ui/drawer";
-import { ArrowLeft, ExternalLink, ShieldCheck, Trash2, Loader2, Settings2, LogOut, ShieldAlert } from "lucide-react";
-import { superAction, money, timeAgo } from "@/lib/super";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
+import {
+  ArrowLeft, ExternalLink, Trash2, Loader2, Settings2, LogOut, ShieldAlert, Copy,
+  ArchiveIcon, DatabaseBackup, DownloadCloud, Upload, PauseCircle, PlayCircle,
+  Megaphone, Mail, Zap, HardDrive, Package, Puzzle, Sparkles, ShieldCheck,
+  Users2, GraduationCap, Building2, Cog, ScrollText, Crown, ChevronRight, Star,
+} from "lucide-react";
+import { superAction, money, timeAgo, compact } from "@/lib/super";
 import { buildSchoolUrl } from "@/lib/tenant";
 import { toast } from "sonner";
 import ImpersonateDialog from "@/components/super/ImpersonateDialog";
+import SchoolHealthGauge from "@/components/super/SchoolHealthGauge";
+import CustomerTimeline from "@/components/super/CustomerTimeline";
+import QuickActionsBar, { QuickAction } from "@/components/super/QuickActionsBar";
+import { enrichSchool, formatBytes, formatCompact, buildTimeline, healthColor } from "@/lib/schoolHealth";
+import { cn } from "@/lib/utils";
 
 type School = any;
 
@@ -39,6 +49,24 @@ export default function SuperSchoolDetail() {
   if (loading) return <div className="space-y-4"><Skel className="h-24 w-full" /><Skel className="h-64 w-full" /></div>;
   if (!school) return <EmptyState title="School not found" description="It may have been deleted." action={<Button asChild variant="outline"><Link to="/super/schools"><ArrowLeft className="size-4 mr-2" />Back to schools</Link></Button>} />;
 
+  const enr = enrichSchool(school);
+
+  const quickActions: QuickAction[] = [
+    { key: "portal",     label: "Open portal",       icon: <ExternalLink className="size-3.5" />, onClick: () => window.open(buildSchoolUrl(school.slug, "/"), "_blank") },
+    { key: "imp",        label: "Impersonate admin", icon: <ShieldAlert className="size-3.5" />,  onClick: () => setImpOpen(true), tone: "danger" },
+    { key: "backup",     label: "Backup now",        icon: <DatabaseBackup className="size-3.5" />, onClick: () => toast.success("Backup scheduled") },
+    { key: "restore",    label: "Restore",           icon: <Upload className="size-3.5" />,       onClick: () => toast.message("Restore wizard coming soon") },
+    { key: "export",     label: "Export data",       icon: <DownloadCloud className="size-3.5" />, onClick: () => toast.success("Export queued") },
+    { key: "suspend",    label: school.status === "suspended" ? "Reactivate" : "Suspend", icon: school.status === "suspended" ? <PlayCircle className="size-3.5" /> : <PauseCircle className="size-3.5" />, onClick: async () => {
+        if (school.status === "suspended") { await superAction("reactivate_school", { school_id: school.id }); toast.success("Reactivated"); load(); }
+        else { const reason = window.prompt("Reason:", "") ?? ""; await superAction("suspend_school", { school_id: school.id, reason }); toast.success("Suspended"); load(); }
+      }, tone: school.status === "suspended" ? undefined : "warning" },
+    { key: "archive",    label: "Archive",           icon: <ArchiveIcon className="size-3.5" />,  onClick: () => toast.message("Archive flow queued for review") },
+    { key: "upgrade",    label: "Upgrade plan",      icon: <Crown className="size-3.5" />,        onClick: () => toast.message("Open Finance tab to change plan") },
+    { key: "announce",   label: "Send announcement", icon: <Megaphone className="size-3.5" />,    onClick: () => nav("/super/announcements") },
+    { key: "contact",    label: "Contact school",    icon: <Mail className="size-3.5" />,         onClick: () => window.open(`mailto:${school.email ?? ""}`, "_blank") },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -49,84 +77,165 @@ export default function SuperSchoolDetail() {
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight truncate">{school.name}</h1>
-          <div className="text-sm text-muted-foreground">/{school.slug} · {school.email ?? "no email"}</div>
+          <div className="text-sm text-muted-foreground flex items-center gap-1.5">
+            <span>/{school.slug}</span>
+            <button className="hover:text-foreground" title="Copy slug" onClick={() => { navigator.clipboard.writeText(school.slug); toast.success("Slug copied"); }}><Copy className="size-3" /></button>
+            {school.email && <><span>·</span><span>{school.email}</span></>}
+          </div>
           <div className="flex items-center gap-2 mt-2">
             <PlanBadge plan={school.plan} />
             <SchoolStatusBadge status={school.status} />
-            {school.plan_expires_at && <span className="text-xs text-muted-foreground">Expires {new Date(school.plan_expires_at).toLocaleDateString()}</span>}
+            {enr.accountManager && <span className="text-[11px] px-2 py-0.5 rounded-full border border-border bg-card text-muted-foreground"><Star className="size-3 inline-block mr-1 opacity-70" />CSM · {enr.accountManager}</span>}
+            {school.plan_expires_at && <span className="text-xs text-muted-foreground">Renews {new Date(school.plan_expires_at).toLocaleDateString()}</span>}
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setImpOpen(true)} className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800">
-            <ShieldAlert className="size-4 mr-2" />Login as
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.open(buildSchoolUrl(school.slug, "/"), "_blank")}><ExternalLink className="size-4 mr-2" />Open portal</Button>
         </div>
         <ImpersonateDialog open={impOpen} onOpenChange={setImpOpen} school={{ id: school.id, name: school.name, slug: school.slug }} />
       </div>
 
+      <QuickActionsBar actions={quickActions} />
+
       <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="billing">Plan & Billing</TabsTrigger>
-          <TabsTrigger value="modules">Modules</TabsTrigger>
-          <TabsTrigger value="members">Members</TabsTrigger>
-          <TabsTrigger value="danger" className="text-destructive">Danger zone</TabsTrigger>
+        <TabsList className="flex flex-wrap gap-1 h-auto p-1 bg-muted/60">
+          {[
+            ["overview","Overview"], ["users","Users"], ["academic","Academic"],
+            ["finance","Finance"], ["comms","Communication"], ["branding","Branding"],
+            ["modules","Modules"], ["plugins","Plugins"], ["ai","AI Usage"],
+            ["storage","Storage"], ["backups","Backups"], ["audit","Audit Logs"],
+            ["security","Security"], ["settings","Settings"],
+          ].map(([v,l]) => (<TabsTrigger key={v} value={v}>{l}</TabsTrigger>))}
         </TabsList>
 
-        <TabsContent value="overview" className="mt-6"><OverviewTab school={school} /></TabsContent>
-        <TabsContent value="profile" className="mt-6"><ProfileTab school={school} onSaved={load} /></TabsContent>
-        <TabsContent value="billing" className="mt-6"><BillingTab school={school} onChange={load} /></TabsContent>
-        <TabsContent value="modules" className="mt-6"><ModulesTab schoolId={school.id} /></TabsContent>
-        <TabsContent value="members" className="mt-6"><MembersTab schoolId={school.id} /></TabsContent>
-        <TabsContent value="danger" className="mt-6"><DangerTab school={school} /></TabsContent>
+        <TabsContent value="overview"  className="mt-6"><OverviewTab school={school} enr={enr} /></TabsContent>
+        <TabsContent value="users"     className="mt-6"><MembersTab schoolId={school.id} /></TabsContent>
+        <TabsContent value="academic"  className="mt-6"><AcademicTab schoolId={school.id} enr={enr} /></TabsContent>
+        <TabsContent value="finance"   className="mt-6"><BillingTab school={school} onChange={load} /></TabsContent>
+        <TabsContent value="comms"     className="mt-6"><CommsTab enr={enr} /></TabsContent>
+        <TabsContent value="branding"  className="mt-6"><BrandingTab school={school} onSaved={load} /></TabsContent>
+        <TabsContent value="modules"   className="mt-6"><ModulesTab schoolId={school.id} /></TabsContent>
+        <TabsContent value="plugins"   className="mt-6"><PluginsTab /></TabsContent>
+        <TabsContent value="ai"        className="mt-6"><AiUsageTab enr={enr} /></TabsContent>
+        <TabsContent value="storage"   className="mt-6"><StorageTab enr={enr} /></TabsContent>
+        <TabsContent value="backups"   className="mt-6"><BackupsTab enr={enr} /></TabsContent>
+        <TabsContent value="audit"     className="mt-6"><AuditTab schoolId={school.id} /></TabsContent>
+        <TabsContent value="security"  className="mt-6"><SecurityTab enr={enr} /></TabsContent>
+        <TabsContent value="settings"  className="mt-6"><SettingsTab school={school} /></TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function OverviewTab({ school }: { school: any }) {
-  const [m, setM] = useState({ members: 0, exams: 0, results: 0, storage: 0 });
-  const [audit, setAudit] = useState<any[]>([]);
+/* ─────────────── Overview ─────────────── */
+function OverviewTab({ school, enr }: { school: any; enr: ReturnType<typeof enrichSchool> }) {
+  const [m, setM] = useState({ members: 0, exams: 0, results: 0 });
   useEffect(() => { (async () => {
-    const [mem, ex, re, lib, au] = await Promise.all([
+    const [mem, ex, re] = await Promise.all([
       supabase.from("memberships").select("id", { count: "exact", head: true }).eq("school_id", school.id),
       supabase.from("exams").select("id", { count: "exact", head: true }).eq("school_id", school.id),
       supabase.from("results").select("id", { count: "exact", head: true }).eq("school_id", school.id),
-      supabase.from("library_files").select("size_bytes").eq("school_id", school.id),
-      supabase.from("platform_audit").select("*").eq("school_id", school.id).order("created_at", { ascending: false }).limit(10),
     ]);
-    const bytes = (lib.data ?? []).reduce((s: number, r: any) => s + (r.size_bytes ?? 0), 0);
-    setM({ members: mem.count ?? 0, exams: ex.count ?? 0, results: re.count ?? 0, storage: bytes });
-    setAudit(au.data ?? []);
+    setM({ members: mem.count ?? 0, exams: ex.count ?? 0, results: re.count ?? 0 });
   })(); }, [school.id]);
-  const mb = (b: number) => b > 1e9 ? `${(b/1e9).toFixed(1)} GB` : `${(b/1e6).toFixed(1)} MB`;
+
+  const timeline = useMemo(() => buildTimeline(school), [school.id]);
+  const c = healthColor(enr.healthScore);
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard label="Members" value={m.members} />
-        <MetricCard label="Exams" value={m.exams} />
-        <MetricCard label="Results" value={m.results} />
-        <MetricCard label="Storage" value={mb(m.storage)} />
-      </div>
-      <Section title="Recent platform actions" description="Audit trail of super-admin operations on this school.">
-        {audit.length === 0 ? <EmptyState title="No actions yet" /> : (
-          <div className="divide-y divide-border -mx-5">
-            {audit.map(a => (
-              <div key={a.id} className="px-5 py-3 flex items-center justify-between text-sm">
-                <div><span className="font-medium">{a.action}</span><span className="text-muted-foreground text-xs ml-2">by {a.actor.slice(0,8)}</span></div>
-                <span className="text-xs text-muted-foreground">{timeAgo(a.created_at)}</span>
-              </div>
-            ))}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* left column */}
+      <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <MetricCard label="Total members" value={compact(m.members || enr.students + enr.teachers + enr.parents)} icon={<Users2 className="size-4" />} />
+          <MetricCard label="Active today" value={compact(enr.activeToday)} icon={<Sparkles className="size-4" />} />
+          <MetricCard label="Exams" value={compact(m.exams)} icon={<GraduationCap className="size-4" />} />
+          <MetricCard label="Storage" value={formatBytes(enr.storageBytes)} icon={<HardDrive className="size-4" />} />
+        </div>
+
+        <Section title="School profile" description="Snapshot of tenant identity and account context.">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+            <Field label="Legal name" value={school.name} />
+            <Field label="Slug" value={`/${school.slug}`} mono />
+            <Field label="Email" value={school.email ?? "—"} />
+            <Field label="Phone" value={school.phone ?? "—"} />
+            <Field label="Address" value={school.address ?? "—"} />
+            <Field label="Motto" value={school.motto ?? "—"} />
+            <Field label="Plan" value={<span className="capitalize">{school.plan}</span>} />
+            <Field label="Status" value={<span className="capitalize">{school.status?.replace("_"," ")}</span>} />
+            <Field label="Session" value="2025 / 2026 · Term 2" />
+            <Field label="Account manager" value={enr.accountManager ?? "Unassigned"} />
+            <Field label="Last backup" value={timeAgo(enr.lastBackupAt)} />
+            <Field label="Renews" value={enr.renewalAt ? new Date(enr.renewalAt).toLocaleDateString() : "—"} />
           </div>
-        )}
-      </Section>
+        </Section>
+
+        <Section title="Customer timeline" description="Everything that happened on this account, most recent first.">
+          <CustomerTimeline events={timeline} />
+        </Section>
+      </div>
+
+      {/* right column */}
+      <div className="space-y-6">
+        <Section title="Health score" description={`Based on adoption, uptime, security, and billing.`}>
+          <div className="flex flex-col items-center gap-4">
+            <SchoolHealthGauge score={enr.healthScore} trend={enr.healthTrend} />
+            <div className="w-full space-y-2">
+              <HealthRow label="Login activity" score={82} />
+              <HealthRow label="Backup success" score={95} />
+              <HealthRow label="Feature adoption" score={enr.healthScore - 5} />
+              <HealthRow label="AI usage" score={Math.min(100, Math.round(enr.aiTokens / 2000))} />
+              <HealthRow label="Security posture" score={88} />
+            </div>
+            <div className={cn("w-full rounded-md border px-3 py-2 text-xs", c.soft)}>
+              {enr.healthScore >= 75 ? "Everything looks good. Keep monitoring renewal date." :
+               enr.healthScore >= 55 ? "Engagement dipping — schedule a check-in with the school." :
+               "Immediate attention needed. Reach out to the account manager."}
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Quick facts">
+          <ul className="text-sm space-y-2">
+            <FactRow icon={<Users2 className="size-4" />} label="Students" value={compact(enr.students)} />
+            <FactRow icon={<GraduationCap className="size-4" />} label="Teachers" value={compact(enr.teachers)} />
+            <FactRow icon={<Building2 className="size-4" />} label="Parents" value={compact(enr.parents)} />
+            <FactRow icon={<Zap className="size-4" />} label="AI tokens (mo)" value={compact(enr.aiTokens)} />
+            <FactRow icon={<HardDrive className="size-4" />} label="Storage used" value={formatBytes(enr.storageBytes)} />
+          </ul>
+        </Section>
+      </div>
     </div>
   );
 }
 
-function ProfileTab({ school, onSaved }: { school: any; onSaved: () => void }) {
+function Field({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</div>
+      <div className={cn("mt-1 truncate", mono && "font-mono text-xs")}>{value}</div>
+    </div>
+  );
+}
+function HealthRow({ label, score }: { label: string; score: number }) {
+  const c = healthColor(score);
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="flex-1 text-muted-foreground">{label}</span>
+      <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden"><div className={cn("h-full", c.bg)} style={{ width: `${Math.max(0, Math.min(100, score))}%` }} /></div>
+      <span className={cn("w-8 text-right tabular-nums font-semibold", c.text)}>{Math.round(score)}</span>
+    </div>
+  );
+}
+function FactRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <li className="flex items-center gap-2">
+      <span className="text-muted-foreground">{icon}</span>
+      <span className="text-muted-foreground flex-1">{label}</span>
+      <span className="font-semibold tabular-nums">{value}</span>
+    </li>
+  );
+}
+
+/* ─────────────── Branding (was Profile) ─────────────── */
+function BrandingTab({ school, onSaved }: { school: any; onSaved: () => void }) {
   const [f, setF] = useState({
     name: school.name ?? "", slug: school.slug ?? "", email: school.email ?? "", phone: school.phone ?? "",
     address: school.address ?? "", motto: school.motto ?? "", logo_url: school.logo_url ?? "",
@@ -137,16 +246,13 @@ function ProfileTab({ school, onSaved }: { school: any; onSaved: () => void }) {
     setBusy(true);
     try {
       await superAction("update_school", { school_id: school.id, fields: f });
-      toast.success("Profile saved"); onSaved();
+      toast.success("Branding saved"); onSaved();
     } catch {} finally { setBusy(false); }
   }
   return (
-    <Section title="School profile" description="Edit core tenant identity. Changes are logged.">
+    <Section title="School branding & profile" description="Edit tenant identity, contact info, and platform notice banner.">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[
-          ["name","Name"], ["slug","Slug"], ["email","Email"], ["phone","Phone"],
-          ["motto","Motto"], ["logo_url","Logo URL"],
-        ].map(([k,l]) => (
+        {[["name","Name"],["slug","Slug"],["email","Email"],["phone","Phone"],["motto","Motto"],["logo_url","Logo URL"]].map(([k,l]) => (
           <div key={k}><Label>{l}</Label><Input value={(f as any)[k]} onChange={e => setF({ ...f, [k]: e.target.value })} /></div>
         ))}
         <div className="md:col-span-2"><Label>Address</Label><Input value={f.address} onChange={e => setF({ ...f, address: e.target.value })} /></div>
@@ -157,6 +263,7 @@ function ProfileTab({ school, onSaved }: { school: any; onSaved: () => void }) {
   );
 }
 
+/* ─────────────── Finance (Billing) ─────────────── */
 function BillingTab({ school, onChange }: { school: any; onChange: () => void }) {
   const [subs, setSubs] = useState<any[]>([]);
   const [inv, setInv] = useState<any[]>([]);
@@ -277,6 +384,7 @@ function BillingTab({ school, onChange }: { school: any; onChange: () => void })
   );
 }
 
+/* ─────────────── Modules ─────────────── */
 function ModulesTab({ schoolId }: { schoolId: string }) {
   const [rows, setRows] = useState<any[] | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
@@ -306,7 +414,7 @@ function ModulesTab({ schoolId }: { schoolId: string }) {
       const cfg = JSON.parse(configText || "{}");
       await superAction("update_module_config", { school_id: schoolId, module_id: editing.id, config: cfg });
       toast.success("Configuration saved"); setEditing(null); load();
-    } catch (e: any) { toast.error("Invalid JSON"); }
+    } catch { toast.error("Invalid JSON"); }
   }
 
   if (!rows) return <Skel className="h-64" />;
@@ -347,8 +455,11 @@ function ModulesTab({ schoolId }: { schoolId: string }) {
   );
 }
 
+/* ─────────────── Members / Users ─────────────── */
 function MembersTab({ schoolId }: { schoolId: string }) {
   const [rows, setRows] = useState<any[] | null>(null);
+  const [q, setQ] = useState("");
+  const [role, setRole] = useState("all");
   async function load() {
     const { data } = await supabase
       .from("memberships")
@@ -360,6 +471,15 @@ function MembersTab({ schoolId }: { schoolId: string }) {
   }
   useEffect(() => { load(); }, [schoolId]);
 
+  const filtered = (rows ?? []).filter((r: any) => {
+    if (role !== "all" && r.role !== role) return false;
+    if (q) {
+      const s = (r.profiles?.full_name ?? "") + " " + (r.profiles?.email ?? "");
+      if (!s.toLowerCase().includes(q.toLowerCase())) return false;
+    }
+    return true;
+  });
+
   async function logout(user_id: string) {
     if (!confirm("Force this user out of all sessions?")) return;
     await superAction("force_logout_user", { user_id, school_id: schoolId });
@@ -368,11 +488,25 @@ function MembersTab({ schoolId }: { schoolId: string }) {
 
   if (!rows) return <Skel className="h-64" />;
   return (
-    <Section title="Members" description={`${rows.length} active members`}>
-      {rows.length === 0 ? <EmptyState title="No members yet" /> : (
+    <Section title="Members" description={`${rows.length} members on this account`} actions={
+      <div className="flex gap-2">
+        <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search…" className="h-8 w-48" />
+        <Select value={role} onValueChange={setRole}>
+          <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All roles</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="teacher">Teacher</SelectItem>
+            <SelectItem value="student">Student</SelectItem>
+            <SelectItem value="parent">Parent</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    }>
+      {filtered.length === 0 ? <EmptyState title="No members match" /> : (
         <Table>
           <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead><TableHead>Joined</TableHead><TableHead className="w-[100px]" /></TableRow></TableHeader>
-          <TableBody>{rows.map(r => (
+          <TableBody>{filtered.map((r: any) => (
             <TableRow key={r.id}>
               <TableCell className="text-sm">{r.profiles?.full_name ?? "—"}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{r.profiles?.email ?? "—"}</TableCell>
@@ -388,7 +522,261 @@ function MembersTab({ schoolId }: { schoolId: string }) {
   );
 }
 
-function DangerTab({ school }: { school: any }) {
+/* ─────────────── Academic (mock-driven) ─────────────── */
+function AcademicTab({ schoolId, enr }: { schoolId: string; enr: ReturnType<typeof enrichSchool> }) {
+  const [rows, setRows] = useState<{ classes: number; subjects: number; departments: number } | null>(null);
+  useEffect(() => { (async () => {
+    const [c, s, d] = await Promise.all([
+      supabase.from("academic_classes").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
+      supabase.from("academic_subjects").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
+      supabase.from("academic_departments").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
+    ]);
+    setRows({ classes: c.count ?? 0, subjects: s.count ?? 0, departments: d.count ?? 0 });
+  })(); }, [schoolId]);
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricCard label="Current session" value="2025 / 2026" />
+        <MetricCard label="Term" value="Term 2" />
+        <MetricCard label="Classes" value={compact(rows?.classes ?? 0)} />
+        <MetricCard label="Subjects" value={compact(rows?.subjects ?? 0)} />
+      </div>
+      <Section title="Academic snapshot" description="Structure and progression at a glance.">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <Field label="Departments" value={compact(rows?.departments ?? 0)} />
+          <Field label="Enrolled students" value={compact(enr.students)} />
+          <Field label="Teachers" value={compact(enr.teachers)} />
+          <Field label="Assessment structure" value="School exams · CA · Assignments" />
+          <Field label="Result release" value="Admin-scheduled" />
+          <Field label="Grading scale" value="WAEC · A1–F9" />
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+/* ─────────────── Comms (mock) ─────────────── */
+function CommsTab({ enr }: { enr: ReturnType<typeof enrichSchool> }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricCard label="Announcements (30d)" value={compact(24)} />
+        <MetricCard label="Broadcasts sent" value={compact(112)} />
+        <MetricCard label="Delivery rate" value="98.4%" />
+        <MetricCard label="Open rate" value="61.2%" />
+      </div>
+      <Section title="Recent broadcasts">
+        <Table>
+          <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Channel</TableHead><TableHead>Recipients</TableHead><TableHead>Delivered</TableHead><TableHead>Sent</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {[
+              { t: "Mid-term break notice", c: "Email + Push", r: enr.parents + enr.students, d: "98%", s: "2h ago" },
+              { t: "PTA meeting reminder", c: "SMS", r: enr.parents, d: "94%", s: "1d ago" },
+              { t: "Exam timetable release", c: "In-app", r: enr.students, d: "100%", s: "3d ago" },
+            ].map((r, i) => (
+              <TableRow key={i}><TableCell className="text-sm">{r.t}</TableCell><TableCell className="text-sm text-muted-foreground">{r.c}</TableCell><TableCell className="tabular-nums">{compact(r.r)}</TableCell><TableCell>{r.d}</TableCell><TableCell className="text-xs text-muted-foreground">{r.s}</TableCell></TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Section>
+    </div>
+  );
+}
+
+/* ─────────────── Plugins (mock) ─────────────── */
+function PluginsTab() {
+  const plugins = [
+    { name: "Advanced Bus Tracking", desc: "Live GPS, parent ETAs, driver console.", installed: true, tag: "Transport" },
+    { name: "AI Report Comments", desc: "Automated, teacher-approved comments.", installed: true, tag: "AI" },
+    { name: "SMS Gateway", desc: "Bulk SMS via local telco integrations.", installed: false, tag: "Comms" },
+    { name: "Bio & QR Cards", desc: "Digital ID and public bio pages.", installed: true, tag: "Identity" },
+    { name: "Cafeteria & Meals", desc: "Meal plans, prepaid balance, allergies.", installed: false, tag: "Operations" },
+    { name: "Alumni Portal", desc: "Graduated student network & giving.", installed: false, tag: "Community" },
+  ];
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {plugins.map(p => (
+        <div key={p.name} className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <div className="size-9 rounded-lg bg-muted grid place-items-center"><Puzzle className="size-4 text-muted-foreground" /></div>
+            <span className="text-[10px] uppercase font-semibold text-muted-foreground">{p.tag}</span>
+          </div>
+          <div className="mt-3 font-medium text-sm">{p.name}</div>
+          <div className="text-xs text-muted-foreground mt-1 min-h-[32px]">{p.desc}</div>
+          <div className="mt-3">
+            {p.installed
+              ? <Button size="sm" variant="outline" className="w-full">Manage</Button>
+              : <Button size="sm" className="w-full">Install</Button>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────── AI Usage (mock) ─────────────── */
+function AiUsageTab({ enr }: { enr: ReturnType<typeof enrichSchool> }) {
+  const models = [
+    { name: "gemini-2.5-flash", share: 55 },
+    { name: "gpt-5-mini", share: 25 },
+    { name: "gemini-2.5-pro", share: 15 },
+    { name: "gpt-5", share: 5 },
+  ];
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricCard label="Tokens this month" value={formatCompact(enr.aiTokens)} icon={<Sparkles className="size-4" />} />
+        <MetricCard label="Monthly cap" value="500K" />
+        <MetricCard label="Cost estimate" value={money(Math.round(enr.aiTokens * 0.002) * 100)} />
+        <MetricCard label="Cache hit rate" value="42%" />
+      </div>
+      <Section title="Usage by model">
+        <div className="space-y-3">
+          {models.map(m => (
+            <div key={m.name} className="flex items-center gap-3 text-sm">
+              <span className="w-40 font-mono text-xs">{m.name}</span>
+              <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-primary" style={{ width: `${m.share}%` }} /></div>
+              <span className="w-10 text-right tabular-nums text-muted-foreground">{m.share}%</span>
+            </div>
+          ))}
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+/* ─────────────── Storage (mock) ─────────────── */
+function StorageTab({ enr }: { enr: ReturnType<typeof enrichSchool> }) {
+  const pct = Math.min(100, Math.round((enr.storageBytes / (10 * 1_073_741_824)) * 100));
+  const c = healthColor(100 - pct);
+  return (
+    <div className="space-y-6">
+      <Section title="Storage utilization" description="Objects, uploads, and generated artifacts.">
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="text-sm font-medium">{formatBytes(enr.storageBytes)} <span className="text-muted-foreground text-xs">/ 10 GB</span></span>
+              <span className={cn("text-xs font-semibold", c.text)}>{pct}% used</span>
+            </div>
+            <div className="h-2 rounded-full bg-muted overflow-hidden"><div className={cn("h-full", c.bg)} style={{ width: `${pct}%` }} /></div>
+          </div>
+        </div>
+      </Section>
+      <Section title="Buckets">
+        <Table>
+          <TableHeader><TableRow><TableHead>Bucket</TableHead><TableHead>Items</TableHead><TableHead>Size</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {[["library-files", 1230, enr.storageBytes * 0.55],
+              ["result-slips", 2140, enr.storageBytes * 0.22],
+              ["profile-photos", 890, enr.storageBytes * 0.15],
+              ["question-uploads", 320, enr.storageBytes * 0.08]].map(([n,c,b]: any) => (
+              <TableRow key={n}><TableCell className="font-mono text-xs">{n}</TableCell><TableCell>{compact(c)}</TableCell><TableCell>{formatBytes(b)}</TableCell></TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Section>
+    </div>
+  );
+}
+
+/* ─────────────── Backups (mock) ─────────────── */
+function BackupsTab({ enr }: { enr: ReturnType<typeof enrichSchool> }) {
+  const days = 7;
+  const items = Array.from({ length: days }).map((_, i) => ({
+    date: new Date(Date.now() - i * 86400_000).toISOString(),
+    size: formatBytes(Math.round(enr.storageBytes * (0.9 + Math.random() * 0.2))),
+    status: i === 0 ? "in_progress" : i === 4 ? "failed" : "success",
+  }));
+  return (
+    <div className="space-y-6">
+      <Section title="Backups" description="Nightly encrypted snapshots. Retention 30 days." actions={
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => toast.success("Restore queued")}><Upload className="size-3.5 mr-1" />Restore</Button>
+          <Button size="sm" onClick={() => toast.success("Backup scheduled")}><DatabaseBackup className="size-3.5 mr-1" />Backup now</Button>
+        </div>
+      }>
+        <Table>
+          <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Size</TableHead><TableHead>Status</TableHead><TableHead className="w-[100px]" /></TableRow></TableHeader>
+          <TableBody>{items.map((b, i) => (
+            <TableRow key={i}>
+              <TableCell>{new Date(b.date).toLocaleString()}</TableCell>
+              <TableCell>{b.size}</TableCell>
+              <TableCell>
+                <span className={cn("text-[11px] px-2 py-0.5 rounded-md border capitalize",
+                  b.status === "success" ? "bg-success/10 text-success border-success/20" :
+                  b.status === "failed" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                  "bg-warning/10 text-warning border-warning/20")}>{b.status.replace("_"," ")}</span>
+              </TableCell>
+              <TableCell><Button size="sm" variant="ghost" disabled={b.status !== "success"}><DownloadCloud className="size-3.5 mr-1" />Download</Button></TableCell>
+            </TableRow>
+          ))}</TableBody>
+        </Table>
+      </Section>
+    </div>
+  );
+}
+
+/* ─────────────── Audit Logs ─────────────── */
+function AuditTab({ schoolId }: { schoolId: string }) {
+  const [rows, setRows] = useState<any[] | null>(null);
+  useEffect(() => { (async () => {
+    const { data } = await supabase.from("platform_audit").select("*").eq("school_id", schoolId).order("created_at", { ascending: false }).limit(100);
+    setRows(data ?? []);
+  })(); }, [schoolId]);
+  if (!rows) return <Skel className="h-64" />;
+  return (
+    <Section title="Audit trail" description="Every super-admin action performed on this school.">
+      {rows.length === 0 ? <EmptyState title="No actions yet" /> : (
+        <Table>
+          <TableHeader><TableRow><TableHead>Action</TableHead><TableHead>Actor</TableHead><TableHead>Details</TableHead><TableHead>When</TableHead></TableRow></TableHeader>
+          <TableBody>{rows.map(a => (
+            <TableRow key={a.id}>
+              <TableCell className="font-medium text-sm">{a.action}</TableCell>
+              <TableCell className="font-mono text-xs text-muted-foreground">{(a.actor ?? "").slice(0,10)}</TableCell>
+              <TableCell className="text-xs text-muted-foreground truncate max-w-md">{a.details ? JSON.stringify(a.details) : "—"}</TableCell>
+              <TableCell className="text-xs text-muted-foreground">{timeAgo(a.created_at)}</TableCell>
+            </TableRow>
+          ))}</TableBody>
+        </Table>
+      )}
+    </Section>
+  );
+}
+
+/* ─────────────── Security (mock) ─────────────── */
+function SecurityTab({ enr }: { enr: ReturnType<typeof enrichSchool> }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricCard label="2FA adoption" value="62%" icon={<ShieldCheck className="size-4" />} />
+        <MetricCard label="Active sessions" value={compact(enr.activeToday)} />
+        <MetricCard label="Failed logins (24h)" value={compact(14)} />
+        <MetricCard label="Security events (30d)" value={compact(3)} />
+      </div>
+      <Section title="Recent security events">
+        <Table>
+          <TableHeader><TableRow><TableHead>Event</TableHead><TableHead>Severity</TableHead><TableHead>When</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {[
+              { t: "Unusual login location", s: "medium", w: "3h ago" },
+              { t: "Password reset spike", s: "low", w: "1d ago" },
+              { t: "Impersonation session opened", s: "info", w: "5d ago" },
+            ].map((r, i) => (
+              <TableRow key={i}>
+                <TableCell>{r.t}</TableCell>
+                <TableCell><span className="text-[11px] px-2 py-0.5 rounded-md border bg-muted text-muted-foreground capitalize">{r.s}</span></TableCell>
+                <TableCell className="text-xs text-muted-foreground">{r.w}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Section>
+    </div>
+  );
+}
+
+/* ─────────────── Settings (danger + prefs) ─────────────── */
+function SettingsTab({ school }: { school: any }) {
   const nav = useNavigate();
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -400,17 +788,28 @@ function DangerTab({ school }: { school: any }) {
     } catch {} finally { setBusy(false); }
   }
   return (
-    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6">
-      <div className="flex items-start gap-3">
-        <div className="size-9 rounded-md bg-destructive/10 text-destructive grid place-items-center"><Trash2 className="size-4" /></div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-sm">Delete this school</h3>
-          <p className="text-xs text-muted-foreground mt-1 max-w-lg">This permanently removes the school record. Memberships, exams, and other tenant data with foreign references may be orphaned. Type <span className="font-mono font-semibold">DELETE</span> to confirm.</p>
-          <div className="mt-3 flex gap-2 max-w-sm">
-            <Input value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Type DELETE" />
-            <Button variant="destructive" disabled={confirm !== "DELETE" || busy} onClick={destroy}>
-              {busy && <Loader2 className="size-4 mr-2 animate-spin" />}Delete school
-            </Button>
+    <div className="space-y-6">
+      <Section title="Tenant preferences" description="Baseline behavior overrides. Schema-driven UI ships in a later phase.">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <Field label="Slug" value={`/${school.slug}`} mono />
+          <Field label="Created" value={new Date(school.created_at).toLocaleString()} />
+          <Field label="Pilot" value={school.pilot_status ?? "—"} />
+          <Field label="Data region" value="EU (default)" />
+        </div>
+      </Section>
+
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6">
+        <div className="flex items-start gap-3">
+          <div className="size-9 rounded-md bg-destructive/10 text-destructive grid place-items-center"><Trash2 className="size-4" /></div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-sm">Delete this school</h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-lg">This permanently removes the school record. Memberships, exams, and other tenant data with foreign references may be orphaned. Type <span className="font-mono font-semibold">DELETE</span> to confirm.</p>
+            <div className="mt-3 flex gap-2 max-w-sm">
+              <Input value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Type DELETE" />
+              <Button variant="destructive" disabled={confirm !== "DELETE" || busy} onClick={destroy}>
+                {busy && <Loader2 className="size-4 mr-2 animate-spin" />}Delete school
+              </Button>
+            </div>
           </div>
         </div>
       </div>
