@@ -13,10 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerFooter } from "@/components/ui/drawer";
-import { ArrowLeft, ExternalLink, ShieldCheck, Trash2, Loader2, Settings2, LogOut } from "lucide-react";
+import { ArrowLeft, ExternalLink, ShieldCheck, Trash2, Loader2, Settings2, LogOut, ShieldAlert } from "lucide-react";
 import { superAction, money, timeAgo } from "@/lib/super";
 import { buildSchoolUrl } from "@/lib/tenant";
 import { toast } from "sonner";
+import ImpersonateDialog from "@/components/super/ImpersonateDialog";
 
 type School = any;
 
@@ -25,6 +26,7 @@ export default function SuperSchoolDetail() {
   const nav = useNavigate();
   const [school, setSchool] = useState<School | null>(null);
   const [loading, setLoading] = useState(true);
+  const [impOpen, setImpOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -54,7 +56,13 @@ export default function SuperSchoolDetail() {
             {school.plan_expires_at && <span className="text-xs text-muted-foreground">Expires {new Date(school.plan_expires_at).toLocaleDateString()}</span>}
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => window.open(buildSchoolUrl(school.slug, "/"), "_blank")}><ExternalLink className="size-4 mr-2" />Open portal</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setImpOpen(true)} className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800">
+            <ShieldAlert className="size-4 mr-2" />Login as
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => window.open(buildSchoolUrl(school.slug, "/"), "_blank")}><ExternalLink className="size-4 mr-2" />Open portal</Button>
+        </div>
+        <ImpersonateDialog open={impOpen} onOpenChange={setImpOpen} school={{ id: school.id, name: school.name, slug: school.slug }} />
       </div>
 
       <Tabs defaultValue="overview">

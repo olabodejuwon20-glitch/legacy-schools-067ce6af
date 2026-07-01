@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import Landing from "./pages/Landing";
 import AnalyticsTracker from "./components/AnalyticsTracker";
 import TenantHead from "./components/TenantHead";
+import ImpersonationBanner from "./components/ImpersonationBanner";
 import Register from "./pages/Register";
 import SignIn from "./pages/SignIn";
 import SchoolHome from "./pages/SchoolHome";
@@ -225,6 +226,7 @@ const App = () => (
         <BrowserRouter>
           <AnalyticsTracker />
           <TenantHead />
+          <ImpersonationBanner />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/register" element={<Register />} />
