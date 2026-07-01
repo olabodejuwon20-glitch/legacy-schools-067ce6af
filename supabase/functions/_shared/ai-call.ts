@@ -153,6 +153,12 @@ export async function aiCall(opts: AiCallOptions): Promise<AiCallResult> {
     ?? await resolveModel(opts.schoolId, opts.kind, opts.role ?? "default");
   const t0 = Date.now();
 
+  // Enforce per-school AI quota before any spend
+  const blocked = await checkQuota(opts.schoolId);
+  if (blocked) {
+    const e: any = new Error(blocked); e.status = 402; throw e;
+  }
+
   // Cache lookup (skip for streaming or when explicitly bypassed).
   const cacheable = !opts.stream && !opts.skipCache;
   let key: string | null = null;

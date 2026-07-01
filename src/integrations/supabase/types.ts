@@ -8398,6 +8398,22 @@ export type Database = {
       submit_assessment: { Args: { _attempt_id: string }; Returns: Json }
       super_admin_exists: { Args: never; Returns: boolean }
       super_ai_cache_stats: { Args: never; Returns: Json }
+      super_list_ai_quotas: {
+        Args: never
+        Returns: {
+          cost_used_usd: number
+          enabled: boolean
+          monthly_cost_cap_usd: number
+          monthly_token_cap: number
+          period_start: string
+          plan: string
+          school_id: string
+          school_name: string
+          school_slug: string
+          tokens_used: number
+          updated_at: string
+        }[]
+      }
       super_recent_auth_events: {
         Args: { _event?: string; _limit?: number; _since?: string }
         Returns: {
@@ -8410,6 +8426,16 @@ export type Database = {
           session_id: string
           user_id: string
         }[]
+      }
+      super_reset_ai_quota: { Args: { _school_id: string }; Returns: undefined }
+      super_set_ai_quota: {
+        Args: {
+          _cost_cap: number
+          _enabled: boolean
+          _school_id: string
+          _token_cap: number
+        }
+        Returns: undefined
       }
       trad_admin_schedule_release: {
         Args: { _attempt_id: string; _release_at: string }
