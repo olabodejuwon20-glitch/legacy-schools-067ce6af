@@ -264,6 +264,7 @@ const App = () => (
             <Route path="logs" element={<SuperLogs />} />
             <Route path="errors" element={<SuperErrors />} />
             <Route path="quotas" element={<SuperQuotas />} />
+            <Route path="feature-flags" element={<SuperFeatureFlags />} />
             <Route path="settings" element={<SuperSettings />} />
             <Route path="academic-defaults" element={<SuperAcademicDefaults />} />
           </Route>
