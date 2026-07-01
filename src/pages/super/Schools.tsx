@@ -8,11 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Building2, MoreHorizontal, ExternalLink, Eye, PauseCircle, PlayCircle, Download, Search, ShieldAlert, UserCog } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Building2, MoreHorizontal, ExternalLink, Eye, PauseCircle, PlayCircle, Download, Search, ShieldAlert, UserCog, Bookmark, Star, X, Users2, GraduationCap, HardDrive, Sparkles, Activity } from "lucide-react";
 import { superAction, timeAgo } from "@/lib/super";
 import { buildSchoolUrl } from "@/lib/tenant";
 import { toast } from "sonner";
 import ImpersonateDialog from "@/components/super/ImpersonateDialog";
+import { enrichSchool, formatBytes, formatCompact, healthColor } from "@/lib/schoolHealth";
+import InsightsCards, { buildInsights } from "@/components/super/InsightsCards";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 25;
 const PLANS = ["trial", "basic", "standard", "premium", "enterprise"];
@@ -45,6 +49,18 @@ type School = {
   pilot_ends_at: string | null;
 };
 
+type SavedView = { id: string; name: string; search: string; plan: string; status: string; sort: "newest" | "name" | "expiring" };
+const VIEWS_KEY = "super:schools:views";
+const ACTIVE_VIEW_KEY = "super:schools:activeView";
+
+const DEFAULT_VIEWS: SavedView[] = [
+  { id: "all",       name: "All schools",    search: "", plan: "all", status: "all",       sort: "newest" },
+  { id: "trial",     name: "Trial",          search: "", plan: "all", status: "trial",     sort: "expiring" },
+  { id: "active",    name: "Active",         search: "", plan: "all", status: "active",    sort: "name" },
+  { id: "suspended", name: "Suspended",      search: "", plan: "all", status: "suspended", sort: "newest" },
+  { id: "expiring",  name: "Expiring soon",  search: "", plan: "all", status: "all",       sort: "expiring" },
+];
+
 export default function SuperSchools() {
   const [rows, setRows] = useState<School[] | null>(null);
   const [impSchool, setImpSchool] = useState<School | null>(null);
@@ -56,9 +72,44 @@ export default function SuperSchools() {
   const [sort, setSort] = useState<"newest" | "name" | "expiring">("newest");
   const [stats, setStats] = useState<{ total: number; active: number; trial: number; suspended: number }>({ total: 0, active: 0, trial: 0, suspended: 0 });
   const [debounced, setDebounced] = useState(search);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [views, setViews] = useState<SavedView[]>(() => {
+    try {
+      const raw = localStorage.getItem(VIEWS_KEY);
+      const custom = raw ? (JSON.parse(raw) as SavedView[]) : [];
+      return [...DEFAULT_VIEWS, ...custom];
+    } catch { return DEFAULT_VIEWS; }
+  });
+  const [activeView, setActiveView] = useState<string>(() => {
+    try { return localStorage.getItem(ACTIVE_VIEW_KEY) || "all"; } catch { return "all"; }
+  });
 
   useEffect(() => { const t = setTimeout(() => setDebounced(search), 250); return () => clearTimeout(t); }, [search]);
-  useEffect(() => { setPage(0); }, [debounced, planFilter, statusFilter, sort]);
+  useEffect(() => { setPage(0); setSelected(new Set()); }, [debounced, planFilter, statusFilter, sort]);
+
+  function applyView(id: string) {
+    const v = views.find(x => x.id === id);
+    if (!v) return;
+    setActiveView(id);
+    try { localStorage.setItem(ACTIVE_VIEW_KEY, id); } catch {}
+    setSearch(v.search); setPlanFilter(v.plan); setStatusFilter(v.status); setSort(v.sort);
+  }
+  function saveCurrentView() {
+    const name = window.prompt("Name this view:", "My view");
+    if (!name) return;
+    const v: SavedView = { id: `v_${Date.now()}`, name, search, plan: planFilter, status: statusFilter, sort };
+    const custom = views.filter(x => !DEFAULT_VIEWS.some(d => d.id === x.id));
+    const next = [...custom, v];
+    try { localStorage.setItem(VIEWS_KEY, JSON.stringify(next)); } catch {}
+    setViews([...DEFAULT_VIEWS, ...next]);
+    setActiveView(v.id);
+  }
+  function removeView(id: string) {
+    const custom = views.filter(x => !DEFAULT_VIEWS.some(d => d.id === x.id) && x.id !== id);
+    try { localStorage.setItem(VIEWS_KEY, JSON.stringify(custom)); } catch {}
+    setViews([...DEFAULT_VIEWS, ...custom]);
+    if (activeView === id) applyView("all");
+  }
 
   async function load() {
     setRows(null);
@@ -92,6 +143,47 @@ export default function SuperSchools() {
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [debounced, planFilter, statusFilter, sort, page]);
   useEffect(() => { loadStats(); }, []);
+
+  const enriched = useMemo(() => (rows ?? []).map(s => ({ ...s, ...enrichSchool(s) })), [rows]);
+  const insights = useMemo(() => buildInsights(enriched.map(e => ({ status: e.status, plan_expires_at: e.plan_expires_at, healthScore: e.healthScore, storageBytes: e.storageBytes, aiTokens: e.aiTokens }))), [enriched]);
+  const allSelected = enriched.length > 0 && enriched.every(r => selected.has(r.id));
+  const someSelected = selected.size > 0 && !allSelected;
+  function toggleAll() {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(enriched.map(r => r.id)));
+  }
+  function toggleOne(id: string) {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelected(next);
+  }
+  async function bulkSuspend() {
+    if (!selected.size) return;
+    const reason = window.prompt(`Suspend ${selected.size} school(s)? Optional reason:`, "");
+    if (reason === null) return;
+    const ids = Array.from(selected);
+    for (const sid of ids) { try { await superAction("suspend_school", { school_id: sid, reason }); } catch {} }
+    toast.success(`Suspended ${ids.length} school(s)`);
+    setSelected(new Set()); load(); loadStats();
+  }
+  async function bulkReactivate() {
+    if (!selected.size) return;
+    if (!window.confirm(`Reactivate ${selected.size} school(s)?`)) return;
+    const ids = Array.from(selected);
+    for (const sid of ids) { try { await superAction("reactivate_school", { school_id: sid }); } catch {} }
+    toast.success(`Reactivated ${ids.length} school(s)`);
+    setSelected(new Set()); load(); loadStats();
+  }
+  function bulkExport() {
+    const rowsSel = enriched.filter(r => selected.has(r.id));
+    if (!rowsSel.length) return;
+    const header = ["id","name","slug","plan","status","students","teachers","parents","storage_bytes","ai_tokens","health","expires","created"];
+    const lines = [header.join(",")].concat(rowsSel.map(r => [r.id, JSON.stringify(r.name), r.slug, r.plan, r.status, r.students, r.teachers, r.parents, r.storageBytes, r.aiTokens, r.healthScore, r.plan_expires_at ?? "", r.created_at].join(",")));
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = u; a.download = `schools-selected-${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(u);
+  }
 
   async function suspend(s: School) {
     const reason = window.prompt(`Suspend "${s.name}"? Optional reason:`, "");
@@ -134,6 +226,46 @@ export default function SuperSchools() {
         <MetricCard label="Suspended" value={stats.suspended} />
       </div>
 
+      {/* Customer success insights */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Customer success signals</div>
+          <div className="text-[11px] text-muted-foreground">Based on this page ({enriched.length})</div>
+        </div>
+        <InsightsCards insights={insights} />
+      </div>
+
+      {/* Saved views */}
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        {views.map(v => {
+          const isCustom = !DEFAULT_VIEWS.some(d => d.id === v.id);
+          const active = activeView === v.id;
+          return (
+            <button
+              key={v.id}
+              onClick={() => applyView(v.id)}
+              className={cn(
+                "group inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] border transition-colors",
+                active ? "bg-foreground text-background border-foreground" : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              )}
+            >
+              {isCustom ? <Star className="size-3" /> : <Bookmark className="size-3" />}
+              {v.name}
+              {isCustom && (
+                <span
+                  role="button"
+                  onClick={(e) => { e.stopPropagation(); removeView(v.id); }}
+                  className="ml-1 opacity-60 hover:opacity-100"
+                ><X className="size-3" /></span>
+              )}
+            </button>
+          );
+        })}
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-[12px] text-muted-foreground" onClick={saveCurrentView}>
+          + Save current view
+        </Button>
+      </div>
+
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[220px]">
@@ -164,13 +296,30 @@ export default function SuperSchools() {
           </Select>
         </div>
 
+        {selected.size > 0 && (
+          <div className="px-4 py-2 bg-primary/5 border-b border-border flex items-center gap-2 text-xs">
+            <span className="font-medium">{selected.size} selected</span>
+            <div className="h-4 w-px bg-border mx-1" />
+            <Button variant="outline" size="sm" className="h-7" onClick={bulkExport}><Download className="size-3.5 mr-1" />Export</Button>
+            <Button variant="outline" size="sm" className="h-7" onClick={bulkReactivate}><PlayCircle className="size-3.5 mr-1" />Reactivate</Button>
+            <Button variant="outline" size="sm" className="h-7 text-destructive hover:text-destructive" onClick={bulkSuspend}><PauseCircle className="size-3.5 mr-1" />Suspend</Button>
+            <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => setSelected(new Set())}>Clear</button>
+          </div>
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[36px]">
+                <Checkbox checked={allSelected ? true : someSelected ? "indeterminate" : false} onCheckedChange={toggleAll} />
+              </TableHead>
               <TableHead>School</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Pilot</TableHead>
+              <TableHead className="text-right"><Users2 className="size-3.5 inline-block mr-1 opacity-60" />Users</TableHead>
+              <TableHead className="text-right"><HardDrive className="size-3.5 inline-block mr-1 opacity-60" />Storage</TableHead>
+              <TableHead className="text-right"><Sparkles className="size-3.5 inline-block mr-1 opacity-60" />AI</TableHead>
+              <TableHead className="text-right"><Activity className="size-3.5 inline-block mr-1 opacity-60" />Health</TableHead>
               <TableHead>Expires</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="w-[60px]" />
@@ -179,17 +328,24 @@ export default function SuperSchools() {
           <TableBody>
             {rows === null && Array.from({ length: 6 }).map((_, i) => (
               <TableRow key={i}>
+                <TableCell><Skel className="h-4 w-4" /></TableCell>
                 <TableCell><div className="flex items-center gap-3"><Skel className="size-8 rounded-md" /><Skel className="h-4 w-40" /></div></TableCell>
                 <TableCell><Skel className="h-5 w-16" /></TableCell>
                 <TableCell><Skel className="h-5 w-20" /></TableCell>
-                <TableCell><Skel className="h-5 w-16" /></TableCell>
+                <TableCell><Skel className="h-4 w-16 ml-auto" /></TableCell>
+                <TableCell><Skel className="h-4 w-16 ml-auto" /></TableCell>
+                <TableCell><Skel className="h-4 w-16 ml-auto" /></TableCell>
+                <TableCell><Skel className="h-4 w-16 ml-auto" /></TableCell>
                 <TableCell><Skel className="h-4 w-20" /></TableCell>
                 <TableCell><Skel className="h-4 w-24" /></TableCell>
                 <TableCell><Skel className="h-6 w-6" /></TableCell>
               </TableRow>
             ))}
-            {rows?.map(s => (
+            {enriched.map(s => {
+              const c = healthColor(s.healthScore);
+              return (
               <TableRow key={s.id} className="hover:bg-muted/30">
+                <TableCell><Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggleOne(s.id)} onClick={(e) => e.stopPropagation()} /></TableCell>
                 <TableCell>
                   <Link to={`/super/schools/${s.id}`} className="flex items-center gap-3 group">
                     <div className="size-8 rounded-md border border-border bg-muted overflow-hidden grid place-items-center text-xs font-semibold text-muted-foreground">
@@ -208,7 +364,20 @@ export default function SuperSchools() {
                     {s.suspended_reason && <ShieldAlert className="size-3 text-destructive" />}
                   </div>
                 </TableCell>
-                <TableCell>{renderPilotCell(s)}</TableCell>
+                <TableCell className="text-right tabular-nums text-sm">
+                  <div className="font-medium">{formatCompact(s.students + s.teachers + s.parents)}</div>
+                  <div className="text-[10px] text-muted-foreground">{formatCompact(s.students)} students · {formatCompact(s.teachers)} staff</div>
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-sm">{formatBytes(s.storageBytes)}</TableCell>
+                <TableCell className="text-right tabular-nums text-sm">{formatCompact(s.aiTokens)}<div className="text-[10px] text-muted-foreground">tokens/mo</div></TableCell>
+                <TableCell className="text-right">
+                  <div className="inline-flex items-center gap-2">
+                    <div className="w-14 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className={cn("h-full", c.bg)} style={{ width: `${s.healthScore}%` }} />
+                    </div>
+                    <span className={cn("text-sm font-semibold tabular-nums", c.text)}>{s.healthScore}</span>
+                  </div>
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{s.plan_expires_at ? new Date(s.plan_expires_at).toLocaleDateString() : "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{timeAgo(s.created_at)}</TableCell>
                 <TableCell>
@@ -226,7 +395,8 @@ export default function SuperSchools() {
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
 
