@@ -174,6 +174,7 @@ import SuperSecurity from "./pages/super/Security";
 import SuperLogs from "./pages/super/Logs";
 import SuperErrors from "./pages/super/Errors";
 import SuperQuotas from "./pages/super/Quotas";
+import SuperFeatureFlags from "./pages/super/FeatureFlags";
 import SuperSettings from "./pages/super/Settings";
 import SuperAcademicDefaults from "./pages/super/AcademicDefaults";
 import ComingSoon from "./pages/super/_ComingSoon";
