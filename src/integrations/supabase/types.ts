@@ -2944,6 +2944,45 @@ export type Database = {
           },
         ]
       }
+      feature_flags: {
+        Row: {
+          category: string
+          created_at: string
+          default_enabled: boolean
+          default_rollout_percent: number
+          description: string | null
+          id: string
+          is_kill_switch: boolean
+          key: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          default_enabled?: boolean
+          default_rollout_percent?: number
+          description?: string | null
+          id?: string
+          is_kill_switch?: boolean
+          key: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          default_enabled?: boolean
+          default_rollout_percent?: number
+          description?: string | null
+          id?: string
+          is_kill_switch?: boolean
+          key?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fees: {
         Row: {
           amount: number
@@ -5477,6 +5516,71 @@ export type Database = {
           },
           {
             foreignKeyName: "school_custom_roles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_feature_flags: {
+        Row: {
+          created_at: string
+          enabled: boolean | null
+          flag_key: string
+          id: string
+          notes: string | null
+          rollout_percent: number | null
+          school_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean | null
+          flag_key: string
+          id?: string
+          notes?: string | null
+          rollout_percent?: number | null
+          school_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean | null
+          flag_key?: string
+          id?: string
+          notes?: string | null
+          rollout_percent?: number | null
+          school_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_feature_flags_flag_key_fkey"
+            columns: ["flag_key"]
+            isOneToOne: false
+            referencedRelation: "feature_flags"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "school_feature_flags_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "school_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_feature_flags_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_feature_flags_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools_public"
@@ -8275,6 +8379,10 @@ export type Database = {
         Args: { _conv: string; _user: string }
         Returns: boolean
       }
+      is_feature_enabled: {
+        Args: { _key: string; _school_id: string }
+        Returns: boolean
+      }
       is_member: { Args: { _school: string; _user: string }; Returns: boolean }
       is_school_admin: {
         Args: { _school: string; _user: string }
@@ -8398,6 +8506,11 @@ export type Database = {
       submit_assessment: { Args: { _attempt_id: string }; Returns: Json }
       super_admin_exists: { Args: never; Returns: boolean }
       super_ai_cache_stats: { Args: never; Returns: Json }
+      super_clear_school_flag: {
+        Args: { _key: string; _school_id: string }
+        Returns: undefined
+      }
+      super_delete_feature_flag: { Args: { _key: string }; Returns: undefined }
       super_list_ai_quotas: {
         Args: never
         Returns: {
@@ -8411,6 +8524,38 @@ export type Database = {
           school_name: string
           school_slug: string
           tokens_used: number
+          updated_at: string
+        }[]
+      }
+      super_list_feature_flags: {
+        Args: never
+        Returns: {
+          category: string
+          created_at: string
+          default_enabled: boolean
+          default_rollout_percent: number
+          description: string
+          id: string
+          is_kill_switch: boolean
+          key: string
+          name: string
+          overrides_count: number
+          updated_at: string
+        }[]
+      }
+      super_list_school_flags: {
+        Args: { _school_id: string }
+        Returns: {
+          category: string
+          default_enabled: boolean
+          default_rollout_percent: number
+          description: string
+          flag_key: string
+          is_kill_switch: boolean
+          name: string
+          notes: string
+          override_enabled: boolean
+          override_rollout_percent: number
           updated_at: string
         }[]
       }
@@ -8436,6 +8581,61 @@ export type Database = {
           _token_cap: number
         }
         Returns: undefined
+      }
+      super_set_school_flag: {
+        Args: {
+          _enabled: boolean
+          _key: string
+          _notes: string
+          _rollout_percent: number
+          _school_id: string
+        }
+        Returns: {
+          created_at: string
+          enabled: boolean | null
+          flag_key: string
+          id: string
+          notes: string | null
+          rollout_percent: number | null
+          school_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "school_feature_flags"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      super_upsert_feature_flag: {
+        Args: {
+          _category: string
+          _default_enabled: boolean
+          _default_rollout_percent: number
+          _description: string
+          _is_kill_switch: boolean
+          _key: string
+          _name: string
+        }
+        Returns: {
+          category: string
+          created_at: string
+          default_enabled: boolean
+          default_rollout_percent: number
+          description: string | null
+          id: string
+          is_kill_switch: boolean
+          key: string
+          name: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "feature_flags"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       trad_admin_schedule_release: {
         Args: { _attempt_id: string; _release_at: string }
