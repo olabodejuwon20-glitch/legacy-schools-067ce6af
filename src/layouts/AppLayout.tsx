@@ -27,6 +27,7 @@ import { warmSchoolCache } from "@/lib/dataCache";
 import { useAdminPermissions } from "@/lib/adminPermissions";
 import { ShieldCheck } from "lucide-react";
 import { PilotReadOnlyBanner } from "@/components/pilot/PilotReadOnlyBanner";
+import { Helmet } from "react-helmet-async";
 
 // Group every sidebar destination into a labelled section.
 // Keys are the `to` field used by NAV / module manifests.
