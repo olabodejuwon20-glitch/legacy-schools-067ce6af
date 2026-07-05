@@ -10,6 +10,7 @@ import { Skel, StatusBadge } from "@/components/super/primitives";
 import { compact, money, timeAgo } from "@/lib/super";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import DailyIntel from "@/components/super/DailyIntel";
 
 // ---------- Mocked-but-realistic slices (per user choice: super-metrics + mock rest) ----------
 const MOCK = {
@@ -92,6 +93,9 @@ export default function SuperDashboard() {
           ? Array.from({ length: 8 }).map((_, i) => <Skel key={i} className="h-[104px]" />)
           : kpis.map((k) => <KpiCard key={k.label} kpi={k} />)}
       </div>
+
+      {/* AI Daily Intelligence briefing */}
+      <DailyIntel />
 
       {/* Revenue + growth */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
