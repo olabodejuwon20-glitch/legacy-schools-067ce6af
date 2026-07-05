@@ -179,6 +179,7 @@ const SuperFeatureFlags = lazy(() => import("./pages/super/FeatureFlags"));
 const SuperSettings = lazy(() => import("./pages/super/Settings"));
 const SuperAcademicDefaults = lazy(() => import("./pages/super/AcademicDefaults"));
 const SuperProducts = lazy(() => import("./pages/super/Products"));
+const SuperBusiness = lazy(() => import("./pages/super/Business"));
 const ComingSoon = lazy(() => import("./pages/super/_ComingSoon"));
 
 const queryClient = new QueryClient();
@@ -259,8 +260,10 @@ const App = () => (
             <Route path="licensing" element={<Navigate to="/super/products?tab=licensing" replace />} />
             <Route path="configurations" element={<SuperTenantConfig />} />
             <Route path="marketplace" element={<Navigate to="/super/products?tab=marketplace" replace />} />
+            <Route path="business" element={<SuperBusiness />} />
             <Route path="subscriptions" element={<SuperSubscriptions />} />
-            <Route path="billing" element={<SuperBilling />} />
+            <Route path="billing" element={<Navigate to="/super/business?tab=invoices" replace />} />
+            <Route path="pilots" element={<Navigate to="/super/business?tab=pilots" replace />} />
             <Route path="announcements" element={<SuperAnnouncements />} />
             <Route path="tickets" element={<SuperTickets />} />
             <Route path="security" element={<SuperSecurity />} />
