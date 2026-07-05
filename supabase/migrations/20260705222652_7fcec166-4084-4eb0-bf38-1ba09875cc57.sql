@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "admin can read own invoices" ON public.invoices;
