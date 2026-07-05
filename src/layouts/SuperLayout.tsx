@@ -213,40 +213,12 @@ export default function SuperLayout() {
 }
 
 function SuperGroup({ group, collapsed, pathname, badges }: { group: { group: string; items: any[] }; collapsed: boolean; pathname: string; badges?: Record<string, number> }) {
-  const isCollapsible = group.items.length > 1 && group.group !== "Overview";
-  const containsActive = group.items.some(it => (it.end ? pathname === it.to : pathname === it.to || pathname.startsWith(it.to + "/")));
-  const storageKey = `super-sidebar:open:${group.group}`;
-  const [open, setOpen] = useState<boolean>(() => {
-    if (!isCollapsible) return true;
-    try {
-      const v = localStorage.getItem(storageKey);
-      if (v === "1") return true;
-      if (v === "0") return false;
-    } catch {}
-    return containsActive;
-  });
-  useEffect(() => { if (isCollapsible && containsActive) setOpen(true); }, [containsActive, isCollapsible]);
-  const toggle = () => setOpen(o => {
-    const next = !o;
-    try { localStorage.setItem(storageKey, next ? "1" : "0"); } catch {}
-    return next;
-  });
-
   return (
     <div className="px-1.5">
       {!collapsed && (
-        isCollapsible ? (
-          <button type="button" onClick={toggle} aria-expanded={open}
-            className="w-full flex items-center justify-between px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60 hover:text-foreground transition-colors">
-            <span>{group.group}</span>
-            <ChevronRight className={cn("size-2.5 transition-transform opacity-60", open && "rotate-90")} />
-          </button>
-        ) : (
-          <div className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60">{group.group}</div>
-        )
+        <div className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60">{group.group}</div>
       )}
-      {(collapsed || !isCollapsible || open) && (
-        <div className="space-y-px">
+      <div className="space-y-px">
           {group.items.map((item: any) => (
             <NavLink key={item.to} to={item.to} end={item.end}
               className={({ isActive }) => cn(
@@ -266,8 +238,7 @@ function SuperGroup({ group, collapsed, pathname, badges }: { group: { group: st
               )}
             </NavLink>
           ))}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
