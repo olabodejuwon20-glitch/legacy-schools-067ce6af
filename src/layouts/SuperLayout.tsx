@@ -19,11 +19,9 @@ const NAV = [
     { to: "/super/users", icon: Users, label: "Users & Roles" },
   ]},
   { group: "Products", items: [
-    { to: "/super/modules", icon: Package, label: "Modules & Plugins" },
-    { to: "/super/licensing", icon: KeyRound, label: "Feature Licensing" },
+    { to: "/super/products", icon: Package, label: "Products" },
     { to: "/super/configurations", icon: Settings2, label: "Tenant Config" },
     { to: "/super/academic-defaults", icon: Settings2, label: "Academic Defaults" },
-    { to: "/super/marketplace", icon: ShoppingBag, label: "Marketplace" },
   ]},
   { group: "Business", items: [
     { to: "/super/subscriptions", icon: CreditCard, label: "Subscriptions" },
@@ -36,7 +34,6 @@ const NAV = [
   ]},
   { group: "Intelligence", items: [
     { to: "/super/quotas", icon: Zap, label: "AI Quotas" },
-    { to: "/super/feature-flags", icon: Flag, label: "Feature Flags" },
   ]},
   { group: "Security", items: [
     { to: "/super/security", icon: ShieldCheck, label: "Security Center" },
@@ -52,6 +49,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   schools: "Schools",
   pilots: "Pilot Program",
   users: "Users & Roles",
+  products: "Products",
   modules: "Modules & Plugins",
   licensing: "Feature Licensing",
   configurations: "Tenant Config",
