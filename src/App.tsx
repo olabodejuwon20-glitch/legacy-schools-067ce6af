@@ -178,6 +178,7 @@ const SuperQuotas = lazy(() => import("./pages/super/Quotas"));
 const SuperFeatureFlags = lazy(() => import("./pages/super/FeatureFlags"));
 const SuperSettings = lazy(() => import("./pages/super/Settings"));
 const SuperAcademicDefaults = lazy(() => import("./pages/super/AcademicDefaults"));
+const SuperProducts = lazy(() => import("./pages/super/Products"));
 const ComingSoon = lazy(() => import("./pages/super/_ComingSoon"));
 
 const queryClient = new QueryClient();
@@ -253,10 +254,11 @@ const App = () => (
             <Route path="pilots" element={<SuperPilots />} />
             <Route path="analytics" element={<SuperAnalytics />} />
             <Route path="users" element={<SuperUsers />} />
-            <Route path="modules" element={<SuperModules />} />
-            <Route path="licensing" element={<SuperLicensing />} />
+            <Route path="products" element={<SuperProducts />} />
+            <Route path="modules" element={<Navigate to="/super/products?tab=modules" replace />} />
+            <Route path="licensing" element={<Navigate to="/super/products?tab=licensing" replace />} />
             <Route path="configurations" element={<SuperTenantConfig />} />
-            <Route path="marketplace" element={<SuperMarketplace />} />
+            <Route path="marketplace" element={<Navigate to="/super/products?tab=marketplace" replace />} />
             <Route path="subscriptions" element={<SuperSubscriptions />} />
             <Route path="billing" element={<SuperBilling />} />
             <Route path="announcements" element={<SuperAnnouncements />} />
@@ -265,7 +267,7 @@ const App = () => (
             <Route path="logs" element={<SuperLogs />} />
             <Route path="errors" element={<SuperErrors />} />
             <Route path="quotas" element={<SuperQuotas />} />
-            <Route path="feature-flags" element={<SuperFeatureFlags />} />
+            <Route path="feature-flags" element={<Navigate to="/super/products?tab=flags" replace />} />
             <Route path="settings" element={<SuperSettings />} />
             <Route path="academic-defaults" element={<SuperAcademicDefaults />} />
           </Route>
