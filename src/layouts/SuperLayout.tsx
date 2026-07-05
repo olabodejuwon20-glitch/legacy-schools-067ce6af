@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSchool } from "@/contexts/SchoolContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronsLeft, ChevronsRight, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag, Sparkles, Bell, Activity, Command } from "lucide-react";
+import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronsLeft, ChevronsRight, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag, Sparkles, Bell, Activity, Command, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,6 @@ const NAV = [
   ]},
   { group: "Customers", items: [
     { to: "/super/schools", icon: Building2, label: "Schools" },
-    { to: "/super/pilots", icon: Rocket, label: "Pilot Program" },
     { to: "/super/users", icon: Users, label: "Users & Roles" },
   ]},
   { group: "Products", items: [
@@ -24,8 +23,8 @@ const NAV = [
     { to: "/super/academic-defaults", icon: Settings2, label: "Academic Defaults" },
   ]},
   { group: "Business", items: [
+    { to: "/super/business", icon: TrendingUp, label: "Business" },
     { to: "/super/subscriptions", icon: CreditCard, label: "Subscriptions" },
-    { to: "/super/billing", icon: Receipt, label: "Billing & Revenue" },
   ]},
   { group: "Operations", items: [
     { to: "/super/announcements", icon: Megaphone, label: "Announcements" },
@@ -57,6 +56,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   marketplace: "Marketplace",
   subscriptions: "Subscriptions",
   billing: "Billing & Revenue",
+  business: "Business",
   announcements: "Announcements",
   tickets: "Support Tickets",
   errors: "Live Errors",
