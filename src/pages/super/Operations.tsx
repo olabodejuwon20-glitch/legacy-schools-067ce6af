@@ -37,16 +37,16 @@ export default function SuperOperations() {
     let alive = true;
     (async () => {
       const since = new Date(Date.now() - 24 * 3600_000).toISOString();
-      const nowIso = new Date().toISOString();
       const [t, iOpen, e24, ann] = await Promise.all([
         supabase.from("support_tickets").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
         supabase.from("client_errors").select("id", { count: "exact", head: true }).eq("resolution_status", "open"),
         supabase.from("client_errors").select("id", { count: "exact", head: true }).gte("created_at", since),
-        supabase.from("platform_announcements").select("id, published_at, expires_at").lte("published_at", nowIso),
+        supabase.from("platform_announcements").select("id, scheduled_for, deleted_at"),
       ]);
       if (!alive) return;
-      const live = ((ann.data as { published_at: string | null; expires_at: string | null }[]) ?? [])
-        .filter(a => a.published_at && (!a.expires_at || new Date(a.expires_at).getTime() > Date.now())).length;
+      const now = Date.now();
+      const live = ((ann.data as { scheduled_for: string | null; deleted_at: string | null }[]) ?? [])
+        .filter(a => !a.deleted_at && (!a.scheduled_for || new Date(a.scheduled_for).getTime() <= now)).length;
       setInsights({
         openTickets: t.count ?? 0,
         p1Incidents: iOpen.count ?? 0,
