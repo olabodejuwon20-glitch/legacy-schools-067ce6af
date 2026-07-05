@@ -254,7 +254,6 @@ const App = () => (
             <Route index element={<SuperDashboard />} />
             <Route path="schools" element={<SuperSchools />} />
             <Route path="schools/:id" element={<SuperSchoolDetail />} />
-            <Route path="analytics" element={<SuperAnalytics />} />
             <Route path="users" element={<SuperUsers />} />
             <Route path="products" element={<SuperProducts />} />
             <Route path="modules" element={<Navigate to="/super/products?tab=modules" replace />} />
