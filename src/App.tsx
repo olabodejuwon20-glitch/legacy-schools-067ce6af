@@ -181,6 +181,7 @@ const SuperAcademicDefaults = lazy(() => import("./pages/super/AcademicDefaults"
 const SuperProducts = lazy(() => import("./pages/super/Products"));
 const SuperBusiness = lazy(() => import("./pages/super/Business"));
 const SuperOperations = lazy(() => import("./pages/super/Operations"));
+const SuperIntelligence = lazy(() => import("./pages/super/Intelligence"));
 const ComingSoon = lazy(() => import("./pages/super/_ComingSoon"));
 
 const queryClient = new QueryClient();
@@ -253,7 +254,6 @@ const App = () => (
             <Route index element={<SuperDashboard />} />
             <Route path="schools" element={<SuperSchools />} />
             <Route path="schools/:id" element={<SuperSchoolDetail />} />
-            <Route path="analytics" element={<SuperAnalytics />} />
             <Route path="users" element={<SuperUsers />} />
             <Route path="products" element={<SuperProducts />} />
             <Route path="modules" element={<Navigate to="/super/products?tab=modules" replace />} />
@@ -265,12 +265,14 @@ const App = () => (
             <Route path="billing" element={<Navigate to="/super/business?tab=invoices" replace />} />
             <Route path="pilots" element={<Navigate to="/super/business?tab=pilots" replace />} />
             <Route path="operations" element={<SuperOperations />} />
+            <Route path="intelligence" element={<SuperIntelligence />} />
             <Route path="announcements" element={<Navigate to="/super/operations?tab=announcements" replace />} />
             <Route path="tickets" element={<Navigate to="/super/operations?tab=tickets" replace />} />
             <Route path="errors" element={<Navigate to="/super/operations?tab=incidents" replace />} />
             <Route path="logs" element={<Navigate to="/super/operations?tab=logs" replace />} />
             <Route path="security" element={<SuperSecurity />} />
-            <Route path="quotas" element={<SuperQuotas />} />
+            <Route path="quotas" element={<Navigate to="/super/intelligence?tab=ai" replace />} />
+            <Route path="analytics" element={<Navigate to="/super/intelligence?tab=analytics" replace />} />
             <Route path="feature-flags" element={<Navigate to="/super/products?tab=flags" replace />} />
             <Route path="settings" element={<SuperSettings />} />
             <Route path="academic-defaults" element={<SuperAcademicDefaults />} />
