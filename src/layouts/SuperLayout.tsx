@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSchool } from "@/contexts/SchoolContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronsLeft, ChevronsRight, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag, Sparkles, Bell, Activity, Command, TrendingUp, Wrench } from "lucide-react";
+import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronsLeft, ChevronsRight, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag, Sparkles, Bell, Activity, Command, TrendingUp, Wrench, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ const NAV = [
   ]},
   { group: "Platform Settings", items: [
     { to: "/super/settings", icon: Cog, label: "Preferences" },
+    { to: "/super/trash", icon: Trash2, label: "Trash" },
   ]},
 ];
 
@@ -65,6 +66,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   settings: "Preferences",
   analytics: "Analytics",
   claim: "Claim Access",
+  trash: "Trash",
 };
 
 function useIsSuperAdmin() {

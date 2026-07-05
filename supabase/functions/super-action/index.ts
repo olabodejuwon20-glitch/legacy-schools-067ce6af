@@ -236,6 +236,41 @@ Deno.serve(async (req) => {
         await audit(null, { id });
         return json({ ok: true });
       }
+      case "soft_delete": {
+        const { table, id, confirm } = payload;
+        if (confirm !== "DELETE") return json({ error: "Type DELETE to confirm." }, 400);
+        const allowed = ["schools","memberships","announcements","platform_announcements","broadcast_jobs","support_tickets","client_errors"];
+        if (!allowed.includes(table)) return json({ error: "invalid_table" }, 400);
+        const { error } = await admin.from(table).update({ deleted_at: new Date().toISOString() }).eq("id", id);
+        if (error) throw error;
+        await audit(null, { table, id });
+        return json({ ok: true });
+      }
+      case "restore_deleted": {
+        const { table, id } = payload;
+        const allowed = ["schools","memberships","announcements","platform_announcements","broadcast_jobs","support_tickets","client_errors"];
+        if (!allowed.includes(table)) return json({ error: "invalid_table" }, 400);
+        const { error } = await admin.from(table).update({ deleted_at: null }).eq("id", id);
+        if (error) throw error;
+        await audit(null, { table, id });
+        return json({ ok: true });
+      }
+      case "purge_now": {
+        const { table, id, confirm } = payload;
+        if (confirm !== "DELETE") return json({ error: "Type DELETE to confirm." }, 400);
+        const allowed = ["schools","memberships","announcements","platform_announcements","broadcast_jobs","support_tickets","client_errors"];
+        if (!allowed.includes(table)) return json({ error: "invalid_table" }, 400);
+        const { error } = await admin.from(table).delete().eq("id", id).not("deleted_at", "is", null);
+        if (error) throw error;
+        await audit(null, { table, id, hard: true });
+        return json({ ok: true });
+      }
+      case "run_trash_maintenance": {
+        const { error } = await admin.rpc("trash_and_errors_maintenance");
+        if (error) throw error;
+        await audit(null);
+        return json({ ok: true });
+      }
       default:
         return json({ error: "unknown action" }, 400);
     }
