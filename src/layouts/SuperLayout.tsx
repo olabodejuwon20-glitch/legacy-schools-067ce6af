@@ -11,7 +11,6 @@ import { Helmet } from "react-helmet-async";
 const NAV = [
   { group: "Overview", items: [
     { to: "/super", icon: LayoutDashboard, label: "Dashboard", end: true },
-    { to: "/super/analytics", icon: BarChart3, label: "Analytics" },
   ]},
   { group: "Customers", items: [
     { to: "/super/schools", icon: Building2, label: "Schools" },
@@ -30,7 +29,7 @@ const NAV = [
     { to: "/super/operations", icon: Wrench, label: "Operations", badgeKey: "errors" },
   ]},
   { group: "Intelligence", items: [
-    { to: "/super/quotas", icon: Zap, label: "AI Quotas" },
+    { to: "/super/intelligence", icon: BarChart3, label: "Intelligence" },
   ]},
   { group: "Security", items: [
     { to: "/super/security", icon: ShieldCheck, label: "Security Center" },
