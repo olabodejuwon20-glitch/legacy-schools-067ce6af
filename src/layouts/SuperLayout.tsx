@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSchool } from "@/contexts/SchoolContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronsLeft, ChevronsRight, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag, Sparkles, Bell, Activity, Command, TrendingUp } from "lucide-react";
+import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronsLeft, ChevronsRight, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag, Sparkles, Bell, Activity, Command, TrendingUp, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,9 +27,7 @@ const NAV = [
     { to: "/super/subscriptions", icon: CreditCard, label: "Subscriptions" },
   ]},
   { group: "Operations", items: [
-    { to: "/super/announcements", icon: Megaphone, label: "Announcements" },
-    { to: "/super/tickets", icon: LifeBuoy, label: "Support Tickets" },
-    { to: "/super/errors", icon: AlertCircle, label: "Live Errors", badgeKey: "errors" },
+    { to: "/super/operations", icon: Wrench, label: "Operations", badgeKey: "errors" },
   ]},
   { group: "Intelligence", items: [
     { to: "/super/quotas", icon: Zap, label: "AI Quotas" },
@@ -38,7 +36,6 @@ const NAV = [
     { to: "/super/security", icon: ShieldCheck, label: "Security Center" },
   ]},
   { group: "Platform Settings", items: [
-    { to: "/super/logs", icon: ScrollText, label: "System Logs" },
     { to: "/super/settings", icon: Cog, label: "Preferences" },
   ]},
 ];
@@ -57,6 +54,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   subscriptions: "Subscriptions",
   billing: "Billing & Revenue",
   business: "Business",
+  operations: "Operations",
   announcements: "Announcements",
   tickets: "Support Tickets",
   errors: "Live Errors",

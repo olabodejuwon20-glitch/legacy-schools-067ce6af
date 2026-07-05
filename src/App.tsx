@@ -180,6 +180,7 @@ const SuperSettings = lazy(() => import("./pages/super/Settings"));
 const SuperAcademicDefaults = lazy(() => import("./pages/super/AcademicDefaults"));
 const SuperProducts = lazy(() => import("./pages/super/Products"));
 const SuperBusiness = lazy(() => import("./pages/super/Business"));
+const SuperOperations = lazy(() => import("./pages/super/Operations"));
 const ComingSoon = lazy(() => import("./pages/super/_ComingSoon"));
 
 const queryClient = new QueryClient();
@@ -263,11 +264,12 @@ const App = () => (
             <Route path="subscriptions" element={<SuperSubscriptions />} />
             <Route path="billing" element={<Navigate to="/super/business?tab=invoices" replace />} />
             <Route path="pilots" element={<Navigate to="/super/business?tab=pilots" replace />} />
-            <Route path="announcements" element={<SuperAnnouncements />} />
-            <Route path="tickets" element={<SuperTickets />} />
+            <Route path="operations" element={<SuperOperations />} />
+            <Route path="announcements" element={<Navigate to="/super/operations?tab=announcements" replace />} />
+            <Route path="tickets" element={<Navigate to="/super/operations?tab=tickets" replace />} />
+            <Route path="errors" element={<Navigate to="/super/operations?tab=incidents" replace />} />
+            <Route path="logs" element={<Navigate to="/super/operations?tab=logs" replace />} />
             <Route path="security" element={<SuperSecurity />} />
-            <Route path="logs" element={<SuperLogs />} />
-            <Route path="errors" element={<SuperErrors />} />
             <Route path="quotas" element={<SuperQuotas />} />
             <Route path="feature-flags" element={<Navigate to="/super/products?tab=flags" replace />} />
             <Route path="settings" element={<SuperSettings />} />
