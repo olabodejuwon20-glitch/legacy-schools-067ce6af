@@ -1,51 +1,55 @@
+# Super Admin V2 — Sprint 3: Products Workspace
 
-# Performance Optimization Plan
+Sprints 1 (Shell + Dashboard) and 2 (Customer Workspace) are done. Sprint 3 unifies the four product-management surfaces into a single Linear/Vercel-style workspace that matches the Sprint 1 shell.
 
-Based on live DB metrics (`slow_queries` + `db_health`) and a scan of the codebase. Compute is healthy (58% mem, 5/60 conns) — the pain is **query patterns and client chatter**, not capacity. Fix those and both cost and UX improve.
+## Goal
+Turn Modules, Licensing, Marketplace, and Feature Flags into one cohesive "Products" workspace where a super admin can see every product/module the platform ships, control who gets it, price it, and toggle experiments — all from split-pane views consistent with the Schools workspace.
 
-## Findings (by real impact)
+## Scope
 
-| # | Symptom | Evidence |
-|---|---|---|
-| 1 | `mock_questions` full-table scan — no WHERE, no pagination | 34 calls, **495 ms avg**, 742 ms max |
-| 2 | `page_views` inserts firing on every navigation | **3,784 calls**, 8.2 s total |
-| 3 | `auth_events` inserts too chatty | **3,125 calls**, 8.3 s total |
-| 4 | `profiles` single-row select repeated per render | **7,638 calls** |
-| 5 | `memberships` re-fetched across pages | 6,057 + 1,576 calls |
-| 6 | `school_modules` joined on every route mount | 1,396 calls |
-| 7 | `results` selected without student/exam filter | 418 calls, 15 ms avg |
-| 8 | 39,316 rolled-back txns since boot — likely RLS denials from stale sessions | db_health |
-| 9 | Single JS bundle (~3.2 MB) — no manual code splitting; 271 pages/components all eager | vite.config |
+### 1. Products landing (`/super/products`)
+- New top-level nav entry "Products" (replaces separate Modules/Marketplace/Licensing/Flags items in the sidebar; keep old routes as redirects so nothing breaks).
+- 4 tabs: **Modules · Marketplace · Licensing · Feature Flags**.
+- Sticky header with search + primary action per tab.
+- Insight strip (reuse `InsightsCards`): total modules, active installs, MRR from paid modules, flags in rollout.
 
-## Fixes
+### 2. Modules tab
+- Split-pane: left list of `modules` rows (name, category, status pill, install count). Right detail panel: description, pricing tier, dependencies, per-school adoption chart (mock where no data), enable/disable, edit metadata.
+- Bulk actions: publish / archive / feature.
 
-### A. Database (migrations)
-1. **`mock_questions`** — add app-side pagination (`.range()`) and require `subject_id`/`session_id` filter. Add composite index `(subject_id, created_at DESC)`.
-2. **`results`** — audit call sites; add index `(student_id, exam_id)` and stop selecting the whole table.
-3. **`page_views` / `auth_events`** — add `(school_id, created_at DESC)` indexes only if we query them; primary win is on the client (below).
-4. **`memberships`** — confirm index on `(user_id, status)` exists; add if missing.
+### 3. Marketplace tab
+- Card grid of published modules with hero, tagline, install count, price.
+- Detail drawer: screenshots (mock), changelog, requesting schools (`module_requests`).
+- Approve/reject `module_requests` inline.
 
-### B. Client — cut request volume
-5. **Batch analytics**: buffer `page_views` and `auth_events` writes in a queue, flush every 10 s or on `visibilitychange`. Cuts ~7k inserts/day to ~500.
-6. **Cache profile + memberships** in React Query with `staleTime: 5 min`, keyed on `userId`. Add a single `useSession()` hook that everything reads from — eliminates the 7,638 profile fetches.
-7. **Cache `school_modules`** in React Query with `staleTime: 10 min` (rarely changes).
-8. **Debounce realtime status pings** and drop duplicate `auth_events` on the same session.
+### 4. Licensing tab
+- Table of `plan_pricing` × `payment_plans` with edit-in-place.
+- Right panel: per-plan school count, MRR, churn (mock what's missing).
+- Action: create/duplicate plan.
 
-### C. Client — reduce re-renders
-9. Wrap heavy list rows (results tables, question lists, roster tables) in `React.memo`; stabilise handlers with `useCallback`.
-10. Replace `useState`+`useEffect` data fetches with `useQuery` where still lingering (found in a handful of admin pages).
-11. Split large context providers (Auth + Tenant + Theme) so tenant/theme changes don't re-render the auth tree.
+### 5. Feature Flags tab
+- Two lists: **Global** (`feature_flags`) and **Per-school overrides** (`school_feature_flags`).
+- Split-pane: flag key, description, rollout %, status. Detail shows targeted schools, recent toggles, quick rollout slider.
 
-### D. Bundle
-12. Convert route imports in `src/App.tsx` to `React.lazy` for `admin/*`, `super/*`, `driver/*`, `parent/*`, `teacher/*`, `student/*` groups. Wrap in `<Suspense>` with the existing skeleton.
-13. Add `build.rollupOptions.output.manualChunks` in `vite.config.ts` for `react`, `@tanstack/react-query`, `recharts`, `pdf` libs, `mapbox/leaflet`. Target < 500 KB initial JS.
-14. Lazy-load `exporters.ts` / `reportCard.ts` (pdf-lib is heavy) only when export buttons are clicked.
+## UX rules
+- Same shell, breadcrumbs, sticky header, empty/loading states as Sprint 2.
+- Split-pane everywhere, no modal-heavy editing.
+- Reuse `SectionCard`, `StatCard`, `InsightsCards`, `QuickActionsBar`, `SchoolBadges` primitives.
+- Mock data only where backend endpoints truly don't exist; wire everything else to Supabase.
+
+## Technical section
+- New page: `src/pages/super/Products.tsx` with tabbed router-state (`?tab=modules|marketplace|licensing|flags`).
+- Extract per-tab views into `src/components/super/products/{ModulesTab,MarketplaceTab,LicensingTab,FlagsTab}.tsx`.
+- Shared list/detail primitive: `src/components/super/SplitPane.tsx` (generic, reused by future sprints).
+- Update `src/layouts/SuperLayout.tsx` nav: single "Products" entry; keep `/super/modules`, `/super/marketplace`, `/super/licensing`, `/super/feature-flags` as `<Navigate>` redirects to `/super/products?tab=…` so no external link breaks.
+- Data sources: existing tables `modules`, `module_requests`, `plan_pricing`, `payment_plans`, `feature_flags`, `school_feature_flags`, `school_modules`. No schema changes this sprint.
+- Guard: `is_super_admin` already enforced by RLS + `SuperLayout`.
+- No changes to auth, routing outside super area, or existing module/feature-flag business logic.
 
 ## Out of scope
-- No functional changes, no UI redesign, no schema changes beyond indexes.
-- Won't touch auth, RLS policies, or edge functions unless a specific query above requires it.
+- Sprints 4-7 (Business, Operations, Intelligence, Security).
+- New DB tables (only reads/updates on existing ones).
+- Payment integration changes.
 
-## Verification
-- Re-run `slow_queries` after deploy — expect top 5 to drop by >70%.
-- Check bundle report (`vite build`) — initial chunk under 500 KB.
-- Spot-check console: no double-fetches of `profiles` / `memberships` on route change.
+## Deliverable
+One PR-sized change adding the Products workspace, redirecting the four legacy routes, and updating the sidebar — nothing else touched.
