@@ -145,7 +145,7 @@ export default function SuperLayout() {
               </div>
             )}
           </div>
-          <nav className="flex-1 overflow-y-auto py-2 space-y-3 scrollbar-thin">
+          <nav className="flex-1 overflow-y-auto overscroll-contain py-2 space-y-3 [scrollbar-width:thin] [scrollbar-color:hsl(var(--border))_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/60 hover:[&::-webkit-scrollbar-thumb]:bg-border scroll-smooth">
             {NAV.map(group => (
               <SuperGroup key={group.group} group={group} collapsed={collapsed} pathname={pathname} badges={{ errors: openErrors ?? 0 }} />
             ))}
