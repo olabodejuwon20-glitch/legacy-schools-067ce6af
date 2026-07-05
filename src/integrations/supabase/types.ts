@@ -1864,6 +1864,7 @@ export type Database = {
           channels: string[]
           created_at: string
           created_by: string
+          deleted_at: string | null
           id: string
           recurrence: string | null
           scheduled_for: string | null
@@ -1881,6 +1882,7 @@ export type Database = {
           channels?: string[]
           created_at?: string
           created_by: string
+          deleted_at?: string | null
           id?: string
           recurrence?: string | null
           scheduled_for?: string | null
@@ -1898,6 +1900,7 @@ export type Database = {
           channels?: string[]
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
           id?: string
           recurrence?: string | null
           scheduled_for?: string | null
@@ -2091,6 +2094,7 @@ export type Database = {
           cause: string | null
           context: Json | null
           created_at: string
+          deleted_at: string | null
           fingerprint: string | null
           first_seen_at: string
           id: string
@@ -2117,6 +2121,7 @@ export type Database = {
           cause?: string | null
           context?: Json | null
           created_at?: string
+          deleted_at?: string | null
           fingerprint?: string | null
           first_seen_at?: string
           id?: string
@@ -2143,6 +2148,7 @@ export type Database = {
           cause?: string | null
           context?: Json | null
           created_at?: string
+          deleted_at?: string | null
           fingerprint?: string | null
           first_seen_at?: string
           id?: string
@@ -3804,6 +3810,7 @@ export type Database = {
           admin_slot: number | null
           bio_completed: boolean
           created_at: string
+          deleted_at: string | null
           id: string
           must_change_pin: boolean
           profile_data: Json
@@ -3816,6 +3823,7 @@ export type Database = {
           admin_slot?: number | null
           bio_completed?: boolean
           created_at?: string
+          deleted_at?: string | null
           id?: string
           must_change_pin?: boolean
           profile_data?: Json
@@ -3828,6 +3836,7 @@ export type Database = {
           admin_slot?: number | null
           bio_completed?: boolean
           created_at?: string
+          deleted_at?: string | null
           id?: string
           must_change_pin?: boolean
           profile_data?: Json
@@ -6351,6 +6360,7 @@ export type Database = {
         Row: {
           assignee: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           opened_by: string
           priority: string
@@ -6362,6 +6372,7 @@ export type Database = {
         Insert: {
           assignee?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           opened_by: string
           priority?: string
@@ -6373,6 +6384,7 @@ export type Database = {
         Update: {
           assignee?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           opened_by?: string
           priority?: string
@@ -8559,6 +8571,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      super_purge_now: {
+        Args: { _id: string; _table: string }
+        Returns: undefined
+      }
       super_recent_auth_events: {
         Args: { _event?: string; _limit?: number; _since?: string }
         Returns: {
@@ -8573,6 +8589,10 @@ export type Database = {
         }[]
       }
       super_reset_ai_quota: { Args: { _school_id: string }; Returns: undefined }
+      super_restore_deleted: {
+        Args: { _id: string; _table: string }
+        Returns: undefined
+      }
       super_set_ai_quota: {
         Args: {
           _cost_cap: number
@@ -8607,6 +8627,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      super_soft_delete: {
+        Args: { _id: string; _table: string }
+        Returns: undefined
       }
       super_upsert_feature_flag: {
         Args: {
@@ -8763,6 +8787,7 @@ export type Database = {
         Args: { _action: string; _attempt_id: string }
         Returns: undefined
       }
+      trash_and_errors_maintenance: { Args: never; Returns: undefined }
       verify_result_slip: {
         Args: { _id: string }
         Returns: {
