@@ -24,8 +24,8 @@ Sprint 1  Shell + Dashboard              DONE
 Sprint 2  Customers (Schools) workspace  DONE
 Sprint 3  Products workspace             DONE
 Sprint 4  Business (Revenue & Growth)    NEXT
-Sprint 5  Operations (Support & Health)
-Sprint 6  Intelligence (Analytics & AI)
+Sprint 5  Operations (Support & Health)   DONE
+Sprint 6  Intelligence (Analytics & AI)   DONE
 Sprint 7  Security & Staff governance
 ```
 
