@@ -54,6 +54,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   subscriptions: "Subscriptions",
   billing: "Billing & Revenue",
   business: "Business",
+  operations: "Operations",
   announcements: "Announcements",
   tickets: "Support Tickets",
   errors: "Live Errors",
