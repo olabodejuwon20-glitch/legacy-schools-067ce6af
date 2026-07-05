@@ -252,7 +252,6 @@ const App = () => (
             <Route index element={<SuperDashboard />} />
             <Route path="schools" element={<SuperSchools />} />
             <Route path="schools/:id" element={<SuperSchoolDetail />} />
-            <Route path="pilots" element={<SuperPilots />} />
             <Route path="analytics" element={<SuperAnalytics />} />
             <Route path="users" element={<SuperUsers />} />
             <Route path="products" element={<SuperProducts />} />
