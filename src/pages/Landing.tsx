@@ -16,6 +16,8 @@ import SEO from "@/components/SEO";
 import { FaqLd, BreadcrumbLd } from "@/components/seo/JsonLd";
 import PortalDemo from "@/components/landing/PortalDemo";
 import WhatsAppFab from "@/components/landing/WhatsAppFab";
+import EducationNetwork from "@/components/landing/EducationNetwork";
+import CursorGlow from "@/components/landing/CursorGlow";
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_SLA, mailtoOnboard, waLink } from "@/lib/contact";
 import { formatNaira, revenueForSchool, type PlanPricing } from "@/lib/pricing";
 
@@ -83,6 +85,7 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
+      <CursorGlow />
       <SEO
         title="Legacyskool — CBT exams, attendance, results & school payments"
         description="The school operating system for Africa: CBT and JAMB/NECO simulation, attendance, digital results, online fee collection and AI for teachers and students."
