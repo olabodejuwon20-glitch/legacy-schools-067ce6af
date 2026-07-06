@@ -25,51 +25,48 @@ const NODES: NodeDef[] = [
   { key: "comms",         label: "Communication", Icon: MessageCircle },
 ];
 
-const VIEW = 600;
+const VIEW = 720;
 const CENTER = VIEW / 2;
-const RADIUS = 232;
+const RADIUS = 300;   // wider orbit so icons have space
+const HUB_R = 74;     // where lines start (edge of the OS hub)
+const ICON_R = 26;    // where lines end (edge of the icon tile)
 
 type Layout = {
   key: string;
   label: string;
   Icon: NodeDef["Icon"];
+  angle: number;
   x: number;
   y: number;
+  sx: number; sy: number;
+  ex: number; ey: number;
   leftPct: number;
   topPct: number;
-  path: string;
   dur: number;
   delay: number;
-  float: number;
 };
 
 function buildLayout(): Layout[] {
   return NODES.map((n, i) => {
     const angle = (-Math.PI / 2) + (i * (2 * Math.PI)) / NODES.length;
-    const x = CENTER + RADIUS * Math.cos(angle);
-    const y = CENTER + RADIUS * Math.sin(angle);
-    // straight radial connector: one line per icon, all meeting at the center
-    const dx = x - CENTER;
-    const dy = y - CENTER;
-    const len = Math.hypot(dx, dy) || 1;
-    // start slightly outside the center hub, end slightly before the icon tile
-    const startR = 62;
-    const endR = len - 30;
-    const sx = CENTER + (dx / len) * startR;
-    const sy = CENTER + (dy / len) * startR;
-    const ex = CENTER + (dx / len) * endR;
-    const ey = CENTER + (dy / len) * endR;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const x = CENTER + RADIUS * cos;
+    const y = CENTER + RADIUS * sin;
+    const sx = CENTER + HUB_R * cos;
+    const sy = CENTER + HUB_R * sin;
+    const ex = CENTER + (RADIUS - ICON_R) * cos;
+    const ey = CENTER + (RADIUS - ICON_R) * sin;
     return {
       key: n.key,
       label: n.label,
       Icon: n.Icon,
-      x, y,
+      angle,
+      x, y, sx, sy, ex, ey,
       leftPct: (x / VIEW) * 100,
       topPct: (y / VIEW) * 100,
-      path: `M ${sx.toFixed(2)} ${sy.toFixed(2)} L ${ex.toFixed(2)} ${ey.toFixed(2)}`,
-      dur: 2.4 + (i % 5) * 0.3,
-      delay: (i * 0.35) % 2,
-      float: 3 + (i % 3),
+      dur: 2.6 + (i % 5) * 0.3,
+      delay: (i * 0.3) % 2,
     };
   });
 }
@@ -80,8 +77,8 @@ export default function EducationNetwork() {
 
   return (
     <div className="relative w-full">
-      {/* Desktop / tablet — the network */}
-      <div className="hidden sm:block relative mx-auto aspect-square w-full max-w-[560px]">
+      {/* Desktop / tablet */}
+      <div className="hidden sm:block relative mx-auto aspect-square w-full max-w-[680px]">
         {/* soft background glow */}
         <div
           className="absolute inset-0 -z-10 rounded-full blur-3xl opacity-70"
@@ -91,57 +88,123 @@ export default function EducationNetwork() {
           }}
         />
 
-        <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="absolute inset-0 w-full h-full overflow-visible">
-          <defs>
-            <radialGradient id="particle-glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="hsl(221 100% 75%)" stopOpacity="1" />
-              <stop offset="60%" stopColor="hsl(221 83% 60%)" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="hsl(221 83% 60%)" stopOpacity="0" />
-            </radialGradient>
-            <filter id="particle-blur" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="1.2" />
-            </filter>
-          </defs>
+        {/* Rotating orbit layer — contains connectors + icons.
+            The center logo lives OUTSIDE this so it stays perfectly still and centered. */}
+        <motion.div
+          className="absolute inset-0"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 90, repeat: Infinity, ease: "linear" }}
+        >
+          <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="absolute inset-0 w-full h-full overflow-visible">
+            <defs>
+              <radialGradient id="particle-glow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="hsl(221 100% 78%)" stopOpacity="1" />
+                <stop offset="60%" stopColor="hsl(221 83% 60%)" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="hsl(221 83% 60%)" stopOpacity="0" />
+              </radialGradient>
+              <filter id="particle-blur" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="1.2" />
+              </filter>
+            </defs>
 
-          {layout.map((n) => {
-            const active = hovered === n.key;
-            return (
-              <path
-                key={`p-${n.key}`}
-                id={`np-${n.key}`}
-                d={n.path}
-                fill="none"
-                stroke={active ? "hsl(221 83% 60%)" : "hsl(221 40% 60% / 0.35)"}
-                strokeWidth={active ? 1.6 : 1}
-                strokeLinecap="round"
-                style={{ transition: "stroke 200ms, stroke-width 200ms" }}
-              />
-            );
-          })}
+            {layout.map((n) => {
+              const active = hovered === n.key;
+              return (
+                <g key={`g-${n.key}`}>
+                  <path
+                    id={`np-${n.key}`}
+                    d={`M ${n.sx.toFixed(2)} ${n.sy.toFixed(2)} L ${n.ex.toFixed(2)} ${n.ey.toFixed(2)}`}
+                    fill="none"
+                    stroke={active ? "hsl(221 83% 60%)" : "hsl(221 40% 60% / 0.4)"}
+                    strokeWidth={active ? 1.8 : 1.1}
+                    strokeLinecap="round"
+                    style={{ transition: "stroke 200ms, stroke-width 200ms" }}
+                  />
+                  {/* head dot at the icon end so every line clearly terminates on its icon */}
+                  <circle
+                    cx={n.ex}
+                    cy={n.ey}
+                    r={active ? 4.5 : 3.2}
+                    fill="hsl(221 100% 70%)"
+                    style={{
+                      filter: "drop-shadow(0 0 4px hsl(221 100% 65% / 0.9))",
+                      transition: "r 200ms",
+                    }}
+                  />
+                </g>
+              );
+            })}
 
-          {layout.map((n) => {
-            const active = hovered === n.key;
-            return (
-              <circle
-                key={`d-${n.key}`}
-                r={active ? 5 : 3.5}
-                fill="url(#particle-glow)"
-                filter="url(#particle-blur)"
-              >
-                <animateMotion
-                  dur={`${active ? n.dur * 0.55 : n.dur}s`}
-                  repeatCount="indefinite"
-                  begin={`${n.delay}s`}
-                  rotate="auto"
+            {layout.map((n) => {
+              const active = hovered === n.key;
+              return (
+                <circle
+                  key={`d-${n.key}`}
+                  r={active ? 5 : 3.5}
+                  fill="url(#particle-glow)"
+                  filter="url(#particle-blur)"
                 >
-                  <mpath href={`#np-${n.key}`} />
-                </animateMotion>
-              </circle>
+                  <animateMotion
+                    dur={`${active ? n.dur * 0.55 : n.dur}s`}
+                    repeatCount="indefinite"
+                    begin={`${n.delay}s`}
+                    rotate="auto"
+                  >
+                    <mpath href={`#np-${n.key}`} />
+                  </animateMotion>
+                </circle>
+              );
+            })}
+          </svg>
+
+          {/* Icon nodes — positioned in the rotating layer, counter-rotated so they stay upright */}
+          {layout.map((n) => {
+            const active = hovered === n.key;
+            const { Icon } = n;
+            return (
+              <motion.div
+                key={n.key}
+                className="absolute -translate-x-1/2 -translate-y-1/2"
+                style={{ left: `${n.leftPct}%`, top: `${n.topPct}%` }}
+                animate={{ rotate: -360 }}
+                transition={{ duration: 90, repeat: Infinity, ease: "linear" }}
+              >
+                <button
+                  type="button"
+                  onMouseEnter={() => setHovered(n.key)}
+                  onMouseLeave={() => setHovered((prev) => (prev === n.key ? null : prev))}
+                  onFocus={() => setHovered(n.key)}
+                  onBlur={() => setHovered((prev) => (prev === n.key ? null : prev))}
+                  className="flex flex-col items-center gap-1.5 focus:outline-none group"
+                >
+                  <motion.div
+                    animate={{ scale: active ? 1.12 : 1 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 18 }}
+                    className="grid place-items-center size-11 rounded-xl border border-border/70 bg-card/90 backdrop-blur text-primary shadow-md"
+                    style={
+                      active
+                        ? { boxShadow: "0 0 0 3px hsl(221 83% 60% / 0.18), 0 12px 32px -10px hsl(221 83% 50% / 0.5)" }
+                        : undefined
+                    }
+                  >
+                    <Icon className="size-5" />
+                  </motion.div>
+                  <span
+                    className="text-[11px] font-medium leading-none px-1.5 py-0.5 rounded whitespace-nowrap"
+                    style={{
+                      color: active ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+                      background: active ? "hsl(var(--primary) / 0.08)" : "transparent",
+                    }}
+                  >
+                    {n.label}
+                  </span>
+                </button>
+              </motion.div>
             );
           })}
-        </svg>
+        </motion.div>
 
-        {/* Center — Legacyskool OS */}
+        {/* Center — Legacyskool OS (outside rotating layer → always perfectly centered) */}
         <motion.div
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
           animate={{ scale: [1, 1.02, 1] }}
@@ -169,7 +232,6 @@ export default function EducationNetwork() {
                 <Sparkles className="size-2.5" /> OS
               </div>
             </div>
-            {/* AI pulse ring */}
             <motion.div
               className="absolute inset-0 rounded-full border border-primary/50"
               animate={{ scale: [1, 1.25], opacity: [0.5, 0] }}
@@ -177,48 +239,6 @@ export default function EducationNetwork() {
             />
           </div>
         </motion.div>
-
-        {/* Nodes overlay */}
-        {layout.map((n) => {
-          const active = hovered === n.key;
-          const { Icon } = n;
-          return (
-            <motion.button
-              key={n.key}
-              type="button"
-              onMouseEnter={() => setHovered(n.key)}
-              onMouseLeave={() => setHovered((prev) => (prev === n.key ? null : prev))}
-              onFocus={() => setHovered(n.key)}
-              onBlur={() => setHovered((prev) => (prev === n.key ? null : prev))}
-              className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 focus:outline-none group"
-              style={{ left: `${n.leftPct}%`, top: `${n.topPct}%` }}
-              animate={{ y: [0, -n.float, 0] }}
-              transition={{ duration: 3.5 + (n.float * 0.4), repeat: Infinity, ease: "easeInOut", delay: n.delay }}
-            >
-              <motion.div
-                animate={{ scale: active ? 1.12 : 1 }}
-                transition={{ type: "spring", stiffness: 260, damping: 18 }}
-                className="grid place-items-center size-11 rounded-xl border border-border/70 bg-card/90 backdrop-blur text-primary shadow-md"
-                style={
-                  active
-                    ? { boxShadow: "0 0 0 3px hsl(221 83% 60% / 0.18), 0 12px 32px -10px hsl(221 83% 50% / 0.5)" }
-                    : undefined
-                }
-              >
-                <Icon className="size-5" />
-              </motion.div>
-              <span
-                className="text-[11px] font-medium leading-none px-1.5 py-0.5 rounded whitespace-nowrap"
-                style={{
-                  color: active ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-                  background: active ? "hsl(var(--primary) / 0.08)" : "transparent",
-                }}
-              >
-                {n.label}
-              </span>
-            </motion.button>
-          );
-        })}
       </div>
 
       {/* Mobile — vertical flow */}
