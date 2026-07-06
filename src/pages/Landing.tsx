@@ -163,18 +163,7 @@ export default function Landing() {
           </div>
 
           <div className="relative">
-            <div className="absolute -inset-4 bg-gradient-to-br from-primary/10 via-transparent to-primary/10 rounded-3xl blur-2xl" />
-            <div className="relative rounded-2xl border border-border bg-card/80 backdrop-blur shadow-card p-5 sm:p-6">
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                {pillars.slice(0, 4).map((p) => (
-                  <div key={p.title} className="rounded-xl border border-border/60 p-3 sm:p-4 bg-background/40">
-                    <div className="size-9 rounded-lg bg-primary/10 text-primary grid place-items-center"><p.icon className="size-5" /></div>
-                    <div className="mt-3 font-semibold text-sm">{p.title}</div>
-                    <div className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-3">{p.desc}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <EducationNetwork />
           </div>
         </div>
       </section>
