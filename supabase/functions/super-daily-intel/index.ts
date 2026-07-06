@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
       admin.from("exam_appeals").select("id", { count: "exact", head: true }).eq("status", "pending"),
       admin.from("assessment_violations_v2").select("id", { count: "exact", head: true }).gte("created_at", dayAgo),
       admin.from("ai_jobs").select("total_tokens,cost_usd,status").gte("created_at", dayAgo),
-      admin.from("school_invoices").select("amount_cents").eq("status", "paid").gte("paid_at", weekAgo),
+      admin.from("invoices").select("amount_cents").eq("status", "paid").gte("paid_at", weekAgo),
     ]);
 
     const aiTokens = (aiJobs.data ?? []).reduce((s: number, r: any) => s + (r.total_tokens ?? 0), 0);
