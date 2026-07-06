@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { superAction, timeAgo } from "@/lib/super";
 import { useSchool } from "@/contexts/SchoolContext";
 
-type Ticket = { id: string; school_id: string; subject: string; body: string; status: string; priority: string; assignee: string | null; opened_by: string; created_at: string; last_activity_at: string; school_name?: string };
+type Ticket = { id: string; school_id: string; subject: string; body: string; status: string; priority: string; assignee: string | null; opened_by: string; created_at: string; updated_at: string; school_name?: string };
 type Msg = { id: string; author: string; body: string; internal: boolean; created_at: string; author_name?: string };
 
 export default function SuperTickets() {
@@ -28,7 +28,7 @@ export default function SuperTickets() {
 
   async function load() {
     setTickets(null);
-    const { data } = await supabase.from("support_tickets").select("*").order("last_activity_at", { ascending: false }).limit(500);
+    const { data } = await supabase.from("support_tickets").select("*").order("updated_at", { ascending: false }).limit(500);
     const schoolIds = Array.from(new Set((data ?? []).map((t: any) => t.school_id)));
     const { data: schools } = schoolIds.length
       ? await supabase.from("schools").select("id,name").in("id", schoolIds)
@@ -125,7 +125,7 @@ export default function SuperTickets() {
                       <StatusBadge status={t.status} />
                       <StatusBadge status={t.priority} />
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5 truncate">{t.school_name} · {timeAgo(t.last_activity_at)}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5 truncate">{t.school_name} · {timeAgo(t.updated_at)}</div>
                   </div>
                 </button>
               </li>
