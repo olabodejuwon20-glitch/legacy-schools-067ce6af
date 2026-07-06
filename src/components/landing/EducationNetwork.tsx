@@ -22,6 +22,7 @@ const NODES: NodeDef[] = [
   { key: "exams",         label: "Examinations",  Icon: ClipboardCheck },
   { key: "teachers",      label: "Teachers",      Icon: GraduationCap },
   { key: "academics",     label: "Academics",     Icon: BookOpen },
+  { key: "comms",         label: "Communication", Icon: MessageCircle },
 ];
 
 const VIEW = 600;
@@ -47,17 +48,17 @@ function buildLayout(): Layout[] {
     const angle = (-Math.PI / 2) + (i * (2 * Math.PI)) / NODES.length;
     const x = CENTER + RADIUS * Math.cos(angle);
     const y = CENTER + RADIUS * Math.sin(angle);
-    // gentle perpendicular curve for the connector
-    const mx = (CENTER + x) / 2;
-    const my = (CENTER + y) / 2;
+    // straight radial connector: one line per icon, all meeting at the center
     const dx = x - CENTER;
     const dy = y - CENTER;
     const len = Math.hypot(dx, dy) || 1;
-    const nx = -dy / len;
-    const ny = dx / len;
-    const bend = 34 * (i % 2 === 0 ? 1 : -1);
-    const cx = mx + nx * bend;
-    const cy = my + ny * bend;
+    // start slightly outside the center hub, end slightly before the icon tile
+    const startR = 62;
+    const endR = len - 30;
+    const sx = CENTER + (dx / len) * startR;
+    const sy = CENTER + (dy / len) * startR;
+    const ex = CENTER + (dx / len) * endR;
+    const ey = CENTER + (dy / len) * endR;
     return {
       key: n.key,
       label: n.label,
@@ -65,7 +66,7 @@ function buildLayout(): Layout[] {
       x, y,
       leftPct: (x / VIEW) * 100,
       topPct: (y / VIEW) * 100,
-      path: `M ${CENTER} ${CENTER} Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)}`,
+      path: `M ${sx.toFixed(2)} ${sy.toFixed(2)} L ${ex.toFixed(2)} ${ey.toFixed(2)}`,
       dur: 2.4 + (i % 5) * 0.3,
       delay: (i * 0.35) % 2,
       float: 3 + (i % 3),
