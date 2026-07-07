@@ -1,0 +1,1 @@
+ALTER FUNCTION public.report_client_error(text, text, text, text, text, text, text, uuid, jsonb) SET search_path = public, extensions;
