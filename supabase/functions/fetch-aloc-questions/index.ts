@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
       .eq("user_id", userId)
       .eq("status", "active")
       .maybeSingle();
-    if (!membership || !["admin", "teacher"].includes(membership.role)) {
+    if (!membership || !["admin", "teacher", "student"].includes(membership.role)) {
       return json({ error: "Forbidden" }, 403);
     }
 
