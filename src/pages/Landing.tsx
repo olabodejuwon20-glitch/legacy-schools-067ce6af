@@ -160,9 +160,7 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="relative">
-            <EducationNetwork />
-          </div>
+          <div className="relative" />
         </div>
       </section>
 
