@@ -14,9 +14,7 @@ import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath, getCurrentSchoolSlug } from "@/lib/tenant";
 import SEO from "@/components/SEO";
 import { FaqLd, BreadcrumbLd } from "@/components/seo/JsonLd";
-import PortalDemo from "@/components/landing/PortalDemo";
 import WhatsAppFab from "@/components/landing/WhatsAppFab";
-import EducationNetwork from "@/components/landing/EducationNetwork";
 import CursorGlow from "@/components/landing/CursorGlow";
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_SLA, mailtoOnboard, waLink } from "@/lib/contact";
 import { formatNaira, revenueForSchool, type PlanPricing } from "@/lib/pricing";
@@ -162,9 +160,7 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="relative">
-            <EducationNetwork />
-          </div>
+          <div className="relative" />
         </div>
       </section>
 
