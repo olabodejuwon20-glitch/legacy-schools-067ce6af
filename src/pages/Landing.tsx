@@ -161,7 +161,15 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="relative" />
+          <div className="relative flex items-center justify-center">
+            <img
+              src="/__l5e/assets-v1/dda8a369-4ff9-4036-9042-d4290478014f/student-cbt-exam.jpg"
+              alt="Student taking a CBT exam on the Legacy platform in a school computer lab"
+              width={1024}
+              height={768}
+              className="rounded-2xl border border-border shadow-lg object-cover w-full max-w-lg lg:max-w-none"
+            />
+          </div>
         </div>
       </section>
 
