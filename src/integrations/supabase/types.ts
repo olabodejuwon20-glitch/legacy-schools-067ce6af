@@ -2100,6 +2100,7 @@ export type Database = {
           id: string
           last_seen_at: string
           message: string
+          metadata: Json
           occurrence_count: number
           os: string | null
           resolution_note: string | null
@@ -2127,6 +2128,7 @@ export type Database = {
           id?: string
           last_seen_at?: string
           message: string
+          metadata?: Json
           occurrence_count?: number
           os?: string | null
           resolution_note?: string | null
@@ -2154,6 +2156,7 @@ export type Database = {
           id?: string
           last_seen_at?: string
           message?: string
+          metadata?: Json
           occurrence_count?: number
           os?: string | null
           resolution_note?: string | null
