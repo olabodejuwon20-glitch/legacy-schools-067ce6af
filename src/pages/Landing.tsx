@@ -16,6 +16,7 @@ import SEO from "@/components/SEO";
 import { FaqLd, BreadcrumbLd } from "@/components/seo/JsonLd";
 import WhatsAppFab from "@/components/landing/WhatsAppFab";
 import CursorGlow from "@/components/landing/CursorGlow";
+import PortalDemo from "@/components/landing/PortalDemo";
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_SLA, mailtoOnboard, waLink } from "@/lib/contact";
 import { formatNaira, revenueForSchool, type PlanPricing } from "@/lib/pricing";
 
