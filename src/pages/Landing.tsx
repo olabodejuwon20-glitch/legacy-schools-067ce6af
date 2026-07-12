@@ -167,7 +167,11 @@ export default function Landing() {
               alt="Student taking a CBT exam on the Legacy platform in a school computer lab"
               width={1024}
               height={768}
-              className="rounded-2xl border border-border shadow-lg object-cover w-full max-w-lg lg:max-w-none"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              sizes="(min-width: 1024px) 560px, (min-width: 640px) 480px, 100vw"
+              className="rounded-2xl border border-border shadow-lg object-cover w-full max-w-lg lg:max-w-none aspect-[4/3] object-center"
             />
           </div>
         </div>
