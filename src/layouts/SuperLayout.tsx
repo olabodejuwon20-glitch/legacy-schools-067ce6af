@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Helmet } from "react-helmet-async";
+import { GlobalSearch, type SearchGroup } from "@/components/GlobalSearch";
+import { Building2 as BuildingIcon, Users as UsersIcon } from "lucide-react";
 
 const NAV = [
   { group: "Overview", items: [
@@ -129,6 +131,60 @@ export default function SuperLayout() {
     to: "/" + segments.slice(0, i + 1).join("/"),
   }));
 
+  const searchGroups: SearchGroup[] = NAV.map((g) => ({
+    heading: g.group,
+    items: g.items.map((it: any) => ({
+      label: it.label,
+      to: it.to,
+      icon: it.icon,
+      hint: g.group,
+    })),
+  }));
+
+  const superFetcher = async (q: string) => {
+    const like = `%${q}%`;
+    const groups: SearchGroup[] = [];
+    try {
+      const [{ data: schools }, { data: users }] = await Promise.all([
+        supabase
+          .from("schools")
+          .select("id, name, slug")
+          .or(`name.ilike.${like},slug.ilike.${like}`)
+          .limit(8),
+        supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .or(`full_name.ilike.${like},email.ilike.${like}`)
+          .limit(6),
+      ]);
+      if (schools?.length) {
+        groups.push({
+          heading: "Schools",
+          items: schools.map((s: any) => ({
+            label: s.name,
+            hint: s.slug,
+            to: `/super/schools/${s.id}`,
+            icon: BuildingIcon,
+          })),
+        });
+      }
+      if (users?.length) {
+        groups.push({
+          heading: "Users",
+          items: users.map((u: any) => ({
+            label: u.full_name || u.email,
+            hint: u.email && u.full_name ? u.email : undefined,
+            to: `/super/users?q=${encodeURIComponent(q)}`,
+            icon: UsersIcon,
+          })),
+        });
+      }
+    } catch {
+      /* noop */
+    }
+    return groups;
+  };
+
   return (
     <SuperGuard>
       <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
@@ -160,12 +216,13 @@ export default function SuperLayout() {
         {/* Main */}
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-12 sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur-md flex items-center px-4 gap-3">
-            <div className="relative flex-1 max-w-xl group">
-              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search schools, modules, tickets, users…" className="pl-8 pr-16 h-8 text-[13px] bg-muted/40 border-transparent focus-visible:bg-background focus-visible:border-border rounded-md" />
-              <kbd className="hidden md:inline-flex absolute right-2 top-1/2 -translate-y-1/2 h-5 items-center gap-0.5 px-1.5 rounded border border-border bg-muted/60 text-[10px] font-mono text-muted-foreground pointer-events-none">
-                <Command className="size-2.5" />K
-              </kbd>
+            <div className="flex-1 max-w-xl">
+              <GlobalSearch
+                groups={searchGroups}
+                fetcher={superFetcher}
+                placeholder="Search schools, users, pages…"
+                triggerClassName="w-full max-w-xl h-8"
+              />
             </div>
             <div className="flex items-center gap-1 text-xs">
               <button className="hidden md:inline-flex items-center gap-1.5 px-2 h-7 rounded-md border border-border/70 bg-card/60 hover:bg-muted text-[11px] text-muted-foreground transition-colors" title="Platform status">

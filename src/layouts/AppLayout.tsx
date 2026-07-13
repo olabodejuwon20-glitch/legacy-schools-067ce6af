@@ -29,6 +29,9 @@ import { useAdminPermissions } from "@/lib/adminPermissions";
 import { ShieldCheck } from "lucide-react";
 import { PilotReadOnlyBanner } from "@/components/pilot/PilotReadOnlyBanner";
 import { Helmet } from "react-helmet-async";
+import { GlobalSearch, type SearchGroup } from "@/components/GlobalSearch";
+import { supabase } from "@/integrations/supabase/client";
+import { Users as UsersIcon, BookOpen as BookOpenIcon, UserSquare2 as ParentIcon, GraduationCap as TeacherIcon } from "lucide-react";
 
 // Group every sidebar destination into a labelled section.
 // Keys are the `to` field used by NAV / module manifests.
@@ -324,6 +327,99 @@ export default function AppLayout() {
 
   const { pathname } = useLocation();
 
+  // Build search palette groups from the same items the sidebar renders.
+  const pathFor = (to: string) =>
+    !to
+      ? schoolPath(school.slug, `/app/${activeRole}`)
+      : to.startsWith("/")
+        ? schoolPath(school.slug, to)
+        : schoolPath(school.slug, `/app/${activeRole}/${to}`);
+  const searchGroups: SearchGroup[] = orderedSections.map((section) => ({
+    heading: section,
+    items: ((grouped.get(section) ?? []) as any[]).map((it) => ({
+      label: it.label,
+      to: pathFor(it.to),
+      icon: it.icon,
+      hint: section,
+      keywords: [section, it.to],
+    })),
+  }));
+
+  // Dynamic directory search — admin sees people & classes, teachers see students & classes.
+  const canDirectorySearch = activeRole === "admin" || activeRole === "teacher";
+  const fetcher = canDirectorySearch
+    ? async (q: string) => {
+        const like = `%${q}%`;
+        const groups: SearchGroup[] = [];
+        try {
+          const allowedRoles = (activeRole === "admin"
+            ? ["student", "teacher", "parent"]
+            : ["student"]) as ("student" | "teacher" | "parent")[];
+          const [{ data: profiles }, { data: classes }] = await Promise.all([
+            supabase
+              .from("profiles")
+              .select("id, full_name, email")
+              .or(`full_name.ilike.${like},email.ilike.${like}`)
+              .limit(40),
+            supabase
+              .from("classes")
+              .select("id, name")
+              .eq("school_id", school.id)
+              .ilike("name", like)
+              .limit(8),
+          ]);
+          const ids = (profiles ?? []).map((p: any) => p.id);
+          let mems: { user_id: string; role: string }[] = [];
+          if (ids.length) {
+            const { data } = await supabase
+              .from("memberships")
+              .select("user_id, role")
+              .eq("school_id", school.id)
+              .eq("status", "active")
+              .in("role", allowedRoles)
+              .in("user_id", ids);
+            mems = (data ?? []) as any;
+          }
+          const roleByUser = new Map(mems.map((m) => [m.user_id, m.role]));
+          const bucket: Record<string, any[]> = { student: [], teacher: [], parent: [] };
+          (profiles ?? []).forEach((p: any) => {
+            const role = roleByUser.get(p.id);
+            if (!role || !bucket[role]) return;
+            const target =
+              role === "student"
+                ? schoolPath(school.slug, `/app/${activeRole}/students`)
+                : role === "teacher"
+                  ? schoolPath(school.slug, `/app/${activeRole}/teachers`)
+                  : schoolPath(school.slug, `/app/${activeRole}/parents`);
+            bucket[role].push({
+              label: p.full_name || p.email,
+              hint: p.full_name && p.email ? p.email : role,
+              to: `${target}?q=${encodeURIComponent(q)}`,
+              icon: role === "teacher" ? TeacherIcon : role === "parent" ? ParentIcon : UsersIcon,
+              keywords: [role, p.email ?? ""],
+            });
+          });
+          if (bucket.student.length) groups.push({ heading: "Students", items: bucket.student.slice(0, 6) });
+          if (bucket.teacher.length) groups.push({ heading: "Teachers", items: bucket.teacher.slice(0, 6) });
+          if (bucket.parent.length) groups.push({ heading: "Parents", items: bucket.parent.slice(0, 6) });
+          if (classes?.length) {
+            groups.push({
+              heading: "Classes",
+              items: classes.map((c: any) => ({
+                label: c.name,
+                to: `${schoolPath(school.slug, `/app/${activeRole}/classes`)}?q=${encodeURIComponent(q)}`,
+                icon: BookOpenIcon,
+                hint: "Class",
+              })),
+            });
+          }
+        } catch {
+          /* noop */
+        }
+        return groups;
+      }
+    : undefined;
+
   return (
     <div className="min-h-screen flex bg-background">
       <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
@@ -398,10 +494,11 @@ export default function AppLayout() {
             <Button variant="ghost" size="icon" className="hidden lg:inline-flex" onClick={() => setCollapsed(c => !c)}><Menu className="size-5" /></Button>
             <PageHeading />
             <div className="ml-auto flex items-center gap-2">
-              <div className="hidden md:flex relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input placeholder="Search anything..." className="pl-9 w-[260px] bg-secondary/60 border-transparent focus-visible:bg-card" />
-              </div>
+              <GlobalSearch
+                groups={searchGroups}
+                fetcher={fetcher}
+                placeholder="Search pages, people, classes…"
+              />
               <Button variant="ghost" size="icon" onClick={toggleTheme}>{theme === "light" ? <Moon className="size-5" /> : <Sun className="size-5" />}</Button>
               <NotificationBell />
               <DropdownMenu>
