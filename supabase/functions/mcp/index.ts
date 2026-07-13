@@ -3,7 +3,7 @@
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/index.ts
-import { defineMcp } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.20.0";
 
 // src/lib/mcp/tools/echo.ts
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.20.0";
@@ -29,17 +29,26 @@ var verify_result_default = defineTool2({
     verification_id: z2.string().uuid().describe("The UUID printed on the result slip QR / verification link.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ verification_id }) => {
+  handler: async ({ verification_id }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return {
+        content: [{ type: "text", text: "Not authenticated" }],
+        isError: true
+      };
+    }
     const url = process.env.SUPABASE_URL;
-    const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !service) {
+    const anon = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+    if (!url || !anon) {
       return {
         content: [{ type: "text", text: "Backend not configured." }],
         isError: true
       };
     }
-    const admin = createClient(url, service, { auth: { persistSession: false } });
-    const { data, error } = await admin.rpc("verify_result_slip", { _id: verification_id });
+    const client = createClient(url, anon, {
+      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+    const { data, error } = await client.rpc("verify_result_slip", { _id: verification_id });
     if (error) {
       return {
         content: [{ type: "text", text: `Verification failed: ${error.message}` }],
@@ -54,11 +63,16 @@ var verify_result_default = defineTool2({
 });
 
 // src/lib/mcp/index.ts
+var projectRef = "fiigsvxlxaqyzcvykkvw";
 var mcp_default = defineMcp({
   name: "legacykool-mcp",
   title: "LegacyKool MCP",
   version: "0.1.0",
   instructions: "Tools for LegacyKool, a school management platform. Use `echo` to confirm connectivity, and `verify_result` to check whether a printed result slip (by its verification UUID) is authentic.",
+  auth: auth.oauth.issuer({
+    issuer: `https://${projectRef}.supabase.co/auth/v1`,
+    acceptedAudiences: "authenticated"
+  }),
   tools: [echo_default, verify_result_default]
 });
 
