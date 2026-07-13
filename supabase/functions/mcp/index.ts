@@ -29,17 +29,26 @@ var verify_result_default = defineTool2({
     verification_id: z2.string().uuid().describe("The UUID printed on the result slip QR / verification link.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ verification_id }) => {
+  handler: async ({ verification_id }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return {
+        content: [{ type: "text", text: "Not authenticated" }],
+        isError: true
+      };
+    }
     const url = process.env.SUPABASE_URL;
-    const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !service) {
+    const anon = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+    if (!url || !anon) {
       return {
         content: [{ type: "text", text: "Backend not configured." }],
         isError: true
       };
     }
-    const admin = createClient(url, service, { auth: { persistSession: false } });
-    const { data, error } = await admin.rpc("verify_result_slip", { _id: verification_id });
+    const client = createClient(url, anon, {
+      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+    const { data, error } = await client.rpc("verify_result_slip", { _id: verification_id });
     if (error) {
       return {
         content: [{ type: "text", text: `Verification failed: ${error.message}` }],
