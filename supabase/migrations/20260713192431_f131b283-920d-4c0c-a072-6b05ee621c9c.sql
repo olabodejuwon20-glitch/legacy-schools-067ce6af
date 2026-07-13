@@ -1,0 +1,1 @@
+GRANT SELECT (id, slug, name, logo_url, motto, settings, current_session, current_term, address) ON public.schools TO anon;
