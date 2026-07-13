@@ -352,15 +352,13 @@ export default function AppLayout() {
         const like = `%${q}%`;
         const groups: SearchGroup[] = [];
         try {
-          const [{ data: memberships }, { data: classes }] = await Promise.all([
+          const allowedRoles = activeRole === "admin" ? ["student", "teacher", "parent"] : ["student"];
+          const [{ data: profiles }, { data: classes }] = await Promise.all([
             supabase
-              .from("memberships")
-              .select("role, profiles:profiles!memberships_user_id_fkey(id, full_name, email)")
-              .eq("school_id", school.id)
-              .eq("status", "active")
-              .in("role", activeRole === "admin" ? ["student", "teacher", "parent"] : ["student"])
-              .or(`full_name.ilike.${like},email.ilike.${like}`, { foreignTable: "profiles" })
-              .limit(20),
+              .from("profiles")
+              .select("id, full_name, email")
+              .or(`full_name.ilike.${like},email.ilike.${like}`)
+              .limit(40),
             supabase
               .from("classes")
               .select("id, name")
@@ -368,13 +366,23 @@ export default function AppLayout() {
               .ilike("name", like)
               .limit(8),
           ]);
-
-          const bucket = { student: [] as any[], teacher: [] as any[], parent: [] as any[] };
-          (memberships ?? []).forEach((row: any) => {
-            const p = row.profiles;
-            if (!p?.full_name && !p?.email) return;
-            const role = row.role as keyof typeof bucket;
-            if (!bucket[role]) return;
+          const ids = (profiles ?? []).map((p: any) => p.id);
+          let mems: { user_id: string; role: string }[] = [];
+          if (ids.length) {
+            const { data } = await supabase
+              .from("memberships")
+              .select("user_id, role")
+              .eq("school_id", school.id)
+              .eq("status", "active")
+              .in("role", allowedRoles)
+              .in("user_id", ids);
+            mems = (data ?? []) as any;
+          }
+          const roleByUser = new Map(mems.map((m) => [m.user_id, m.role]));
+          const bucket: Record<string, any[]> = { student: [], teacher: [], parent: [] };
+          (profiles ?? []).forEach((p: any) => {
+            const role = roleByUser.get(p.id);
+            if (!role || !bucket[role]) return;
             const target =
               role === "student"
                 ? schoolPath(school.slug, `/app/${activeRole}/students`)
@@ -383,7 +391,7 @@ export default function AppLayout() {
                   : schoolPath(school.slug, `/app/${activeRole}/parents`);
             bucket[role].push({
               label: p.full_name || p.email,
-              hint: p.email && p.full_name ? p.email : role,
+              hint: p.full_name && p.email ? p.email : role,
               to: `${target}?q=${encodeURIComponent(q)}`,
               icon: role === "teacher" ? TeacherIcon : role === "parent" ? ParentIcon : UsersIcon,
               keywords: [role, p.email ?? ""],
