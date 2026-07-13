@@ -352,7 +352,9 @@ export default function AppLayout() {
         const like = `%${q}%`;
         const groups: SearchGroup[] = [];
         try {
-          const allowedRoles = activeRole === "admin" ? ["student", "teacher", "parent"] : ["student"];
+          const allowedRoles = (activeRole === "admin"
+            ? ["student", "teacher", "parent"]
+            : ["student"]) as ("student" | "teacher" | "parent")[];
           const [{ data: profiles }, { data: classes }] = await Promise.all([
             supabase
               .from("profiles")
