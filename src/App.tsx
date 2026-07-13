@@ -25,6 +25,7 @@ const ChangePin = lazy(() => import("./pages/ChangePin"));
 const Bio = lazy(() => import("./pages/Bio"));
 const ProfilePage = lazy(() => import("./pages/Profile"));
 const VerifyResult = lazy(() => import("./pages/VerifyResult"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Refer = lazy(() => import("./pages/Refer"));
 const Terms = lazy(() => import("./pages/Terms"));
@@ -240,6 +241,7 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/verify/:id" element={<VerifyResult />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/refer" element={<Refer />} />
             <Route path="/terms" element={<Terms />} />
