@@ -345,12 +345,100 @@ export default function AppLayout() {
     })),
   }));
 
-  // Dynamic directory search — admin sees people & classes, teachers see students & classes.
+  // Dynamic search — everyone can search announcements/exams/assignments;
+  // admin & teacher additionally get the people & classes directory.
   const canDirectorySearch = activeRole === "admin" || activeRole === "teacher";
-  const fetcher = canDirectorySearch
-    ? async (q: string) => {
+  const fetcher = async (q: string) => {
         const like = `%${q}%`;
         const groups: SearchGroup[] = [];
+        // ---- Content search (all roles) ----
+        try {
+          const rolePath = (seg: string) => schoolPath(school.slug, `/app/${activeRole}/${seg}`);
+          const [{ data: anns }, { data: exms }, { data: asgs }] = await Promise.all([
+            supabase.from("announcements")
+              .select("id,title,body,created_at")
+              .eq("school_id", school.id)
+              .or(`title.ilike.${like},body.ilike.${like}`)
+              .order("created_at", { ascending: false })
+              .limit(6),
+            supabase.from("exams")
+              .select("id,title,scheduled_at")
+              .eq("school_id", school.id)
+              .ilike("title", like)
+              .order("scheduled_at", { ascending: false, nullsFirst: false })
+              .limit(6),
+            (activeRole === "teacher" || activeRole === "student")
+              ? supabase.from("assignments")
+                  .select("id,title,due_at")
+                  .eq("school_id", school.id)
+                  .ilike("title", like)
+                  .order("due_at", { ascending: false, nullsFirst: false })
+                  .limit(6)
+              : Promise.resolve({ data: [] as any[] }),
+          ]);
+          if (anns?.length) {
+            groups.push({
+              heading: "Announcements",
+              items: anns.map((a: any) => ({
+                label: a.title,
+                hint: a.body ? String(a.body).slice(0, 60) : "Announcement",
+                to: `${rolePath("communication/announcements")}?q=${encodeURIComponent(q)}`,
+                icon: Megaphone,
+                keywords: ["announcement", a.body ?? ""],
+              })),
+            });
+          }
+          if (exms?.length) {
+            const examSeg =
+              activeRole === "admin" ? "trad-exams"
+              : activeRole === "teacher" ? "trad-exams"
+              : activeRole === "student" ? "trad-exams"
+              : "calendar";
+            groups.push({
+              heading: "Exams",
+              items: exms.map((e: any) => ({
+                label: e.title,
+                hint: e.scheduled_at ? new Date(e.scheduled_at).toLocaleDateString() : "Exam",
+                to: `${rolePath(examSeg)}?q=${encodeURIComponent(q)}`,
+                icon: ClipboardCheck,
+                keywords: ["exam", "test"],
+              })),
+            });
+          }
+          if (asgs?.length) {
+            groups.push({
+              heading: "Assignments",
+              items: asgs.map((a: any) => ({
+                label: a.title,
+                hint: a.due_at ? `Due ${new Date(a.due_at).toLocaleDateString()}` : "Assignment",
+                to: `${rolePath("assignments")}?q=${encodeURIComponent(q)}`,
+                icon: ClipboardList,
+                keywords: ["assignment", "homework"],
+              })),
+            });
+          }
+        } catch { /* noop */ }
+
+        // Quick-nav shortcuts for Attendance & Reports across roles.
+        const q2 = q.toLowerCase();
+        const shortcuts: { label: string; seg: string; icon: any; match: string[] }[] = [
+          { label: "Attendance", seg: "attendance", icon: ClipboardCheck, match: ["attendance", "present", "absent"] },
+          { label: activeRole === "student" || activeRole === "parent" ? "Results" : "Reports",
+            seg: activeRole === "student" || activeRole === "parent" ? "results" : "reports",
+            icon: FileBarChart, match: ["report", "reports", "results", "grade", "grades"] },
+        ];
+        const navItems = shortcuts
+          .filter(s => s.match.some(m => m.includes(q2) || q2.includes(m)))
+          .map(s => ({
+            label: `Go to ${s.label}`,
+            to: schoolPath(school.slug, `/app/${activeRole}/${s.seg}`),
+            icon: s.icon,
+            hint: "Shortcut",
+          }));
+        if (navItems.length) groups.push({ heading: "Shortcuts", items: navItems });
+
+        if (!canDirectorySearch) return groups;
+        // ---- People & classes directory (admin/teacher) ----
         try {
           const allowedRoles = (activeRole === "admin"
             ? ["student", "teacher", "parent"]
@@ -417,8 +505,7 @@ export default function AppLayout() {
           /* noop */
         }
         return groups;
-      }
-    : undefined;
+      };
 
   return (
     <div className="min-h-screen flex bg-background">
