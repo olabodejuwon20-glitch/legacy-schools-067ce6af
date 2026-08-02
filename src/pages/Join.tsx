@@ -210,7 +210,7 @@ export default function Join() {
             <div className="space-y-2"><Label className="flex items-center gap-1.5"><User className="size-3.5"/>Full name</Label>
               <Input required value={fullName} onChange={e=>setFullName(e.target.value)} /></div>
             <div className="space-y-2"><Label className="flex items-center gap-1.5"><Phone className="size-3.5"/>Phone number</Label>
-              <Input required type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+233 555 000 000" /></div>
+              <Input required type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="0801 234 5678" /></div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2"><Label className="flex items-center gap-1.5"><KeyRound className="size-3.5"/>6-digit PIN</Label>
                 <Input required inputMode="numeric" pattern="\d{6}" maxLength={6} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,""))} /></div>

@@ -56,7 +56,7 @@ export default function SchoolLogin() {
         <p className="text-sm text-muted-foreground text-center -mt-3 mb-2">{"\u00a0"}</p>
         <form onSubmit={submit} className="mt-6 space-y-4">
           <div className="space-y-2"><Label className="flex items-center gap-1.5"><Phone className="size-3.5"/>Phone number</Label>
-            <Input required type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+233 555 000 000" /></div>
+            <Input required type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="0801 234 5678" /></div>
           <div className="space-y-2"><Label className="flex items-center gap-1.5"><KeyRound className="size-3.5"/>6-digit PIN</Label>
             <Input required inputMode="numeric" pattern="\d{6}" maxLength={6} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,""))} placeholder="••••••" />
             <p className="text-[11px] text-muted-foreground">{"\u00a0"}</p></div>
