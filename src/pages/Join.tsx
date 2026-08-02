@@ -177,7 +177,7 @@ export default function Join() {
             </button>
             <div className="text-sm font-semibold mb-1">Enter your activation code</div>
             <p className="text-xs text-muted-foreground mb-4">
-              Joining as <span className="font-medium capitalize text-foreground">{chosenLabel}</span>. Use the 6-character code your school shared with you.
+              Joining as <span className="font-medium capitalize text-foreground">{chosenLabel}</span>. Use the activation code your school shared with you.
             </p>
             <form onSubmit={(e) => { e.preventDefault(); verifyCode(); }} className="space-y-3">
               <div className="space-y-2">
