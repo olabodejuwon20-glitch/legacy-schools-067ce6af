@@ -15,10 +15,13 @@ import { buildSchoolUrl } from "@/lib/tenant";
 
 const ROLES: Role[] = ["student", "teacher", "parent"];
 const PREFIX: Record<string, string> = { student: "STU", teacher: "TCH", parent: "PRT" };
+const CODE_LEN = 6;
 const rand = (n: number) => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const buf = new Uint32Array(n);
+  crypto.getRandomValues(buf);
   let out = "";
-  for (let i = 0; i < n; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < n; i++) out += chars[buf[i] % chars.length];
   return out;
 };
 
@@ -42,11 +45,17 @@ export default function AdminInvites() {
     if (!school || !user || busy) return;
     setBusy(true);
     try {
-      const len = role === "student" ? 5 : 2;
-      const code = `${PREFIX[role]}-${rand(len)}`;
-      const payload: any = { school_id: school.id, code, role, max_uses: maxUses, created_by: user.id };
-      const { error } = await supabase.from("invite_codes").insert(payload);
-      if (error) throw error;
+      let lastError: any = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const code = `${PREFIX[role]}-${rand(CODE_LEN)}`;
+        const payload: any = { school_id: school.id, code, role, max_uses: maxUses, created_by: user.id };
+        const { error } = await supabase.from("invite_codes").insert(payload);
+        if (!error) { lastError = null; break; }
+        lastError = error;
+        // 23505 = unique violation -> regenerate and retry
+        if ((error as any).code !== "23505") break;
+      }
+      if (lastError) throw lastError;
       toast.success("Code generated");
       setOpen(false);
       load();
