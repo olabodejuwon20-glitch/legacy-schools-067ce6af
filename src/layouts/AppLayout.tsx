@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useEnabledModules } from "@/modules/useModules";
+import { MODULE_MANIFESTS } from "@/modules/registry";
+import { PORTAL_NAV, hubTarget, hubSegments, type NavHub } from "@/layouts/portalNav";
 import { useFeatureFlag } from "@/lib/featureFlags";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -32,181 +34,6 @@ import { Helmet } from "react-helmet-async";
 import { GlobalSearch, type SearchGroup } from "@/components/GlobalSearch";
 import { supabase } from "@/integrations/supabase/client";
 import { Users as UsersIcon, BookOpen as BookOpenIcon, UserSquare2 as ParentIcon, GraduationCap as TeacherIcon } from "lucide-react";
-
-// Group every sidebar destination into a labelled section.
-// Keys are the `to` field used by NAV / module manifests.
-const SECTION_OF: Record<string, string> = {
-  "": "Overview",
-  // People
-  "students": "People", "teachers": "People", "children": "People",
-  "parents": "People",
-  // Admission hub (single nav covering enrollments / invites / bulk upload)
-  "admission": "Admission",
-  "enrollments": "Admission", "invites": "Admission", "bulk": "Admission",
-  // Academics
-  "classes": "Academics", "timetable": "Academics", "calendar": "Academics",
-  "attendance": "Academics", "assignments": "Academics", "gradebook": "Academics",
-  "behavior": "Academics",
-  "register-subjects": "Academics",
-  // Reports + Scratch Cards live inside Academics now
-  "reports": "Academics", "trad-cards": "Academics",
-  // Library (groups all reading / lesson-note / question-bank tools)
-  "library": "Library", "lesson-notes": "Library",
-  "question-bank": "Library", "resources": "Library",
-  // Assessments hub (single nav covering exams / proctoring / approvals / results)
-  "assessments": "Assessments",
-  "tests": "Assessments", "grading": "Assessments",
-  "exams": "Assessments", "results": "Assessments", "mock": "Assessments",
-  "practice": "Assessments", "proctoring": "Assessments", "trad-exams": "Assessments",
-  "trad-exams-approvals": "Assessments", "trad-exams-results": "Assessments", "trad-exams-grading": "Assessments",
-  "exam-committee": "Assessments",
-  // AI Operation Center hub (admin) + Copilot tools for other roles
-  "ai-ops": "AI Ops",
-  "ai-tutor": "Copilot", "ai-marking": "Copilot", "parent-alerts": "AI Ops",
-  "copilot": "Copilot", "knowledge": "AI Ops", "ai-activity": "AI Ops",
-  "ai-settings": "AI Ops", "lesson-plan": "Copilot",
-  // Communication
-  "messages": "Communication", "inbox": "Communication",
-  "announcements": "Communication", "parent-comms": "Communication",
-  "teacher-comms": "Communication", "activity": "Communication",
-  "communication": "Communication",
-  // Finance
-  "fees": "Finance", "subscription": "Finance",
-  "billing": "Finance",
-  // Operations
-  "hostel": "Operations", "transport": "Operations",
-  // System
-  "settings": "System", "modules": "System", "roles": "System", "/app/help": "System",
-  "workspace": "System",
-  "academic-setup": "System", "academic": "Academics", "exam-appeals": "Assessments",
-};
-
-const SECTION_ORDER = [
-  "Overview", "People", "Admission", "Academics", "Library", "Assessments",
-  "AI Ops", "Copilot", "Communication", "Finance", "Operations", "System",
-];
-
-function sectionFor(to: string) {
-  return SECTION_OF[to] ?? "More";
-}
-
-// Consistent ordering for items inside the AI section across every role.
-const AI_ORDER = [
-  "copilot",       // admin: principal copilot
-  "ai-tutor",      // student: tutor / teacher: co-teacher
-  "ai-marking",    // teacher: AI essay/test marking
-  "parent-alerts", // admin: AI parent risk alerts
-  "knowledge",     // admin: RAG knowledge base
-  "ai-activity",   // admin: AI usage / activity
-  "ai-settings",   // admin: AI governance settings
-];
-function sortAI<T extends { to: string }>(arr: T[]) {
-  return [...arr].sort((a, b) => {
-    const ai = AI_ORDER.indexOf(a.to); const bi = AI_ORDER.indexOf(b.to);
-    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-  });
-}
-
-const NAV: Record<Role, { label: string; to: string; icon: any }[]> = {
-  admin: [
-    { label: "Dashboard", to: "",          icon: LayoutDashboard },
-    { label: "Students",  to: "students",  icon: Users },
-    { label: "Teachers",  to: "teachers",  icon: GraduationCap },
-    { label: "Parents",   to: "parents",   icon: UserSquare2 },
-    { label: "Classes",   to: "classes",   icon: BookOpen },
-    { label: "Academic Structure", to: "academic", icon: Layers },
-    { label: "Timetable", to: "timetable", icon: Calendar },
-    { label: "Attendance", to: "attendance", icon: ClipboardCheck },
-    { label: "Library",   to: "library",   icon: Library },
-    { label: "Question Bank", to: "question-bank", icon: BookOpenCheck },
-    { label: "Lesson Notes", to: "lesson-notes", icon: NotebookPen },
-    { label: "Fees & Payments", to: "fees", icon: Wallet },
-    { label: "Subscription", to: "subscription", icon: CreditCard },
-    { label: "Billing", to: "billing", icon: Receipt },
-    { label: "Hostel",    to: "hostel",    icon: Building2 },
-    { label: "Transport", to: "transport", icon: Bus },
-    { label: "Announcements", to: "announcements", icon: Megaphone },
-    { label: "Inbox",     to: "inbox",     icon: InboxIcon },
-    { label: "Reports",   to: "reports",   icon: FileBarChart },
-    { label: "Invites",   to: "invites",   icon: Ticket },
-    { label: "Bulk Upload", to: "bulk",    icon: Upload },
-    { label: "Parent Alerts", to: "parent-alerts", icon: ShieldAlert },
-    { label: "Copilot",   to: "copilot",   icon: Brain },
-    { label: "Knowledge", to: "knowledge", icon: BookMarked },
-    { label: "AI Activity", to: "ai-activity", icon: Activity },
-    { label: "AI Settings", to: "ai-settings", icon: Sparkles },
-    { label: "Custom Roles", to: "roles", icon: ShieldCheck },
-    { label: "Academic Setup", to: "academic-setup", icon: Gauge },
-    { label: "Exam Committee", to: "exam-committee", icon: ClipboardList },
-    { label: "Exam Appeals", to: "exam-appeals", icon: ShieldCheck },
-    { label: "Settings",  to: "settings",  icon: Settings },
-    { label: "Help",      to: "/app/help", icon: HelpCircle },
-  ],
-  teacher: [
-    { label: "Dashboard",   to: "",            icon: LayoutDashboard },
-    { label: "My Classes",  to: "classes",     icon: BookOpen },
-    { label: "Students",    to: "students",    icon: Users },
-    { label: "Parents",     to: "parents",     icon: UserSquare2 },
-    { label: "Attendance",  to: "attendance",  icon: ClipboardCheck },
-    { label: "Assignments", to: "assignments", icon: ClipboardList },
-    { label: "Gradebook",   to: "gradebook",   icon: BarChart3 },
-    { label: "Behavior",    to: "behavior",    icon: Award },
-    { label: "Parent Comms",to: "parent-comms",icon: Mail },
-    { label: "Inbox",       to: "inbox",       icon: InboxIcon },
-    { label: "Help & Copilot", to: "copilot",  icon: Brain },
-    { label: "AI Co-Teacher", to: "ai-tutor",  icon: Bot },
-    { label: "AI Marking",  to: "ai-marking",  icon: PenLine },
-    { label: "Lesson Plan", to: "lesson-plan", icon: NotebookPen },
-    { label: "Lesson Notes", to: "lesson-notes", icon: BookOpenCheck },
-    { label: "Library",     to: "library",     icon: Library },
-    { label: "Test Builder",to: "tests",       icon: FilePlus2 },
-    { label: "Assessments", to: "assessments", icon: ClipboardCheck },
-    { label: "Grading",     to: "grading",     icon: PencilRuler },
-    { label: "Messages",    to: "messages",    icon: MessagesSquare },
-    { label: "Calendar",    to: "calendar",    icon: Calendar },
-    { label: "Resources",   to: "resources",   icon: FolderOpen },
-    { label: "Driver mode", to: "/app/driver/trip", icon: Bus },
-    { label: "Reports",     to: "reports",     icon: FileBarChart },
-    { label: "Help",        to: "/app/help",   icon: HelpCircle },
-  ],
-  student: [
-    { label: "Dashboard",  to: "",          icon: LayoutDashboard },
-    { label: "My Classes", to: "classes",   icon: BookOpen },
-    { label: "Assignments",to: "assignments", icon: ClipboardList },
-    { label: "Attendance", to: "attendance", icon: ClipboardCheck },
-    { label: "Exams",      to: "exams",     icon: ListChecks },
-    { label: "My Assessments", to: "assessments", icon: ClipboardCheck },
-    { label: "NECO/JAMB Mock", to: "mock",  icon: Award },
-    { label: "Practice",   to: "practice",  icon: Sparkles },
-    { label: "Results",    to: "results",   icon: FileBarChart },
-    { label: "Gradebook",  to: "gradebook", icon: BarChart3 },
-    { label: "Behavior",   to: "behavior",  icon: Award },
-    { label: "Library",    to: "library",   icon: Library },
-    { label: "Lesson Notes", to: "lesson-notes", icon: BookOpen },
-    { label: "AI Tutor",   to: "ai-tutor",  icon: Sparkles },
-    { label: "Fees",       to: "fees",      icon: Wallet },
-    { label: "Bus tracking", to: "transport", icon: Bus },
-    { label: "Inbox",      to: "inbox",     icon: InboxIcon },
-    { label: "Messages",   to: "messages",  icon: MessagesSquare },
-    { label: "Calendar",   to: "calendar",  icon: Calendar },
-    { label: "Help",       to: "/app/help", icon: HelpCircle },
-  ],
-  parent: [
-    { label: "Dashboard",       to: "",            icon: LayoutDashboard },
-    { label: "My Children",     to: "children",    icon: UserSquare2 },
-    { label: "Academic Records",to: "results",     icon: FileBarChart },
-    { label: "Attendance",      to: "attendance",  icon: ClipboardCheck },
-    { label: "Behavior",        to: "behavior",    icon: Award },
-    { label: "Teacher Comms",   to: "teacher-comms", icon: Mail },
-    { label: "Inbox",           to: "inbox",         icon: InboxIcon },
-    { label: "Activity Feed",   to: "activity",    icon: Activity },
-    { label: "Fees & Payments", to: "fees",        icon: Wallet },
-    { label: "Messages",        to: "messages",    icon: MessagesSquare },
-    { label: "Bus tracking",    to: "transport",   icon: Bus },
-    { label: "Calendar",        to: "calendar",    icon: Calendar },
-    { label: "Help",            to: "/app/help",   icon: HelpCircle },
-  ],
-};
 
 const TITLES: Record<string, { title: string; sub: string }> = {
   "":           { title: "Dashboard",          sub: "Overview" },
@@ -272,52 +99,39 @@ export default function AppLayout() {
   if (!school || !activeRole) return <Navigate to={schoolPath(school?.slug, "/signin")} replace />;
 
   const meta = ROLE_META[activeRole];
-  // Build sidebar dynamically from enabled module manifests; fall back to static NAV
-  // until module data has hydrated (prevents an empty sidebar flash).
-  const moduleItems = (enabledModules ?? [])
-    .flatMap(m => m.sidebar.map(item => ({ ...item, _slug: m.slug })))
-    .filter(item => item.roles.includes(activeRole));
-  const seen = new Set<string>();
-  const items = moduleItems.length
-    ? moduleItems
-        .filter(it => {
-          const key = `${it.to}|${it.label}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        })
-        .map(({ label, to, icon }) => ({ label, to, icon }))
-    : NAV[activeRole];
-  // Restrict sidebar for slotted (sub-)admins. Dashboard ("") and absolute paths stay visible.
-  // Billing reuses the `subscription` permission key.
-  // Billing shares the `subscription` gate; academic structure is unlocked by either
-  // the new `academic` permission or the legacy `classes` permission.
+  // ---- Navigation: max 8 hubs per portal, related pages become hub tabs. ----
+  // Modules that a school has switched off hide their destinations (tabs), not
+  // whole sidebar rows.
+  const enabledTos = new Set(
+    (enabledModules ?? [])
+      .flatMap(m => m.sidebar)
+      .filter(i => i.roles.includes(activeRole))
+      .map(i => i.to)
+  );
+  const manifestTos = new Set(
+    MODULE_MANIFESTS.flatMap(m => m.sidebar)
+      .filter(i => i.roles.includes(activeRole))
+      .map(i => i.to)
+  );
+  const moduleHidden = (to: string) =>
+    enabledTos.size > 0 && manifestTos.has(to) && !enabledTos.has(to);
+  // Sub-admins only see what their slot allows. Billing reuses `subscription`;
+  // academic structure accepts the legacy `classes` key.
   const permKeyFor = (to: string) => (to === "billing" ? "subscription" : to);
-  const filteredItems = activeRole === "admin" && !isFullAdmin
-    ? items.filter(it => {
-        if (!it.to || it.to.startsWith("/")) return true;
-        if (it.to === "academic") return allowed.has("academic") || allowed.has("classes");
-        return allowed.has(permKeyFor(it.to));
-      })
-    : items;
-  // Hide Transport / Bus tracking / Driver mode entries when the feature flag is off.
-  const busGatedItems = (busFlagLoading || busTrackingEnabled !== false)
-    ? filteredItems
-    : filteredItems.filter(it => it.to !== "transport" && it.to !== "/app/driver/trip");
-  // Group items into sections preserving the role-defined order within each group.
-  const grouped = new Map<string, typeof items>();
-  busGatedItems.forEach((it) => {
-    const key = sectionFor(it.to);
-    if (!grouped.has(key)) grouped.set(key, [] as any);
-    (grouped.get(key) as any).push(it);
-  });
-  // Apply deterministic ordering inside the AI section so every portal lists
-  // AI tools in the same sequence.
-  if (grouped.has("Copilot")) grouped.set("Copilot", sortAI(grouped.get("Copilot") as any) as any);
-  const orderedSections = [
-    ...SECTION_ORDER.filter(s => grouped.has(s)),
-    ...Array.from(grouped.keys()).filter(s => !SECTION_ORDER.includes(s)),
-  ];
+  const permAllows = (to: string) => {
+    if (activeRole !== "admin" || isFullAdmin) return true;
+    if (!to || to.startsWith("/")) return true;
+    if (to === "academic") return allowed.has("academic") || allowed.has("classes");
+    return allowed.has(permKeyFor(to));
+  };
+  const busHidden = (to: string) =>
+    !busFlagLoading && busTrackingEnabled === false &&
+    (to === "transport" || to === "/app/driver/trip");
+  const visible = (to: string) => permAllows(to) && !busHidden(to) && !moduleHidden(to);
+
+  const hubs: NavHub[] = PORTAL_NAV[activeRole]
+    .map(h => ({ ...h, tabs: h.tabs.filter(t => visible(t.to)) }))
+    .filter(h => (h.to !== undefined ? visible(h.to) : h.tabs.length > 0));
   const userLabel = displayName || email || "User";
   const initials = userLabel.split(/[\s@]/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase();
   // Show the slot's assigned role name for sub-admins, otherwise the portal role.
@@ -334,16 +148,28 @@ export default function AppLayout() {
       : to.startsWith("/")
         ? schoolPath(school.slug, to)
         : schoolPath(school.slug, `/app/${activeRole}/${to}`);
-  const searchGroups: SearchGroup[] = orderedSections.map((section) => ({
-    heading: section,
-    items: ((grouped.get(section) ?? []) as any[]).map((it) => ({
+  const searchGroups: SearchGroup[] = hubs.map((hub) => ({
+    heading: hub.label,
+    items: (hub.tabs.length
+      ? hub.tabs
+      : [{ label: hub.label, to: hubTarget(hub), icon: hub.icon }]
+    ).map((it) => ({
       label: it.label,
       to: pathFor(it.to),
       icon: it.icon,
-      hint: section,
-      keywords: [section, it.to],
+      hint: hub.label,
+      keywords: [hub.label, it.to],
     })),
   }));
+
+  // Which hub owns the current route (drives sidebar highlight + tab bar).
+  const afterRole = pathname.split(`/app/${activeRole}`)[1] ?? "";
+  const currentSeg = afterRole.replace(/^\//, "").split("/")[0] ?? "";
+  const matchesSeg = (to: string) =>
+    to.startsWith("/") ? pathname.endsWith(to) : to === currentSeg;
+  const activeHub =
+    hubs.find(h => hubSegments(h).some(s => (s === "" ? currentSeg === "" && !afterRole.replace(/^\//, "") : matchesSeg(s))))
+    ?? undefined;
 
   // Dynamic search — everyone can search announcements/exams/assignments;
   // admin & teacher additionally get the people & classes directory.
@@ -534,20 +360,29 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <div className="space-y-5">
-            {orderedSections.map((section) => (
-            <SidebarSection
-              key={section}
-              section={section}
-              items={(grouped.get(section) ?? []) as any}
-              collapsed={collapsed}
-              isFirstSection={section === orderedSections[0]}
-              activeRole={activeRole}
-              schoolSlug={school.slug}
-              pathname={pathname}
-              onNavigate={() => setMobileOpen(false)}
-            />
-          ))}
+          <div className="space-y-1">
+            {hubs.map((hub) => {
+              const Icon = hub.icon;
+              const isActive = activeHub?.key === hub.key;
+              return (
+                <NavLink
+                  key={hub.key}
+                  to={pathFor(hubTarget(hub))}
+                  title={collapsed ? hub.label : undefined}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                    collapsed && "justify-center px-0"
+                  )}
+                >
+                  <Icon className="size-[18px] shrink-0" />
+                  {!collapsed && <span className="truncate">{hub.label}</span>}
+                </NavLink>
+              );
+            })}
           </div>
         </nav>
 
@@ -619,6 +454,29 @@ export default function AppLayout() {
         </header>
 
         <main className="flex-1 min-w-0 overflow-x-hidden px-3 sm:px-4 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-6 animate-fade-in">
+          {activeHub && activeHub.tabs.length > 1 && (
+            <div className="-mx-3 sm:-mx-4 lg:-mx-8 mb-4 border-b border-border">
+              <div className="flex gap-1 overflow-x-auto px-3 sm:px-4 lg:px-8 scrollbar-none">
+                {activeHub.tabs.map((t) => {
+                  const active = matchesSeg(t.to);
+                  return (
+                    <NavLink
+                      key={t.to + t.label}
+                      to={pathFor(t.to)}
+                      className={cn(
+                        "whitespace-nowrap px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                        active
+                          ? "border-primary text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {t.label}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <AdminPermissionGuard />
           <PilotReadOnlyBanner />
           <Outlet />
@@ -671,109 +529,4 @@ function AdminPermissionGuard() {
   if (rest === "academic") return (allowed.has("academic") || allowed.has("classes")) ? null : <Navigate to={prefix} replace />;
   if (allowed.has(rest)) return null;
   return <Navigate to={prefix} replace />;
-}
-
-function SidebarSection({
-  section, items, collapsed, isFirstSection, activeRole, schoolSlug, pathname, onNavigate,
-}: {
-  section: string;
-  items: { label: string; to: string; icon: any }[];
-  collapsed: boolean;
-  isFirstSection: boolean;
-  activeRole: Role;
-  schoolSlug: string;
-  pathname: string;
-  onNavigate: () => void;
-}) {
-  const pathFor = (to: string) =>
-    !to
-      ? schoolPath(schoolSlug, `/app/${activeRole}`)
-      : to.startsWith("/")
-        ? schoolPath(schoolSlug, to)
-        : schoolPath(schoolSlug, `/app/${activeRole}/${to}`);
-
-  const containsActive = items.some(it => {
-    const p = pathFor(it.to);
-    return !it.to ? pathname === p : pathname === p || pathname.startsWith(p + "/");
-  });
-
-  // Single-item or Overview groups never collapse — render flat.
-  const isCollapsible = false;
-  const storageKey = `sidebar:open:${activeRole}:${section}`;
-
-  const [open, setOpen] = useState<boolean>(() => {
-    if (!isCollapsible) return true;
-    try {
-      const v = localStorage.getItem(storageKey);
-      if (v === "1") return true;
-      if (v === "0") return false;
-    } catch {}
-    return containsActive; // default: open if it owns the active route
-  });
-
-  // Force the group open whenever navigation lands inside it.
-  useEffect(() => {
-    if (isCollapsible && containsActive) setOpen(true);
-  }, [containsActive, isCollapsible]);
-
-  const toggle = () => {
-    setOpen(o => {
-      const next = !o;
-      try { localStorage.setItem(storageKey, next ? "1" : "0"); } catch {}
-      return next;
-    });
-  };
-
-  return (
-    <div>
-      {!collapsed && (
-        isCollapsible ? (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-expanded={open}
-            className="w-full flex items-center justify-between px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 hover:text-foreground transition-colors"
-          >
-            <span>{section}</span>
-            <ChevronRight className={cn("size-3 transition-transform", open && "rotate-90")} />
-          </button>
-        ) : (
-          <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-            {section}
-          </div>
-        )
-      )}
-      {collapsed && !isFirstSection && (
-        <div className="mx-3 mb-1.5 h-px bg-sidebar-border" />
-      )}
-      {(collapsed || !isCollapsible || open) && (
-        <ul className="space-y-1">
-          {items.map((it) => {
-            const path = pathFor(it.to);
-            return (
-              <li key={path}>
-                <NavLink
-                  to={path}
-                  end={!it.to}
-                  onClick={onNavigate}
-                  title={collapsed ? it.label : undefined}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent/60",
-                    )
-                  }
-                >
-                  <it.icon className="size-[18px] shrink-0" />
-                  {!collapsed && <span>{it.label}</span>}
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
 }
