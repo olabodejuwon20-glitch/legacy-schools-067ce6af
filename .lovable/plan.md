@@ -1,141 +1,64 @@
-# Super Admin Console — Complete Build Plan
+# Sidebar Simplification — Max 8 Sections Per Portal
 
-The **Super Admin** (a.k.a. Platform Admin) is the internal LegacyKool staff console — the mission-control panel our CTO, ops, support and finance team use to run the entire multi-tenant platform. It is **not** the School Admin (which is the per-school tenant console).
+Every portal sidebar becomes a flat list of at most 8 destinations. Related pages merge into hub pages with tabs, so nothing is removed — only regrouped. Existing hubs (Admission, Assessments, AI Operation Center, Communication) already prove the pattern; this extends it everywhere.
 
-This plan captures the full scope, split into 7 sprints. Sprints 1–3 are the current baseline; 4–7 are the remaining build.
+## Admin — management & day-to-day administration
 
----
+1. Dashboard
+2. People — Students, Teachers, Parents, Classes, Admission (enrollments, invites, bulk upload), Custom Roles
+3. Academics — Academic Structure, Timetable, Attendance, Reports
+4. Assessments — exams, question bank, exam committee, appeals, scratch cards, proctoring
+5. Library — library, lesson notes, resources
+6. Finance — Fees & Payments, Subscription, Billing
+7. AI Operation Center — copilot, parent alerts, knowledge, activity, settings (already a hub)
+8. School Settings — settings, modules, workspace, hostel, transport, help
 
-## Guiding principles
+Communication stays reachable from the header (inbox icon + notification bell) plus a tab inside Dashboard quick actions, since it is already its own full-screen hub.
 
-- **Linear/Vercel dark shell** — dense, keyboard-first, split-pane over modals.
-- **One shell, many workspaces** — same sidebar, breadcrumbs, sticky header, empty/loading states everywhere.
-- **Impersonation always visible** — staff should never guess "am I acting as myself or as a school?"
-- **Read-mostly, write-carefully** — destructive actions confirm; every mutation writes to `platform_audit`.
-- **Reuse primitives** — `SectionCard`, `StatCard`, `InsightsCards`, `QuickActionsBar`, `SplitPane`, `SchoolBadges`.
-- **No schema churn unless a sprint explicitly needs it.** Existing tables cover most surfaces.
+## Teacher — teaching & assessment
 
----
+1. Dashboard
+2. My Classes — classes, students, parents
+3. Attendance
+4. Assignments — assignments, gradebook, behavior
+5. Assessments — test builder, assessments, grading, exam papers, grading queue
+6. Teaching Tools — lesson plan, lesson notes, library, resources, question bank
+7. AI Assistant — AI co-teacher, AI marking, copilot
+8. Communication — inbox, messages, parent comms, calendar, reports
 
-## Sprint status overview
+## Student — learning focused
 
-```text
-Sprint 1  Shell + Dashboard              DONE
-Sprint 2  Customers (Schools) workspace  DONE
-Sprint 3  Products workspace             DONE
-Sprint 4  Business (Revenue & Growth)    NEXT
-Sprint 5  Operations (Support & Health)   DONE
-Sprint 6  Intelligence (Analytics & AI)   DONE
-Sprint 7  Security & Staff governance
-```
+1. Dashboard
+2. My Classes — classes, register subjects, calendar
+3. Learn — library, lesson notes, practice
+4. Assignments
+5. Exams — exams, my assessments, NECO/JAMB mock, trad exams
+6. Results — results, gradebook, behavior, attendance
+7. AI Tutor
+8. More — fees, inbox/messages, bus tracking, help
 
----
+## Parent — monitoring their child
 
-## Sprint 1 — Shell + Dashboard  *(done)*
+1. Dashboard
+2. My Children
+3. Academic Records — results, gradebook
+4. Attendance
+5. Behavior
+6. Messages — inbox, teacher comms, messages
+7. Fees & Payments
+8. More — activity feed, calendar, bus tracking, help
 
-Global chrome that every other sprint plugs into.
+## Technical approach
 
-- `SuperLayout`: left rail, top bar with global search, tenant switcher, ⌘K palette, user menu.
-- `/super` dashboard: KPI hero (schools, MRR, active users, incidents), live tenant list, recent staff actions, system status strip.
-- Route guard via `is_super_admin` + RLS.
+- Add a `HubPage` shared component (header + horizontal tab bar + `Outlet`) modelled on the existing `AdmissionHub` / `CommsHub` pattern, so hub children keep their own routes and remain deep-linkable.
+- Rewrite the sidebar source of truth: replace the per-role flat `NAV` lists and the `SECTION_OF` / `SECTION_ORDER` grouping in `src/layouts/AppLayout.tsx` with one `PORTAL_NAV` map of exactly 8 entries per role. Drop the collapsible `SidebarSection` grouping — the list is short enough to render flat.
+- Update `src/modules/registry.ts` so each module's `sidebar` entries point at its hub route instead of adding a new top-level button; module enable/disable then hides the corresponding hub tab rather than a sidebar row.
+- Add hub routes in `src/App.tsx` as parent routes with the existing pages as children (e.g. `/app/admin/people` → `students | teachers | parents | classes | admission`). Keep every current URL working via redirects so bookmarks and in-app links don't break.
+- Highlight the active hub in the sidebar when any child route is active, and highlight the active tab inside the hub.
+- Sub-admin permission filtering (`useAdminPermissions`) and the transport feature flag now filter hub *tabs*; a hub with zero permitted tabs is hidden from the sidebar.
+- Global search (Cmd+K) keeps indexing individual pages, so merged destinations stay one keystroke away.
+- Mobile: hub tabs scroll horizontally; sidebar stays a slide-over sheet.
 
-## Sprint 2 — Customers (Schools) workspace  *(done)*
+## Out of scope
 
-Everything about a tenant lives here.
-
-- `/super/schools` directory: searchable table, plan/status filters, bulk actions.
-- School detail split-pane: profile, plan, users, modules enabled, billing, activity, impersonate button.
-- Wired to `schools`, `memberships`, `subscriptions`, `school_modules`, `school_payments`, `platform_audit`.
-
-## Sprint 3 — Products workspace  *(done)*
-
-- `/super/products` with 4 tabs: Modules · Marketplace · Licensing · Feature Flags.
-- Split-pane list/detail per tab; legacy routes redirect in.
-- Reads/writes: `modules`, `module_requests`, `plan_pricing`, `payment_plans`, `feature_flags`, `school_feature_flags`.
-
----
-
-## Sprint 4 — Business (Revenue & Growth)  *(next)*
-
-**Goal:** one place for finance and growth to see money in, money out, and pipeline.
-
-Route: `/super/business` with tabs **Revenue · Invoices · Plans · Pilots · Growth**.
-
-- **Revenue** — MRR/ARR chart, churn, expansion, top-paying schools; drill-down drawer.
-- **Invoices** — `school_invoices` table with status filters, resend, mark paid, refund action; per-invoice drawer with line items from `invoices`.
-- **Plans** — read-only summary of pricing (edits still live in Products → Licensing) plus per-plan cohort revenue.
-- **Pilots** — `/super/pilots` folded in: pilot schools, start/end dates, conversion outcome, notes.
-- **Growth** — signup funnel from `onboarding_events`, invite redemption from `invite_codes` / `invite_redeem_attempts`, referral sources.
-
-Insight strip: MRR, net new MRR (30d), overdue invoices, active pilots, trial→paid conversion.
-
-## Sprint 5 — Operations (Support & Health)
-
-**Goal:** the queue our support + on-call staff live in.
-
-Route: `/super/operations` with tabs **Tickets · Incidents · Announcements · System Health · Logs**.
-
-- **Tickets** — `support_tickets` inbox split-pane: list left, conversation right (`support_messages`), assign/close/tag, category from `support_ticket_categories`. Reply UI + canned responses.
-- **Incidents** — `client_errors` grouped by fingerprint, severity, first/last seen, affected schools; assign + resolve; link to a ticket.
-- **Announcements** — CRUD on `platform_announcements`: target all schools, plan tier, or specific schools; schedule + preview.
-- **System Health** — edge-function status, DB slow queries surface, `auth_events` failure rate, `rate_limits` hot keys.
-- **Logs** — filtered `platform_audit` + `security_events` explorer with saved views.
-
-Insight strip: open tickets, P1 incidents, error rate 24h, announcements live.
-
-## Sprint 6 — Intelligence (Analytics & AI)
-
-**Goal:** how the product is actually used, and what AI is costing us.
-
-Route: `/super/intelligence` with tabs **Product Analytics · AI Usage · Content Quality · Cohorts**.
-
-- **Product Analytics** — `page_views`, feature adoption per module, DAU/WAU/MAU by school, retention curve.
-- **AI Usage** — `ai_jobs`, `ai_cache` hit rate, per-school spend vs `school_ai_quotas`, model mix from `ai_model_routing`, approval queue `ai_approvals`.
-- **Content Quality** — `question_bank` coverage by subject/level, flagged questions, `assessment_violations_v2` trends, `exam_appeals` volume.
-- **Cohorts** — signup cohort retention, plan-tier engagement, at-risk schools (drop in activity).
-
-Insight strip: DAU, AI cost 7d, cache hit %, at-risk schools.
-
-## Sprint 7 — Security & Staff governance
-
-**Goal:** lock down the console itself and give leadership auditability.
-
-Route: `/super/security` with tabs **Staff · Roles · Sessions · Audit · Policies**.
-
-- **Staff** — everyone with a super-admin slot (`admin_role_slots`), invite/remove, last active, MFA status.
-- **Roles** — role matrix for internal staff (super_admin, support, finance, read-only, on-call) — permission grid preview, no schema change unless we outgrow `user_roles`.
-- **Sessions** — active staff sessions + `impersonation_sessions` log with end-session button.
-- **Audit** — full-text search over `platform_audit`, `auth_events`, `security_events`; export CSV.
-- **Policies** — global toggles from `platform_settings` (signups open, maintenance mode, default plan, email sender).
-
-Insight strip: staff without MFA, active impersonations, security events 24h, last policy change.
-
----
-
-## Cross-cutting deliverables (spread across sprints)
-
-- **⌘K command palette** actions expand each sprint (jump to school, open ticket, toggle flag, start impersonation).
-- **Global tenant switcher** enriched with recency + pinned schools.
-- **Notification bell** in top bar for P1 incidents, overdue invoices, ticket SLA breach.
-- **Every mutation** writes a `platform_audit` row with actor, target, before/after.
-- **Impersonation banner** persists across all pages while a session is active.
-
-## Technical section
-
-- All routes live under `src/pages/super/*` and mount inside `SuperLayout`.
-- Shared primitives already present: `SplitPane`, `SectionCard`, `StatCard`, `InsightsCards`, `QuickActionsBar`, `SchoolBadges`. New sprints add `RevenueChart`, `TicketThread`, `AuditTable`, `AIQuotaMeter` as needed.
-- Data layer: direct Supabase queries via `@/integrations/supabase/client`; heavier aggregates go through SQL views or edge functions (`super-*`).
-- Guards: `is_super_admin` at RLS + layout; sensitive mutations additionally check role in `admin_role_slots`.
-- No new tables required for Sprints 4–6. Sprint 7 may add a `staff_mfa_status` view; decide during that sprint.
-- Legacy per-feature routes (`/super/tickets`, `/super/announcements`, `/super/billing`, `/super/analytics`, `/super/security`, `/super/settings`, `/super/pilots`, `/super/errors`, `/super/logs`, `/super/quotas`, `/super/tenant-config`, `/super/subscriptions`) redirect into their new workspace tabs, same pattern as Sprint 3.
-- No changes to School Admin, auth flows, or student/teacher surfaces.
-
-## Out of scope for this plan
-
-- Public marketing site, School Admin console, mobile apps.
-- Payment provider swaps (Stripe/Paddle stays as-is).
-- New AI models or prompt changes.
-
-## Deliverable per sprint
-
-One PR-sized workspace per sprint, mounted into the existing shell, with legacy routes redirecting in and a `platform_audit` trail on every write.
+No page content, business logic, or data changes — only navigation structure and the new hub shells.
