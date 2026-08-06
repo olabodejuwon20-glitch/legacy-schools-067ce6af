@@ -629,6 +629,29 @@ export default function AppLayout() {
         </header>
 
         <main className="flex-1 min-w-0 overflow-x-hidden px-3 sm:px-4 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-6 animate-fade-in">
+          {activeHub && activeHub.tabs.length > 1 && (
+            <div className="-mx-3 sm:-mx-4 lg:-mx-8 mb-4 border-b border-border">
+              <div className="flex gap-1 overflow-x-auto px-3 sm:px-4 lg:px-8 scrollbar-none">
+                {activeHub.tabs.map((t) => {
+                  const active = matchesSeg(t.to);
+                  return (
+                    <NavLink
+                      key={t.to + t.label}
+                      to={pathFor(t.to)}
+                      className={cn(
+                        "whitespace-nowrap px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                        active
+                          ? "border-primary text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {t.label}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <AdminPermissionGuard />
           <PilotReadOnlyBanner />
           <Outlet />
