@@ -323,14 +323,17 @@ export default function AppLayout() {
       : to.startsWith("/")
         ? schoolPath(school.slug, to)
         : schoolPath(school.slug, `/app/${activeRole}/${to}`);
-  const searchGroups: SearchGroup[] = orderedSections.map((section) => ({
-    heading: section,
-    items: ((grouped.get(section) ?? []) as any[]).map((it) => ({
+  const searchGroups: SearchGroup[] = hubs.map((hub) => ({
+    heading: hub.label,
+    items: (hub.tabs.length
+      ? hub.tabs
+      : [{ label: hub.label, to: hubTarget(hub), icon: hub.icon }]
+    ).map((it) => ({
       label: it.label,
       to: pathFor(it.to),
       icon: it.icon,
-      hint: section,
-      keywords: [section, it.to],
+      hint: hub.label,
+      keywords: [hub.label, it.to],
     })),
   }));
 
