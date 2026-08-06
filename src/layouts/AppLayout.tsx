@@ -274,52 +274,39 @@ export default function AppLayout() {
   if (!school || !activeRole) return <Navigate to={schoolPath(school?.slug, "/signin")} replace />;
 
   const meta = ROLE_META[activeRole];
-  // Build sidebar dynamically from enabled module manifests; fall back to static NAV
-  // until module data has hydrated (prevents an empty sidebar flash).
-  const moduleItems = (enabledModules ?? [])
-    .flatMap(m => m.sidebar.map(item => ({ ...item, _slug: m.slug })))
-    .filter(item => item.roles.includes(activeRole));
-  const seen = new Set<string>();
-  const items = moduleItems.length
-    ? moduleItems
-        .filter(it => {
-          const key = `${it.to}|${it.label}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        })
-        .map(({ label, to, icon }) => ({ label, to, icon }))
-    : NAV[activeRole];
-  // Restrict sidebar for slotted (sub-)admins. Dashboard ("") and absolute paths stay visible.
-  // Billing reuses the `subscription` permission key.
-  // Billing shares the `subscription` gate; academic structure is unlocked by either
-  // the new `academic` permission or the legacy `classes` permission.
+  // ---- Navigation: max 8 hubs per portal, related pages become hub tabs. ----
+  // Modules that a school has switched off hide their destinations (tabs), not
+  // whole sidebar rows.
+  const enabledTos = new Set(
+    (enabledModules ?? [])
+      .flatMap(m => m.sidebar)
+      .filter(i => i.roles.includes(activeRole))
+      .map(i => i.to)
+  );
+  const manifestTos = new Set(
+    MODULE_MANIFESTS.flatMap(m => m.sidebar)
+      .filter(i => i.roles.includes(activeRole))
+      .map(i => i.to)
+  );
+  const moduleHidden = (to: string) =>
+    enabledTos.size > 0 && manifestTos.has(to) && !enabledTos.has(to);
+  // Sub-admins only see what their slot allows. Billing reuses `subscription`;
+  // academic structure accepts the legacy `classes` key.
   const permKeyFor = (to: string) => (to === "billing" ? "subscription" : to);
-  const filteredItems = activeRole === "admin" && !isFullAdmin
-    ? items.filter(it => {
-        if (!it.to || it.to.startsWith("/")) return true;
-        if (it.to === "academic") return allowed.has("academic") || allowed.has("classes");
-        return allowed.has(permKeyFor(it.to));
-      })
-    : items;
-  // Hide Transport / Bus tracking / Driver mode entries when the feature flag is off.
-  const busGatedItems = (busFlagLoading || busTrackingEnabled !== false)
-    ? filteredItems
-    : filteredItems.filter(it => it.to !== "transport" && it.to !== "/app/driver/trip");
-  // Group items into sections preserving the role-defined order within each group.
-  const grouped = new Map<string, typeof items>();
-  busGatedItems.forEach((it) => {
-    const key = sectionFor(it.to);
-    if (!grouped.has(key)) grouped.set(key, [] as any);
-    (grouped.get(key) as any).push(it);
-  });
-  // Apply deterministic ordering inside the AI section so every portal lists
-  // AI tools in the same sequence.
-  if (grouped.has("Copilot")) grouped.set("Copilot", sortAI(grouped.get("Copilot") as any) as any);
-  const orderedSections = [
-    ...SECTION_ORDER.filter(s => grouped.has(s)),
-    ...Array.from(grouped.keys()).filter(s => !SECTION_ORDER.includes(s)),
-  ];
+  const permAllows = (to: string) => {
+    if (activeRole !== "admin" || isFullAdmin) return true;
+    if (!to || to.startsWith("/")) return true;
+    if (to === "academic") return allowed.has("academic") || allowed.has("classes");
+    return allowed.has(permKeyFor(to));
+  };
+  const busHidden = (to: string) =>
+    !busFlagLoading && busTrackingEnabled === false &&
+    (to === "transport" || to === "/app/driver/trip");
+  const visible = (to: string) => permAllows(to) && !busHidden(to) && !moduleHidden(to);
+
+  const hubs: NavHub[] = PORTAL_NAV[activeRole]
+    .map(h => ({ ...h, tabs: h.tabs.filter(t => visible(t.to)) }))
+    .filter(h => (h.to !== undefined ? visible(h.to) : h.tabs.length > 0));
   const userLabel = displayName || email || "User";
   const initials = userLabel.split(/[\s@]/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase();
   // Show the slot's assigned role name for sub-admins, otherwise the portal role.
