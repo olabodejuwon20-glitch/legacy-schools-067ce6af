@@ -337,6 +337,15 @@ export default function AppLayout() {
     })),
   }));
 
+  // Which hub owns the current route (drives sidebar highlight + tab bar).
+  const afterRole = pathname.split(`/app/${activeRole}`)[1] ?? "";
+  const currentSeg = afterRole.replace(/^\//, "").split("/")[0] ?? "";
+  const matchesSeg = (to: string) =>
+    to.startsWith("/") ? pathname.endsWith(to) : to === currentSeg;
+  const activeHub =
+    hubs.find(h => hubSegments(h).some(s => (s === "" ? currentSeg === "" && !afterRole.replace(/^\//, "") : matchesSeg(s))))
+    ?? undefined;
+
   // Dynamic search — everyone can search announcements/exams/assignments;
   // admin & teacher additionally get the people & classes directory.
   const canDirectorySearch = activeRole === "admin" || activeRole === "teacher";
