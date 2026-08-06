@@ -526,20 +526,29 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <div className="space-y-5">
-            {orderedSections.map((section) => (
-            <SidebarSection
-              key={section}
-              section={section}
-              items={(grouped.get(section) ?? []) as any}
-              collapsed={collapsed}
-              isFirstSection={section === orderedSections[0]}
-              activeRole={activeRole}
-              schoolSlug={school.slug}
-              pathname={pathname}
-              onNavigate={() => setMobileOpen(false)}
-            />
-          ))}
+          <div className="space-y-1">
+            {hubs.map((hub) => {
+              const Icon = hub.icon;
+              const isActive = activeHub?.key === hub.key;
+              return (
+                <NavLink
+                  key={hub.key}
+                  to={pathFor(hubTarget(hub))}
+                  title={collapsed ? hub.label : undefined}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                    collapsed && "justify-center px-0"
+                  )}
+                >
+                  <Icon className="size-[18px] shrink-0" />
+                  {!collapsed && <span className="truncate">{hub.label}</span>}
+                </NavLink>
+              );
+            })}
           </div>
         </nav>
 
