@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useEnabledModules } from "@/modules/useModules";
+import { MODULE_MANIFESTS } from "@/modules/registry";
+import { PORTAL_NAV, hubTarget, hubSegments, type NavHub } from "@/layouts/portalNav";
 import { useFeatureFlag } from "@/lib/featureFlags";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
