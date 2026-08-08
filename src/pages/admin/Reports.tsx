@@ -7,7 +7,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { FileBarChart, FileText, Package, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { exportBrandedPDF } from "@/lib/exporters";
+import { ExportMenu } from "@/components/ExportMenu";
+import type { BrandedPDFOptions } from "@/lib/exporters";
 import { fetchResultSlip } from "@/lib/slip";
 import { toast } from "sonner";
 import JSZip from "jszip";
@@ -72,11 +73,7 @@ export default function AdminReports() {
     } finally { setZipping(false); setZipProgress(null); }
   }
 
-  const exportAction = (
-    <div className="flex items-center gap-2">
-      <Button size="sm" variant="outline" disabled={!perfData.length && !att.length}
-        onClick={() => {
-          exportBrandedPDF({
+  const analyticsData = (): BrandedPDFOptions => ({
             title: "School Analytics Report",
             subtitle: "Performance and attendance overview",
             schoolName: school?.name,
@@ -90,8 +87,11 @@ export default function AdminReports() {
               { kind: "table", heading: "Attendance distribution", headers: ["Status", "Count"], rows: att.map(a => [a.name, a.value]) },
             ],
             footerNote: "School analytics",
-          });
-        }}><FileText className="size-4" /> <span className="hidden sm:inline ml-1">PDF</span></Button>
+  });
+
+  const exportAction = (
+    <div className="flex items-center gap-2">
+      <ExportMenu data={analyticsData} disabled={!perfData.length && !att.length} />
     </div>
   );
 
