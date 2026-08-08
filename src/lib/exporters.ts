@@ -429,25 +429,26 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
       .page{padding:0 18mm 24mm;}
       .hero{margin:0 -18mm 18px;padding:22px 18mm 18px;}
       .footer{padding:8px 18mm;}
-      .cover{height:auto;min-height:auto;page-break-after:always;}
-      .cover-inner{min-height:248mm;padding:24mm 18mm;}
-      .cover-title{font-size:40px;}
+      thead{display:table-header-group;}
+      tr,.stat,.block{page-break-inside:avoid;}
     }
   </style></head><body>
-    ${coverHTML}
     <div class="page">
       <header class="hero">
         ${logoTag}
         <div class="hero-text">
-          <div class="eyebrow">${escapeHtml(opts.schoolName || "Legacy Schools")}</div>
+          <div class="eyebrow">${escapeHtml(opts.schoolName || "Legacy Schools")} · Official report</div>
           <h1>${escapeHtml(opts.title)}</h1>
           ${opts.subtitle ? `<p class="sub">${escapeHtml(opts.subtitle)}</p>` : ""}
         </div>
         <div class="hero-meta">
           <div>${escapeHtml(generated)}</div>
-          <div>Official document</div>
+          ${opts.generatedBy ? `<div>${escapeHtml(opts.generatedBy)}</div>` : ""}
         </div>
       </header>
+      ${metaHTML}
+      ${filtersHTML}
+      ${tocHTML}
       ${statsHTML}
       ${sectionsHTML}
       ${bodyHTML}
