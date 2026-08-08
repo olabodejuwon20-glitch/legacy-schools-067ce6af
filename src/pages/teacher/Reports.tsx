@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { FileBarChart, Users, Target, TrendingUp, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { exportBrandedPDF } from "@/lib/exporters";
+import { ExportMenu } from "@/components/ExportMenu";
+import type { BrandedPDFOptions } from "@/lib/exporters";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -40,8 +41,7 @@ export default function TeacherReports() {
     return <SectionCard title="Class performance"><EmptyState icon={FileBarChart} title="No results recorded yet" desc="\u00a0" /></SectionCard>;
   }
 
-  const exportPDF = () => {
-    exportBrandedPDF({
+  const reportData = (): BrandedPDFOptions => ({
       title: "Class Performance Report",
       subtitle: "NECO-aligned analytics",
       schoolName: school?.name,
@@ -59,8 +59,7 @@ export default function TeacherReports() {
         rows: bySubj.map(b => [b.subject, b.avg + "%", b.grade, b.credit + "%"]),
       }],
       footerNote: "Class performance report",
-    });
-  };
+  });
 
   return (
     <div className="space-y-6">
@@ -71,7 +70,7 @@ export default function TeacherReports() {
         </div>
         <div className="flex gap-2">
           {school && rs.length > 0 && <ReportCommentDialog schoolId={school.id} results={rs as any} />}
-          <Button size="sm" variant="outline" onClick={exportPDF}><FileText className="size-4" /> <span className="hidden sm:inline ml-1">PDF</span></Button>
+          <ExportMenu data={reportData} disabled={!rs.length} />
         </div>
       </div>
 
