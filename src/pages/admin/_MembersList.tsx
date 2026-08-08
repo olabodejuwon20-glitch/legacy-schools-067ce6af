@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { exportBrandedPDF } from "@/lib/exporters";
+import { ExportMenu } from "@/components/ExportMenu";
+import type { BrandedPDFOptions } from "@/lib/exporters";
 import { cacheGet, cacheSet } from "@/lib/dataCache";
 import { publicEmail, publicEmailForSearch, publicInitials, publicContact } from "@/lib/identity";
 
@@ -68,7 +69,7 @@ export default function MembersList({ role, tone }: { role: Role; tone: Tone }) 
   const Icon = role === "student" ? Users : GraduationCap;
   const title = role === "student" ? "Students" : "Teachers";
 
-  function exportPDF() {
+  function directoryData(): BrandedPDFOptions {
     const headers = role === "student"
       ? ["Name", "Email", "Class", "Phone", "Joined"]
       : ["Name", "Email", "Subjects", "Phone", "Joined"];
@@ -76,7 +77,7 @@ export default function MembersList({ role, tone }: { role: Role; tone: Tone }) 
       ? [r.full_name || "—", publicEmail(r.email) || "—", r.profile_data?.grade_level || "—", r.phone || "—", new Date(r.created_at).toLocaleDateString()]
       : [r.full_name || "—", publicEmail(r.email) || "—", (r.profile_data?.subjects || []).join(", ") || "—", r.phone || "—", new Date(r.created_at).toLocaleDateString()]
     );
-    exportBrandedPDF({
+    return {
       title: `${title} Directory`,
       subtitle: `${filtered.length} ${role}${filtered.length === 1 ? "" : "s"}`,
       schoolName: school?.name,
@@ -84,7 +85,7 @@ export default function MembersList({ role, tone }: { role: Role; tone: Tone }) 
       stats: [{ label: `Total ${role}s`, value: String(filtered.length) }],
       sections: [{ kind: "table", heading: title, headers, rows: tableRows }],
       footerNote: `${title} directory · Confidential`,
-    });
+    };
   }
 
   return (
@@ -93,9 +94,7 @@ export default function MembersList({ role, tone }: { role: Role; tone: Tone }) 
       description={isLoading ? "Loading…" : `${rows.length} ${role === "student" ? "enrolled" : "active"}`}
       action={
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={exportPDF} disabled={!filtered.length}>
-            <FileText className="size-4" /> <span className="hidden sm:inline ml-1">PDF</span>
-          </Button>
+          <ExportMenu data={directoryData} disabled={!filtered.length} />
         </div>
       }
     >
