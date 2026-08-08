@@ -275,10 +275,6 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
   const logoTag = opts.schoolLogo
     ? `<img src="${escapeHtml(opts.schoolLogo)}" alt="" crossorigin="anonymous" />`
     : `<div class="logo-fallback">${escapeHtml((opts.schoolName || "LS").slice(0, 2).toUpperCase())}</div>`;
-  const coverLogoTag = opts.schoolLogo
-    ? `<img src="${escapeHtml(opts.schoolLogo)}" alt="" crossorigin="anonymous" class="cover-logo" />`
-    : `<div class="cover-logo logo-fallback">${escapeHtml((opts.schoolName || "LS").slice(0, 2).toUpperCase())}</div>`;
-
   // Assign anchor ids to table sections with headings so the TOC can link to them
   const sectionList = opts.sections || [];
   const headedSections = sectionList
