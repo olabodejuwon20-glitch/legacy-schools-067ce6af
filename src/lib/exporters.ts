@@ -93,57 +93,140 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Export the same branded report as a Word (.doc) document. */
-export function exportBrandedWord(opts: BrandedPDFOptions) {
-  const brand = opts.brandColor || "#4f46e5";
+/**
+ * Export the branded report as a real Office Open XML (.docx) document.
+ * Generated with the `docx` library so Word, Google Docs and mobile viewers
+ * all open it natively (an HTML file renamed .doc is reported as corrupt).
+ */
+export async function exportBrandedWord(opts: BrandedPDFOptions) {
+  const {
+    Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    AlignmentType, BorderStyle, WidthType, ShadingType, HeadingLevel,
+  } = await import("docx");
+
+  const brand = (opts.brandColor || "#4f46e5").replace("#", "");
   const generated = new Date().toLocaleString();
-  const meta = [
-    opts.role ? `Role: ${escapeHtml(opts.role)}` : "",
-    opts.generatedBy ? `Prepared by: ${escapeHtml(opts.generatedBy)}` : "",
-    `Generated: ${escapeHtml(generated)}`,
-  ].filter(Boolean).join(" &nbsp;·&nbsp; ");
+  const CONTENT_W = 9360; // US Letter, 1" margins
+  const border = { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" };
+  const borders = { top: border, bottom: border, left: border, right: border };
+  const margins = { top: 80, bottom: 80, left: 120, right: 120 };
 
-  const filtersHTML = opts.filters?.length
-    ? `<p style="font-size:11pt;color:#475569;">${opts.filters.map(f => `<b>${escapeHtml(f.label)}:</b> ${escapeHtml(f.value)}`).join(" &nbsp;·&nbsp; ")}</p>`
-    : "";
+  const cell = (text: string, w: number, o: { bold?: boolean; head?: boolean; size?: number; color?: string } = {}) =>
+    new TableCell({
+      borders,
+      margins,
+      width: { size: w, type: WidthType.DXA },
+      shading: { fill: o.head ? brand : "FFFFFF", type: ShadingType.CLEAR, color: "auto" },
+      children: [new Paragraph({ children: [new TextRun({
+        text: text ?? "",
+        bold: o.bold ?? o.head,
+        size: o.size ?? 20,
+        color: o.color ?? (o.head ? "FFFFFF" : "0F172A"),
+      })] })],
+    });
 
-  const statsHTML = opts.stats?.length
-    ? `<table style="width:100%;border-collapse:collapse;margin:12pt 0;"><tr>${opts.stats.map(s => `
-        <td style="border:1px solid #e2e8f0;padding:8pt;vertical-align:top;">
-          <div style="font-size:9pt;color:#64748b;text-transform:uppercase;">${escapeHtml(s.label)}</div>
-          <div style="font-size:16pt;font-weight:bold;">${escapeHtml(s.value)}</div>
-          ${s.hint ? `<div style="font-size:9pt;color:#64748b;">${escapeHtml(s.hint)}</div>` : ""}
-        </td>`).join("")}</tr></table>`
-    : "";
+  const children: any[] = [];
 
-  const sectionsHTML = (opts.sections || []).map(sectionHTML).join("");
+  children.push(new Paragraph({ children: [new TextRun({
+    text: (opts.schoolName || "Legacy Schools").toUpperCase(), size: 18, bold: true, color: "64748B",
+  })] }));
+  children.push(new Paragraph({
+    heading: HeadingLevel.HEADING_1,
+    children: [new TextRun({ text: opts.title, bold: true, size: 40, color: brand })],
+  }));
+  if (opts.subtitle) {
+    children.push(new Paragraph({ children: [new TextRun({ text: opts.subtitle, size: 22, color: "475569" })] }));
+  }
+  const metaBits = [
+    opts.role ? `Role: ${opts.role}` : "",
+    opts.generatedBy ? `Prepared by: ${opts.generatedBy}` : "",
+    `Generated: ${generated}`,
+  ].filter(Boolean).join("   •   ");
+  children.push(new Paragraph({
+    spacing: { after: 200 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: brand, space: 6 } },
+    children: [new TextRun({ text: metaBits, size: 18, color: "64748B" })],
+  }));
 
-  const html = `<!doctype html>
-  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-  <head><meta charset="utf-8"><title>${escapeHtml(opts.title)}</title>
-  <style>
-    @page { size: A4; margin: 2cm; }
-    body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:11pt;}
-    h1{font-size:20pt;margin:0 0 4pt;color:${brand};}
-    h3{font-size:12pt;margin:16pt 0 6pt;color:${brand};text-transform:uppercase;}
-    table{width:100%;border-collapse:collapse;font-size:10pt;}
-    th{background:${brand};color:#fff;padding:6pt 8pt;text-align:left;font-size:9pt;text-transform:uppercase;}
-    td{border:1px solid #e2e8f0;padding:6pt 8pt;}
-  </style></head><body>
-    <div style="font-size:10pt;color:#64748b;letter-spacing:1pt;text-transform:uppercase;">${escapeHtml(opts.schoolName || "Legacy Schools")}</div>
-    <h1>${escapeHtml(opts.title)}</h1>
-    ${opts.subtitle ? `<p style="font-size:11pt;color:#475569;margin:0 0 6pt;">${escapeHtml(opts.subtitle)}</p>` : ""}
-    <p style="font-size:9.5pt;color:#64748b;">${meta}</p>
-    ${filtersHTML}
-    ${statsHTML}
-    ${sectionsHTML}
-    ${opts.body || ""}
-    <p style="margin-top:18pt;font-size:9pt;color:#64748b;border-top:1px solid #e2e8f0;padding-top:6pt;">
-      ${escapeHtml(opts.schoolName || "Legacy Schools")} · ${escapeHtml(opts.footerNote || "Generated by Legacy Schools")}
-    </p>
-  </body></html>`;
+  if (opts.filters?.length) {
+    children.push(new Paragraph({
+      spacing: { after: 160 },
+      children: [new TextRun({
+        text: opts.filters.map(f => `${f.label}: ${f.value}`).join("   •   "),
+        size: 18, color: "475569", italics: true,
+      })],
+    }));
+  }
 
-  downloadBlob(new Blob(["\ufeff" + html], { type: "application/msword" }), `${slugFile(opts.title)}.doc`);
+  if (opts.stats?.length) {
+    const cols = opts.stats.length;
+    const w = Math.floor(CONTENT_W / cols);
+    const widths = Array.from({ length: cols }, (_, i) => (i === cols - 1 ? CONTENT_W - w * (cols - 1) : w));
+    children.push(new Paragraph({ spacing: { before: 120, after: 80 }, children: [new TextRun({ text: "SUMMARY", bold: true, size: 20, color: brand })] }));
+    children.push(new Table({
+      width: { size: CONTENT_W, type: WidthType.DXA },
+      columnWidths: widths,
+      rows: [new TableRow({
+        children: opts.stats.map((s, i) => new TableCell({
+          borders, margins,
+          width: { size: widths[i], type: WidthType.DXA },
+          shading: { fill: "F8FAFC", type: ShadingType.CLEAR, color: "auto" },
+          children: [
+            new Paragraph({ children: [new TextRun({ text: String(s.label).toUpperCase(), size: 16, color: "64748B", bold: true })] }),
+            new Paragraph({ children: [new TextRun({ text: String(s.value), size: 28, bold: true, color: "0F172A" })] }),
+            ...(s.hint ? [new Paragraph({ children: [new TextRun({ text: s.hint, size: 16, color: "64748B" })] })] : []),
+          ],
+        })),
+      })],
+    }));
+  }
+
+  (opts.sections || []).forEach(s => {
+    if (s.kind !== "table") return;
+    if (s.heading) {
+      children.push(new Paragraph({
+        spacing: { before: 300, after: 100 },
+        children: [new TextRun({ text: s.heading.toUpperCase(), bold: true, size: 22, color: brand })],
+      }));
+    }
+    const cols = Math.max(1, s.headers.length);
+    const w = Math.floor(CONTENT_W / cols);
+    const widths = Array.from({ length: cols }, (_, i) => (i === cols - 1 ? CONTENT_W - w * (cols - 1) : w));
+    children.push(new Table({
+      width: { size: CONTENT_W, type: WidthType.DXA },
+      columnWidths: widths,
+      rows: [
+        new TableRow({
+          tableHeader: true,
+          children: s.headers.map((h, i) => cell(String(h), widths[i], { head: true, size: 18 })),
+        }),
+        ...s.rows.map(r => new TableRow({
+          children: widths.map((cw, i) => cell(r[i] === undefined || r[i] === null ? "" : String(r[i]), cw)),
+        })),
+      ],
+    }));
+  });
+
+  children.push(new Paragraph({
+    spacing: { before: 400 },
+    border: { top: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0", space: 6 } },
+    alignment: AlignmentType.LEFT,
+    children: [new TextRun({
+      text: `${opts.schoolName || "Legacy Schools"} · ${opts.footerNote || "Generated by Legacy Schools"} · ${generated}`,
+      size: 16, color: "64748B",
+    })],
+  }));
+
+  const doc = new Document({
+    styles: { default: { document: { run: { font: "Arial", size: 22 } } } },
+    sections: [{
+      properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
+      children,
+    }],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  downloadBlob(blob, `${slugFile(opts.title)}.docx`);
 }
 
 /** Export the branded report's tabular data as CSV (all table sections). */
@@ -192,10 +275,6 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
   const logoTag = opts.schoolLogo
     ? `<img src="${escapeHtml(opts.schoolLogo)}" alt="" crossorigin="anonymous" />`
     : `<div class="logo-fallback">${escapeHtml((opts.schoolName || "LS").slice(0, 2).toUpperCase())}</div>`;
-  const coverLogoTag = opts.schoolLogo
-    ? `<img src="${escapeHtml(opts.schoolLogo)}" alt="" crossorigin="anonymous" class="cover-logo" />`
-    : `<div class="cover-logo logo-fallback">${escapeHtml((opts.schoolName || "LS").slice(0, 2).toUpperCase())}</div>`;
-
   // Assign anchor ids to table sections with headings so the TOC can link to them
   const sectionList = opts.sections || [];
   const headedSections = sectionList
@@ -210,47 +289,30 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
   }).join("");
 
   const filtersHTML = opts.filters?.length
-    ? `<div class="cover-block">
-        <div class="cover-block-title">Filters applied</div>
-        <div class="cover-chips">${opts.filters.map(f =>
+    ? `<div class="block">
+        <div class="block-title">Filters applied</div>
+        <div class="chips">${opts.filters.map(f =>
           `<span class="chip"><b>${escapeHtml(f.label)}:</b> ${escapeHtml(f.value)}</span>`
         ).join("")}</div>
       </div>`
     : "";
 
   const tocHTML = headedSections.length > 1
-    ? `<div class="cover-block">
-        <div class="cover-block-title">Contents</div>
+    ? `<div class="block">
+        <div class="block-title">Contents</div>
         <ol class="toc">${headedSections.map(h =>
           `<li><a href="#${h.id}">${escapeHtml(h.heading)}</a></li>`
         ).join("")}</ol>
       </div>`
     : "";
 
-  const coverHTML = `
-    <section class="cover">
-      <div class="cover-bg"></div>
-      <div class="cover-inner">
-        <div class="cover-brand">
-          ${coverLogoTag}
-          <div class="cover-school">${escapeHtml(opts.schoolName || "Legacy Schools")}</div>
-        </div>
-        <div class="cover-title-wrap">
-          <div class="cover-eyebrow">Official Report</div>
-          <h1 class="cover-title">${escapeHtml(opts.title)}</h1>
-          ${opts.subtitle ? `<p class="cover-sub">${escapeHtml(opts.subtitle)}</p>` : ""}
-        </div>
-        <div class="cover-meta-grid">
-          ${opts.role ? `<div><div class="cover-meta-label">Role</div><div class="cover-meta-value">${escapeHtml(opts.role)}</div></div>` : ""}
-          ${opts.generatedBy ? `<div><div class="cover-meta-label">Prepared by</div><div class="cover-meta-value">${escapeHtml(opts.generatedBy)}</div></div>` : ""}
-          <div><div class="cover-meta-label">Generated</div><div class="cover-meta-value">${escapeHtml(generated)}</div></div>
-        </div>
-        ${filtersHTML}
-        ${tocHTML}
-        <div class="cover-footer">${escapeHtml(opts.footerNote || "Generated by Legacy Schools")}</div>
-      </div>
-    </section>
-  `;
+  const metaHTML = `
+    <div class="meta-grid">
+      ${opts.role ? `<div><div class="meta-label">Role</div><div class="meta-value">${escapeHtml(opts.role)}</div></div>` : ""}
+      ${opts.generatedBy ? `<div><div class="meta-label">Prepared by</div><div class="meta-value">${escapeHtml(opts.generatedBy)}</div></div>` : ""}
+      <div><div class="meta-label">Generated</div><div class="meta-value">${escapeHtml(generated)}</div></div>
+      <div><div class="meta-label">Document</div><div class="meta-value">Official report</div></div>
+    </div>`;
 
   const statsHTML = opts.stats?.length
     ? `<div class="stat-grid">${opts.stats.map(s => `
@@ -278,36 +340,20 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
     body{font-family:'Inter',ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#fff;}
     .page{padding:0 36px 80px;}
 
-    /* ---------- Cover page ---------- */
-    .cover{position:relative;height:100vh;min-height:980px;page-break-after:always;overflow:hidden;color:#fff;}
-    .cover-bg{position:absolute;inset:0;background:
-      radial-gradient(1200px 600px at 110% -10%, rgba(255,255,255,.18), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, rgba(255,255,255,.12), transparent 55%),
-      linear-gradient(135deg,var(--brand) 0%,var(--brand-dark) 100%);}
-    .cover-inner{position:relative;height:100%;display:flex;flex-direction:column;padding:56px 56px 48px;gap:28px;}
-    .cover-brand{display:flex;align-items:center;gap:14px;}
-    .cover-logo{width:64px;height:64px;border-radius:16px;object-fit:cover;background:#fff;color:var(--brand);
-      display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;letter-spacing:.04em;
-      box-shadow:0 10px 24px -10px rgba(0,0,0,.45);}
-    .cover-school{font-size:15px;font-weight:600;letter-spacing:.02em;opacity:.95;}
-    .cover-title-wrap{margin-top:8px;}
-    .cover-eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.18em;opacity:.85;margin-bottom:10px;}
-    .cover-title{font-size:46px;line-height:1.08;margin:0 0 12px;font-weight:800;letter-spacing:-.02em;max-width:680px;}
-    .cover-sub{font-size:16px;opacity:.92;margin:0;max-width:620px;line-height:1.5;}
-    .cover-meta-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:8px;
-      background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:16px 18px;backdrop-filter:blur(4px);}
-    .cover-meta-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;opacity:.8;margin-bottom:4px;}
-    .cover-meta-value{font-size:14px;font-weight:600;}
-    .cover-block{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:16px 18px;}
-    .cover-block-title{font-size:11px;text-transform:uppercase;letter-spacing:.14em;opacity:.85;margin-bottom:10px;font-weight:600;}
-    .cover-chips{display:flex;flex-wrap:wrap;gap:8px;}
-    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
-      background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);font-size:12px;}
-    .chip b{font-weight:600;opacity:.85;font-size:11px;text-transform:uppercase;letter-spacing:.06em;}
-    .toc{margin:0;padding-left:20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 24px;}
-    .toc li{font-size:13px;line-height:1.5;}
-    .toc a{color:#fff;text-decoration:none;border-bottom:1px dashed rgba(255,255,255,.4);}
-    .cover-footer{margin-top:auto;font-size:11px;opacity:.8;letter-spacing:.04em;border-top:1px solid rgba(255,255,255,.2);padding-top:14px;}
+    /* ---------- meta + info blocks (compact, on white) ---------- */
+    .meta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 16px;
+      border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--soft);}
+    .meta-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:2px;font-weight:600;}
+    .meta-value{font-size:12px;font-weight:600;color:var(--ink);}
+    .block{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 16px;}
+    .block-title{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px;font-weight:700;}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+      background:var(--soft);border:1px solid var(--line);font-size:11.5px;color:var(--ink);}
+    .chip b{font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em;}
+    .toc{margin:0;padding-left:18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 24px;}
+    .toc li{font-size:12px;line-height:1.5;}
+    .toc a{color:var(--brand-dark);text-decoration:none;}
 
     /* gradient header */
     .hero{
@@ -379,25 +425,26 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
       .page{padding:0 18mm 24mm;}
       .hero{margin:0 -18mm 18px;padding:22px 18mm 18px;}
       .footer{padding:8px 18mm;}
-      .cover{height:auto;min-height:auto;page-break-after:always;}
-      .cover-inner{min-height:248mm;padding:24mm 18mm;}
-      .cover-title{font-size:40px;}
+      thead{display:table-header-group;}
+      tr,.stat,.block{page-break-inside:avoid;}
     }
   </style></head><body>
-    ${coverHTML}
     <div class="page">
       <header class="hero">
         ${logoTag}
         <div class="hero-text">
-          <div class="eyebrow">${escapeHtml(opts.schoolName || "Legacy Schools")}</div>
+          <div class="eyebrow">${escapeHtml(opts.schoolName || "Legacy Schools")} · Official report</div>
           <h1>${escapeHtml(opts.title)}</h1>
           ${opts.subtitle ? `<p class="sub">${escapeHtml(opts.subtitle)}</p>` : ""}
         </div>
         <div class="hero-meta">
           <div>${escapeHtml(generated)}</div>
-          <div>Official document</div>
+          ${opts.generatedBy ? `<div>${escapeHtml(opts.generatedBy)}</div>` : ""}
         </div>
       </header>
+      ${metaHTML}
+      ${filtersHTML}
+      ${tocHTML}
       ${statsHTML}
       ${sectionsHTML}
       ${bodyHTML}

@@ -28,9 +28,9 @@ type Props = {
 
 /** Unified export control — PDF, Word and CSV from a single branded payload. */
 export function ExportMenu({ data, disabled, label = "Export", size = "sm", variant = "outline", className }: Props) {
-  const run = (fn: (o: BrandedPDFOptions) => void, kind: string) => {
+  const run = async (fn: (o: BrandedPDFOptions) => void | Promise<void>, kind: string) => {
     try {
-      fn(data());
+      await fn(data());
       toast.success(`${kind} export ready`);
     } catch {
       toast.error(`Could not create the ${kind} export`);
@@ -52,7 +52,7 @@ export function ExportMenu({ data, disabled, label = "Export", size = "sm", vari
           <FileText className="size-4 mr-2" /> PDF document
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => run(exportBrandedWord, "Word")}>
-          <FileType className="size-4 mr-2" /> Word (.doc)
+          <FileType className="size-4 mr-2" /> Word (.docx)
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => run(exportBrandedCSV, "CSV")}>
           <Sheet className="size-4 mr-2" /> CSV spreadsheet
