@@ -3,7 +3,8 @@ import { FileBarChart, TrendingUp, Award, Target, FileText, GraduationCap } from
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { exportBrandedPDF } from "@/lib/exporters";
+import { ExportMenu } from "@/components/ExportMenu";
+import type { BrandedPDFOptions } from "@/lib/exporters";
 import { toast } from "sonner";
 import { ResultSlipButton } from "@/components/results/ResultSlipButton";
 import { SchoolResultCard } from "@/components/results/SchoolResultCard";
@@ -69,8 +70,7 @@ export default function StudentResults() {
           <p className="text-sm text-muted-foreground">School exams (published), plus your NECO &amp; JAMB mock attempts</p>
         </div>
         <div className="hidden sm:flex gap-2">
-          <Button size="sm" variant="outline" disabled={!filtered.length}
-            onClick={() => exportBrandedPDF({
+          <ExportMenu disabled={!filtered.length} data={(): BrandedPDFOptions => ({
               title: "Academic Report",
               subtitle: "My results",
               schoolName: school?.name,
@@ -88,9 +88,7 @@ export default function StudentResults() {
                 rows: filtered.map(r => [r.subject, Math.round(Number(r.score)) + "%", necoGrade(Number(r.score)), r.term, new Date(r.created_at).toLocaleDateString()]),
               }],
               footerNote: "Student academic report",
-            })}>
-            <FileText className="size-4" /> <span className="hidden sm:inline ml-1">PDF</span>
-          </Button>
+          })} />
         </div>
       </div>
 
