@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { FileBarChart, TrendingUp, Target, Award, FileText, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { exportBrandedPDF } from "@/lib/exporters";
+import { ExportMenu } from "@/components/ExportMenu";
+import type { BrandedPDFOptions } from "@/lib/exporters";
 import { downloadResultSlip } from "@/lib/slip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,10 +56,9 @@ export default function ParentResults() {
           <p className="text-sm text-muted-foreground">Your child's NECO-aligned performance</p>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" disabled={!childRows.length}
-            onClick={() => {
+          <ExportMenu disabled={!childRows.length} data={(): BrandedPDFOptions => {
               const childName = kids.find(k => k.id === active)?.name || "Child";
-              exportBrandedPDF({
+              return {
                 title: "Academic Report",
                 subtitle: childName,
                 schoolName: school?.name,
@@ -76,10 +76,8 @@ export default function ParentResults() {
                   rows: childRows.map(r => [r.subject, Math.round(Number(r.score)) + "%", necoGrade(Number(r.score)), r.term, new Date(r.created_at).toLocaleDateString()]),
                 }],
                 footerNote: `Academic report · ${childName}`,
-              });
-            }}>
-            <FileText className="size-4" /> <span className="hidden sm:inline ml-1">PDF</span>
-          </Button>
+              };
+          }} />
           <Button size="sm" disabled={!childRows.length || slipLoading || !active}
             onClick={async () => {
               if (!active) return;
