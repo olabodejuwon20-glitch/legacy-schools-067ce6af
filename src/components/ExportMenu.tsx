@@ -15,6 +15,7 @@ import {
   exportBrandedCSV,
   type BrandedPDFOptions,
 } from "@/lib/exporters";
+import { useExportBrand } from "@/lib/exportBrand";
 
 type Props = {
   /** Builds the report payload lazily so data is always fresh at click time. */
@@ -28,9 +29,26 @@ type Props = {
 
 /** Unified export control — PDF, Word and CSV from a single branded payload. */
 export function ExportMenu({ data, disabled, label = "Export", size = "sm", variant = "outline", className }: Props) {
+  const brand = useExportBrand();
+
+  /** Merge the school's template (logo, colors, typography) into the payload. */
+  const branded = (): BrandedPDFOptions => {
+    const o = data();
+    return {
+      ...o,
+      schoolName: o.schoolName ?? brand.schoolName,
+      schoolLogo: o.schoolLogo ?? brand.schoolLogo,
+      brandColor: o.brandColor ?? brand.brandColor,
+      brandDark: o.brandDark ?? brand.brandDark,
+      accentColor: o.accentColor ?? brand.accentColor,
+      fontFamily: o.fontFamily ?? brand.fontFamily,
+      wordFont: o.wordFont ?? brand.wordFont,
+    };
+  };
+
   const run = async (fn: (o: BrandedPDFOptions) => void | Promise<void>, kind: string) => {
     try {
-      await fn(data());
+      await fn(branded());
       toast.success(`${kind} export ready`);
     } catch {
       toast.error(`Could not create the ${kind} export`);
