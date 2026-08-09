@@ -62,6 +62,14 @@ export type BrandedPDFOptions = {
   schoolName?: string;
   schoolLogo?: string | null;
   brandColor?: string; // hex, default Legacy Schools indigo
+  /** Darker shade used for gradients/headings. Defaults to a derived shade. */
+  brandDark?: string;
+  /** Secondary school colour, used for accents. */
+  accentColor?: string;
+  /** CSS font stack applied to PDF output. */
+  fontFamily?: string;
+  /** Single font name used for the Word document. */
+  wordFont?: string;
   stats?: Array<{ label: string; value: string | number; hint?: string }>;
   sections?: BrandedSection[];
   /** Raw HTML body, appended after stats + sections. Optional. */
