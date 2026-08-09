@@ -342,6 +342,8 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
     :root{
       --brand:${brand};
       --brand-dark:${brandDark};
+      --accent:${accent};
+      --font:${fontStack};
       --ink:#0f172a;
       --muted:#64748b;
       --line:#e2e8f0;
@@ -349,7 +351,7 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
     }
     *{box-sizing:border-box;}
     html,body{margin:0;padding:0;}
-    body{font-family:'Inter',ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#fff;}
+    body{font-family:var(--font);color:var(--ink);background:#fff;}
     .page{padding:0 36px 80px;}
 
     /* ---------- meta + info blocks (compact, on white) ---------- */
@@ -399,7 +401,7 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
       position:relative;overflow:hidden;
     }
     .stat::before{
-      content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--brand);
+      content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);
     }
     .stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;}
     .stat-value{font-size:22px;font-weight:700;margin-top:4px;color:var(--ink);}
@@ -419,7 +421,7 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
     /* legacy compatibility for old .grid/.card/.value markup */
     .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:4px 0 18px;}
     .card{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:linear-gradient(180deg,#fff,#f8fafc);position:relative;overflow:hidden;}
-    .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--brand);}
+    .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);}
     .label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;}
     .value{font-size:22px;font-weight:700;margin-top:4px;color:var(--ink);}
 
