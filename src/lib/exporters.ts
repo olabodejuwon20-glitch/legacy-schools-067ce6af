@@ -113,6 +113,8 @@ export async function exportBrandedWord(opts: BrandedPDFOptions) {
   } = await import("docx");
 
   const brand = (opts.brandColor || "#4f46e5").replace("#", "");
+  const accent = (opts.accentColor || opts.brandColor || "#4f46e5").replace("#", "");
+  const wordFont = opts.wordFont || "Arial";
   const generated = new Date().toLocaleString();
   const CONTENT_W = 9360; // US Letter, 1" margins
   const border = { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" };
@@ -226,7 +228,7 @@ export async function exportBrandedWord(opts: BrandedPDFOptions) {
   }));
 
   const doc = new Document({
-    styles: { default: { document: { run: { font: "Arial", size: 22 } } } },
+    styles: { default: { document: { run: { font: wordFont, size: 22 } } } },
     sections: [{
       properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
       children,
