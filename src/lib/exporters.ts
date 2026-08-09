@@ -154,7 +154,7 @@ export async function exportBrandedWord(opts: BrandedPDFOptions) {
   ].filter(Boolean).join("   •   ");
   children.push(new Paragraph({
     spacing: { after: 200 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: brand, space: 6 } },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: accent, space: 6 } },
     children: [new TextRun({ text: metaBits, size: 18, color: "64748B" })],
   }));
 
@@ -278,7 +278,9 @@ const slugifyHeading = (s: string, i: number) =>
 
 export function exportBrandedPDF(opts: BrandedPDFOptions) {
   const brand = opts.brandColor || "#4f46e5"; // indigo-600
-  const brandDark = "#3730a3";
+  const brandDark = opts.brandDark || "#3730a3";
+  const accent = opts.accentColor || brand;
+  const fontStack = opts.fontFamily || "'Inter',ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
   const w = window.open("", "_blank", "width=960,height=760");
   if (!w) return;
   const generated = new Date().toLocaleString();
