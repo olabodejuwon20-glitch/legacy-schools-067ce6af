@@ -62,6 +62,14 @@ export type BrandedPDFOptions = {
   schoolName?: string;
   schoolLogo?: string | null;
   brandColor?: string; // hex, default Legacy Schools indigo
+  /** Darker shade used for gradients/headings. Defaults to a derived shade. */
+  brandDark?: string;
+  /** Secondary school colour, used for accents. */
+  accentColor?: string;
+  /** CSS font stack applied to PDF output. */
+  fontFamily?: string;
+  /** Single font name used for the Word document. */
+  wordFont?: string;
   stats?: Array<{ label: string; value: string | number; hint?: string }>;
   sections?: BrandedSection[];
   /** Raw HTML body, appended after stats + sections. Optional. */
@@ -105,6 +113,8 @@ export async function exportBrandedWord(opts: BrandedPDFOptions) {
   } = await import("docx");
 
   const brand = (opts.brandColor || "#4f46e5").replace("#", "");
+  const accent = (opts.accentColor || opts.brandColor || "#4f46e5").replace("#", "");
+  const wordFont = opts.wordFont || "Arial";
   const generated = new Date().toLocaleString();
   const CONTENT_W = 9360; // US Letter, 1" margins
   const border = { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" };
@@ -144,7 +154,7 @@ export async function exportBrandedWord(opts: BrandedPDFOptions) {
   ].filter(Boolean).join("   •   ");
   children.push(new Paragraph({
     spacing: { after: 200 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: brand, space: 6 } },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: accent, space: 6 } },
     children: [new TextRun({ text: metaBits, size: 18, color: "64748B" })],
   }));
 
@@ -218,7 +228,7 @@ export async function exportBrandedWord(opts: BrandedPDFOptions) {
   }));
 
   const doc = new Document({
-    styles: { default: { document: { run: { font: "Arial", size: 22 } } } },
+    styles: { default: { document: { run: { font: wordFont, size: 22 } } } },
     sections: [{
       properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
       children,
@@ -268,7 +278,9 @@ const slugifyHeading = (s: string, i: number) =>
 
 export function exportBrandedPDF(opts: BrandedPDFOptions) {
   const brand = opts.brandColor || "#4f46e5"; // indigo-600
-  const brandDark = "#3730a3";
+  const brandDark = opts.brandDark || "#3730a3";
+  const accent = opts.accentColor || brand;
+  const fontStack = opts.fontFamily || "'Inter',ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
   const w = window.open("", "_blank", "width=960,height=760");
   if (!w) return;
   const generated = new Date().toLocaleString();
@@ -330,6 +342,8 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
     :root{
       --brand:${brand};
       --brand-dark:${brandDark};
+      --accent:${accent};
+      --font:${fontStack};
       --ink:#0f172a;
       --muted:#64748b;
       --line:#e2e8f0;
@@ -337,7 +351,7 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
     }
     *{box-sizing:border-box;}
     html,body{margin:0;padding:0;}
-    body{font-family:'Inter',ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#fff;}
+    body{font-family:var(--font);color:var(--ink);background:#fff;}
     .page{padding:0 36px 80px;}
 
     /* ---------- meta + info blocks (compact, on white) ---------- */
@@ -387,7 +401,7 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
       position:relative;overflow:hidden;
     }
     .stat::before{
-      content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--brand);
+      content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);
     }
     .stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;}
     .stat-value{font-size:22px;font-weight:700;margin-top:4px;color:var(--ink);}
@@ -407,7 +421,7 @@ export function exportBrandedPDF(opts: BrandedPDFOptions) {
     /* legacy compatibility for old .grid/.card/.value markup */
     .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:4px 0 18px;}
     .card{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:linear-gradient(180deg,#fff,#f8fafc);position:relative;overflow:hidden;}
-    .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--brand);}
+    .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);}
     .label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;}
     .value{font-size:22px;font-weight:700;margin-top:4px;color:var(--ink);}
 
