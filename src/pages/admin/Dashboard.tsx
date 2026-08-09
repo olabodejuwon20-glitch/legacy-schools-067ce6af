@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/dashboard/SectionCard";
 import { EmptyState } from "@/components/EmptyState";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { PilotWidget } from "@/components/pilot/PilotWidget";
+import { SoftClearButton } from "@/components/SoftClearButton";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -22,6 +23,19 @@ export default function AdminDashboard() {
   const [attendanceSummary, setAttendanceSummary] = useState<{ present: number; absent: number; late: number }>({ present: 0, absent: 0, late: 0 });
   const [topStudents, setTopStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activityClearedAt, setActivityClearedAt] = useState<number>(0);
+
+  useEffect(() => {
+    if (!school) return;
+    const v = localStorage.getItem(`activityClearedAt:${school.id}`);
+    setActivityClearedAt(v ? Number(v) : 0);
+  }, [school]);
+
+  const ACTIVITY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+  const visibleActivities = activities.filter(a => {
+    const t = new Date(a.created_at).getTime();
+    return t > Date.now() - ACTIVITY_WINDOW_MS && t > activityClearedAt;
+  });
 
   useEffect(() => {
     if (!school) return;
@@ -146,11 +160,25 @@ export default function AdminDashboard() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Recent Activities">
-          {activities.length === 0
-            ? <EmptyState icon={Activity} title="No activity yet" />
+        <SectionCard
+          title="Recent Activities"
+          description="Activity older than 30 days clears automatically."
+          action={visibleActivities.length > 0 ? (
+            <SoftClearButton
+              title="Clear recent activities?"
+              description="This just clears the activity feed from your dashboard view. Your student, staff and school records stay untouched."
+              onClear={() => {
+                const now = Date.now();
+                if (school) localStorage.setItem(`activityClearedAt:${school.id}`, String(now));
+                setActivityClearedAt(now);
+              }}
+            />
+          ) : undefined}
+        >
+          {visibleActivities.length === 0
+            ? <EmptyState icon={Activity} title="No activity in the last 30 days" />
             : <ul className="space-y-3">
-                {activities.slice(0,5).map((a, i) => (
+                {visibleActivities.slice(0,5).map((a, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm">
                     <div className="size-8 rounded-lg bg-primary/10 grid place-items-center shrink-0"><UserPlus className="size-4 text-primary" /></div>
                     <div className="min-w-0 flex-1">

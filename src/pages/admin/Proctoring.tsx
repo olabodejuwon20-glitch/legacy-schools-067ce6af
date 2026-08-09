@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { SoftClearButton } from "@/components/SoftClearButton";
 
 type AttemptRow = {
   id: string;
@@ -103,7 +104,29 @@ export default function Proctoring() {
   }, [school]);
 
   return (
-    <SectionCard title="Proctoring review">
+    <SectionCard
+      title="Proctoring review"
+      action={
+        <div className="flex items-center gap-1">
+          {liveFeed.length > 0 && (
+            <SoftClearButton
+              label="Clear live feed"
+              title="Clear the live violation feed?"
+              description="This only clears the on-screen feed. Recorded violations and snapshots remain saved for review."
+              onClear={() => setLiveFeed([])}
+            />
+          )}
+          {rows.length > 0 && (
+            <SoftClearButton
+              label="Clear list"
+              title="Clear the attempts list?"
+              description="This hides the attempts from this view until you refresh. Nothing is deleted from the exam records."
+              onClear={() => setRows([])}
+            />
+          )}
+        </div>
+      }
+    >
       {liveFeed.length > 0 && (
         <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
           <div className="flex items-center gap-2 text-xs font-semibold text-destructive mb-2">
