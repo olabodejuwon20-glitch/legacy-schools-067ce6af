@@ -82,7 +82,6 @@ const TradUnlockResult = lazy(() => import("./pages/shared/TradUnlockResult"));
 const SubscriptionCallback = lazy(() => import("./pages/SubscriptionCallback"));
 const HelpPage = lazy(() => import("./pages/Help"));
 const LibraryManager = lazy(() => import("./pages/shared/LibraryManager"));
-const Inbox = lazy(() => import("./pages/shared/Inbox"));
 const CommsHub = lazy(() => import("./pages/comms/Hub"));
 const CommsInbox = lazy(() => import("./pages/comms/views/InboxView"));
 const CommsDM = lazy(() => import("./pages/comms/views/DMView"));
@@ -94,7 +93,6 @@ const CommsTemplates = lazy(() => import("./pages/comms/views/TemplatesView"));
 const CommsScheduled = lazy(() => import("./pages/comms/views/ScheduledView"));
 const CommsNotifications = lazy(() => import("./pages/comms/views/NotificationsView"));
 const CommsAnalytics = lazy(() => import("./pages/comms/views/AnalyticsView"));
-const CommsParentAlerts = lazy(() => import("./pages/comms/views/ParentAlertsView"));
 
 const TeacherDashboard = lazy(() => import("./pages/teacher/Dashboard"));
 const TeacherClasses = lazy(() => import("./pages/teacher/Classes"));
@@ -104,7 +102,6 @@ const Grading = lazy(() => import("./pages/teacher/Grading"));
 const TeacherStudents = lazy(() => import("./pages/teacher/Students"));
 const TeacherParents = lazy(() => import("./pages/teacher/Parents"));
 const TeacherCalendar = lazy(() => import("./pages/teacher/Calendar"));
-const TeacherMessages = lazy(() => import("./pages/teacher/Messages"));
 const TeacherResources = lazy(() => import("./pages/teacher/Resources"));
 const TeacherReports = lazy(() => import("./pages/teacher/Reports"));
 const TeacherLessonPlan = lazy(() => import("./pages/teacher/LessonPlan"));
@@ -129,7 +126,6 @@ const TeacherAIMarking = lazy(() => import("./pages/teacher/AIMarking"));
 const StudentCalendar = lazy(() => import("./pages/student/Calendar"));
 const StudentLessonNotes = lazy(() => import("./pages/student/LessonNotes"));
 const StudentAssignments = lazy(() => import("./pages/student/Assignments"));
-const StudentMessages = lazy(() => import("./pages/student/Messages"));
 const StudentFees = lazy(() => import("./pages/student/Fees"));
 const StudentBehavior = lazy(() => import("./pages/student/Behavior"));
 const StudentGradebook = lazy(() => import("./pages/student/Gradebook"));
@@ -151,7 +147,6 @@ const ParentResults = lazy(() => import("./pages/parent/Results"));
 const ParentAttendance = lazy(() => import("./pages/parent/Attendance"));
 const ParentActivity = lazy(() => import("./pages/parent/Activity"));
 const ParentFees = lazy(() => import("./pages/parent/Fees"));
-const ParentMessages = lazy(() => import("./pages/parent/Messages"));
 const ParentCalendar = lazy(() => import("./pages/parent/Calendar"));
 const ParentBehavior = lazy(() => import("./pages/parent/Behavior"));
 const ParentTeacherComms = lazy(() => import("./pages/parent/TeacherComms"));
@@ -313,7 +308,7 @@ const App = () => (
               <Route path="admin/question-bank" element={<RoleGate allow="admin"><AdminQuestionBank /></RoleGate>} />
               <Route path="admin/proctoring" element={<RoleGate allow="admin"><PremiumGate feature="CBT Pro · Proctoring" description="Live exam proctoring, lockdown mode, and violation analytics."><AdminProctoring /></PremiumGate></RoleGate>} />
               <Route path="admin/modules" element={<RoleGate allow="admin"><AdminModules /></RoleGate>} />
-              <Route path="admin/inbox" element={<RoleGate allow="admin"><Inbox /></RoleGate>} />
+              <Route path="admin/inbox" element={<Navigate to="../admin/communication/inbox" replace />} />
               <Route path="admin/settings" element={<RoleGate allow="admin"><AdminSettings /></RoleGate>} />
               <Route path="admin/onboarding" element={<RoleGate allow="admin"><TenantOnboardingRedirect /></RoleGate>} />
               <Route path="admin/parent-alerts" element={<RoleGate allow="admin"><AdminParentAlerts /></RoleGate>} />
@@ -355,7 +350,7 @@ const App = () => (
                   <Route path="channels/:channelId" element={<CommsChannels />} />
                   <Route path="announcements" element={<CommsAnnouncements />} />
                   <Route path="broadcasts" element={<PremiumGate feature="Broadcasts" description="Multi-channel SMS/Email/Push broadcasts with templates and scheduling." soft><CommsBroadcasts /></PremiumGate>} />
-                  <Route path="parent-alerts" element={<PremiumGate feature="AI Parent Alerts" description="AI-drafted alerts for absence, low scores and behaviour." soft><CommsParentAlerts /></PremiumGate>} />
+                  <Route path="parent-alerts" element={<PremiumGate feature="AI Parent Alerts" description="AI-drafted alerts for absence, low scores and behaviour." soft><AdminParentAlerts /></PremiumGate>} />
                   <Route path="tickets" element={<CommsTickets />} />
                   <Route path="templates" element={<CommsTemplates />} />
                   <Route path="scheduled" element={<CommsScheduled />} />
@@ -365,10 +360,6 @@ const App = () => (
               ))}
 
               {/* Legacy redirects → unified hub (zero breakage) */}
-              <Route path="admin/inbox-legacy" element={<RoleGate allow="admin"><Inbox /></RoleGate>} />
-              <Route path="teacher/inbox-legacy" element={<RoleGate allow="teacher"><Inbox /></RoleGate>} />
-              <Route path="student/inbox-legacy" element={<RoleGate allow="student"><Inbox /></RoleGate>} />
-              <Route path="parent/inbox-legacy" element={<RoleGate allow="parent"><Inbox /></RoleGate>} />
 
               <Route path="teacher" element={<RoleGate allow="teacher"><TeacherDashboard /></RoleGate>} />
               <Route path="teacher/classes" element={<RoleGate allow="teacher"><TeacherClasses /></RoleGate>} />
@@ -387,12 +378,12 @@ const App = () => (
               <Route path="teacher/library" element={<RoleGate allow="teacher"><LibraryManager /></RoleGate>} />
               <Route path="teacher/resources" element={<RoleGate allow="teacher"><TeacherResources /></RoleGate>} />
               <Route path="teacher/reports" element={<RoleGate allow="teacher"><TeacherReports /></RoleGate>} />
-              <Route path="teacher/messages" element={<RoleGate allow="teacher"><TeacherMessages /></RoleGate>} />
+              <Route path="teacher/messages" element={<Navigate to="../teacher/communication/dm" replace />} />
               <Route path="teacher/assignments" element={<RoleGate allow="teacher"><TeacherAssignments /></RoleGate>} />
               <Route path="teacher/gradebook" element={<RoleGate allow="teacher"><TeacherGradebook /></RoleGate>} />
               <Route path="teacher/behavior" element={<RoleGate allow="teacher"><TeacherBehavior /></RoleGate>} />
               <Route path="teacher/parent-comms" element={<RoleGate allow="teacher"><TeacherParentComms /></RoleGate>} />
-              <Route path="teacher/inbox" element={<RoleGate allow="teacher"><Inbox /></RoleGate>} />
+              <Route path="teacher/inbox" element={<Navigate to="../teacher/communication/inbox" replace />} />
               <Route path="teacher/ai-tutor" element={<RoleGate allow="teacher"><PremiumGate feature="AI Tutor"><TeacherAITutor /></PremiumGate></RoleGate>} />
               <Route path="teacher/ai-marking" element={<RoleGate allow="teacher"><PremiumGate feature="AI Marking" description="Auto-mark theory answers with AI feedback."><TeacherAIMarking /></PremiumGate></RoleGate>} />
               <Route path="teacher/copilot" element={<RoleGate allow="teacher"><PremiumGate feature="Teaching Copilot"><AdminCopilot /></PremiumGate></RoleGate>} />
@@ -416,13 +407,13 @@ const App = () => (
               <Route path="student/gradebook" element={<RoleGate allow="student"><StudentGradebook /></RoleGate>} />
               <Route path="student/behavior" element={<RoleGate allow="student"><StudentBehavior /></RoleGate>} />
               <Route path="student/fees" element={<RoleGate allow="student"><StudentFees /></RoleGate>} />
-              <Route path="student/messages" element={<RoleGate allow="student"><StudentMessages /></RoleGate>} />
+              <Route path="student/messages" element={<Navigate to="../student/communication/dm" replace />} />
               <Route path="student/attendance" element={<RoleGate allow="student"><StudentAttendance /></RoleGate>} />
               <Route path="student/trad-exams" element={<RoleGate allow="student"><StudentTradExams /></RoleGate>} />
               <Route path="student/trad-exams/:examId" element={<RoleGate allow="student"><StudentTradExamRunner /></RoleGate>} />
               <Route path="student/trad-exams/:attemptId/result" element={<RoleGate allow="student"><StudentTradExamResult /></RoleGate>} />
               <Route path="student/exam-appeal/:attemptId" element={<RoleGate allow="student"><StudentAppealForm /></RoleGate>} />
-              <Route path="student/inbox" element={<RoleGate allow="student"><Inbox /></RoleGate>} />
+              <Route path="student/inbox" element={<Navigate to="../student/communication/inbox" replace />} />
               <Route path="student/copilot" element={<RoleGate allow="student"><PremiumGate feature="Study Copilot"><AdminCopilot /></PremiumGate></RoleGate>} />
 
               <Route path="parent" element={<RoleGate allow="parent"><ParentDashboard /></RoleGate>} />
@@ -431,11 +422,11 @@ const App = () => (
               <Route path="parent/attendance" element={<RoleGate allow="parent"><ParentAttendance /></RoleGate>} />
               <Route path="parent/activity" element={<RoleGate allow="parent"><ParentActivity /></RoleGate>} />
               <Route path="parent/fees" element={<RoleGate allow="parent"><ParentFees /></RoleGate>} />
-              <Route path="parent/messages" element={<RoleGate allow="parent"><ParentMessages /></RoleGate>} />
+              <Route path="parent/messages" element={<Navigate to="../parent/communication/dm" replace />} />
               <Route path="parent/calendar" element={<RoleGate allow="parent"><ParentCalendar /></RoleGate>} />
               <Route path="parent/behavior" element={<RoleGate allow="parent"><ParentBehavior /></RoleGate>} />
               <Route path="parent/teacher-comms" element={<RoleGate allow="parent"><ParentTeacherComms /></RoleGate>} />
-              <Route path="parent/inbox" element={<RoleGate allow="parent"><Inbox /></RoleGate>} />
+              <Route path="parent/inbox" element={<Navigate to="../parent/communication/inbox" replace />} />
               <Route path="parent/copilot" element={<RoleGate allow="parent"><PremiumGate feature="Parent Copilot"><AdminCopilot /></PremiumGate></RoleGate>} />
               <Route path="parent/transport" element={<RoleGate allow="parent"><ParentBusTracking /></RoleGate>} />
               <Route path="student/transport" element={<RoleGate allow="student"><StudentBusTracking /></RoleGate>} />

@@ -201,7 +201,7 @@ export default function ParentDashboard() {
                 { label: "Pay Fees", icon: Wallet, to: `${base}/fees`, tone: "bg-warning/10 text-warning" },
                 { label: "View Results", icon: FileBarChart, to: `${base}/results`, tone: "bg-success/10 text-success" },
                 { label: "Attendance", icon: ClipboardCheck, to: `${base}/attendance`, tone: "bg-info/10 text-info" },
-                { label: "Message Teacher", icon: MessagesSquare, to: `${base}/messages`, tone: "bg-parent/10 text-parent" },
+                { label: "Message Teacher", icon: MessagesSquare, to: `${base}/communication/dm`, tone: "bg-parent/10 text-parent" },
               ].map(q => (
                 <Link key={q.label} to={q.to} className="rounded-xl border border-border p-3 bg-card hover:shadow-soft transition flex flex-col items-center text-center gap-2">
                   <div className={`size-10 rounded-lg grid place-items-center ${q.tone}`}><q.icon className="size-5" /></div>

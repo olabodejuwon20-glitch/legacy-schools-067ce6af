@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, FileBarChart, Settings, ClipboardCheck, FilePlus2,
-  Calendar, Library, Sparkles, MessagesSquare, Wallet, Activity, UserSquare2, ListChecks,
+  Calendar, Library, Sparkles, Wallet, Activity, UserSquare2, ListChecks,
   PencilRuler, Building2, Ticket, Upload, Bus, Megaphone, NotebookPen, FolderOpen,
   BookOpenCheck, ClipboardList, BarChart3, Award, Mail, Inbox as InboxIcon, Bot, Brain,
   ShieldAlert, Gauge, BookMarked, PenLine, Receipt, Layers, GraduationCap, CreditCard,
@@ -138,7 +138,6 @@ export const PORTAL_NAV: Record<Role, NavHub[]> = {
     {
       key: "comms", label: "Communication", icon: InboxIcon, tabs: [
         { label: "Communication Hub", to: "communication", icon: InboxIcon },
-        { label: "Messages", to: "messages", icon: MessagesSquare },
         { label: "Parent Comms", to: "parent-comms", icon: Mail },
         { label: "Calendar", to: "calendar", icon: Calendar },
         { label: "Help", to: "/app/help", icon: HelpCircle },
@@ -188,7 +187,6 @@ export const PORTAL_NAV: Record<Role, NavHub[]> = {
     {
       key: "more", label: "More", icon: Home, tabs: [
         { label: "Communication", to: "communication", icon: InboxIcon },
-        { label: "Messages", to: "messages", icon: MessagesSquare },
         { label: "Fees", to: "fees", icon: Wallet },
         { label: "Bus Tracking", to: "transport", icon: Bus },
         { label: "Help", to: "/app/help", icon: HelpCircle },
@@ -206,7 +204,6 @@ export const PORTAL_NAV: Record<Role, NavHub[]> = {
       key: "comms", label: "Messages", icon: InboxIcon, tabs: [
         { label: "Communication Hub", to: "communication", icon: InboxIcon },
         { label: "Teacher Comms", to: "teacher-comms", icon: Mail },
-        { label: "Messages", to: "messages", icon: MessagesSquare },
       ],
     },
     { key: "fees", label: "Fees & Payments", icon: Wallet, to: "fees", tabs: [] },

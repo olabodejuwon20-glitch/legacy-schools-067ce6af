@@ -51,7 +51,7 @@ export function RealtimeNotifier() {
             toast(`New message from ${name}`, {
               description: (m.body || "(attachment)").slice(0, 140),
               action: activeRole
-                ? { label: "Open", onClick: () => navigate(schoolPath(school.slug, `/app/${activeRole}/messages`)) }
+                ? { label: "Open", onClick: () => navigate(schoolPath(school.slug, `/app/${activeRole}/communication/dm`)) }
                 : undefined,
             });
           }
