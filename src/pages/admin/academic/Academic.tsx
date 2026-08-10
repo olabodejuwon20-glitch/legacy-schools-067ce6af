@@ -55,13 +55,15 @@ export default function AcademicPage() {
       </header>
 
       <Tabs defaultValue="structure">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="structure">Structure</TabsTrigger>
-          <TabsTrigger value="classes">Classes &amp; Arms</TabsTrigger>
-          <TabsTrigger value="departments">Departments</TabsTrigger>
-          <TabsTrigger value="subjects">Subjects</TabsTrigger>
-          <TabsTrigger value="promotion">Promotion</TabsTrigger>
-        </TabsList>
+        <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto no-scrollbar">
+          <TabsList className="inline-flex w-max sm:w-full sm:flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger className="shrink-0 whitespace-nowrap text-xs sm:text-sm px-3" value="structure">Structure</TabsTrigger>
+            <TabsTrigger className="shrink-0 whitespace-nowrap text-xs sm:text-sm px-3" value="classes">Classes &amp; Arms</TabsTrigger>
+            <TabsTrigger className="shrink-0 whitespace-nowrap text-xs sm:text-sm px-3" value="departments">Departments</TabsTrigger>
+            <TabsTrigger className="shrink-0 whitespace-nowrap text-xs sm:text-sm px-3" value="subjects">Subjects</TabsTrigger>
+            <TabsTrigger className="shrink-0 whitespace-nowrap text-xs sm:text-sm px-3" value="promotion">Promotion</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="structure" className="mt-4"><StructureTab mayEdit={mayEdit} /></TabsContent>
         <TabsContent value="classes" className="mt-4"><ClassesTab mayEdit={mayEdit} /></TabsContent>
