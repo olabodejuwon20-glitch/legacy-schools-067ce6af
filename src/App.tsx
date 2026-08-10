@@ -359,7 +359,7 @@ const App = () => (
                 </Route>
               ))}
 
-              {/* Legacy redirects → unified hub (zero breakage) */}</RoleGate>} /></RoleGate>} /></RoleGate>} /></RoleGate>} />
+              {/* Legacy redirects → unified hub (zero breakage) */}
 
               <Route path="teacher" element={<RoleGate allow="teacher"><TeacherDashboard /></RoleGate>} />
               <Route path="teacher/classes" element={<RoleGate allow="teacher"><TeacherClasses /></RoleGate>} />
