@@ -105,7 +105,7 @@ export function NotificationBell() {
         </div>
         <div className="max-h-96 overflow-y-auto">
           {(unreadDMs + unreadMsgIds.length) > 0 && school && activeRole && (
-            <NavLink to={schoolPath(school.slug, `/app/${activeRole}/messages`)}
+            <NavLink to={schoolPath(school.slug, `/app/${activeRole}/communication/dm`)}
               className="block px-4 py-3 hover:bg-secondary border-b border-border/60">
               <div className="text-sm font-medium">
                 {unreadDMs + unreadMsgIds.length} unread message{(unreadDMs + unreadMsgIds.length) === 1 ? "" : "s"}
