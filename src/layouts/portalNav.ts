@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, FileBarChart, Settings, ClipboardCheck, FilePlus2,
-  Calendar, Library, Sparkles, MessagesSquare, Wallet, Activity, UserSquare2, ListChecks,
+  Calendar, Library, Sparkles, Wallet, Activity, UserSquare2, ListChecks,
   PencilRuler, Building2, Ticket, Upload, Bus, Megaphone, NotebookPen, FolderOpen,
   BookOpenCheck, ClipboardList, BarChart3, Award, Mail, Inbox as InboxIcon, Bot, Brain,
   ShieldAlert, Gauge, BookMarked, PenLine, Receipt, Layers, GraduationCap, CreditCard,
