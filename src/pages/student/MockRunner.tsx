@@ -284,15 +284,15 @@ function ExamShell(props: any) {
     modeLabel, ModeIcon, preferFullscreen, lockdown, sessionId, subjects, activeSubject, setActiveSubject, activeSubjectMeta,
     subjectQuestions, answers, activeIdx, setActiveIdx, answeredInSubject,
     totalAnswered, totalQuestions, secondsLeft, isSubmitted, submitting, onSubmit, onForceSubmit,
-    currentQ, onSelect, onToggleMark, onNextSubject,
+    currentQ, onSelect, onToggleMark, onNextSubject, durationMinutes,
   } = props;
   const shellRef = useRef<HTMLDivElement>(null);
   const [isFs, setIsFs] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     const sync = () => setIsFs(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", sync);
-    // Auto-enter fullscreen when in lockdown or the student opted in.
     if (preferFullscreen || lockdown) shellRef.current?.requestFullscreen?.().catch(() => {});
     return () => document.removeEventListener("fullscreenchange", sync);
   }, [preferFullscreen, lockdown]);
@@ -314,7 +314,50 @@ function ExamShell(props: any) {
     else shellRef.current?.requestFullscreen?.().catch(() => {});
   }
 
-  const lowTime = secondsLeft < 300;
+  // Keyboard shortcuts: A–D answer, arrows navigate, F flags.
+  useEffect(() => {
+    if (isSubmitted || confirmOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && /input|textarea|select/i.test(t.tagName)) return;
+      if (!currentQ) return;
+      const opts = (currentQ.options as string[]) ?? [];
+      const k = e.key.toLowerCase();
+      if (k >= "a" && k <= "z") {
+        const idx = k.charCodeAt(0) - 97;
+        if (idx < opts.length) { e.preventDefault(); onSelect(idx); return; }
+        if (k === "f") { e.preventDefault(); onToggleMark(!answers[currentQ.id]?.marked); return; }
+      }
+      if (k === "f") { e.preventDefault(); onToggleMark(!answers[currentQ.id]?.marked); return; }
+      if (e.key === "ArrowRight") { e.preventDefault(); setActiveIdx(Math.min(subjectQuestions.length - 1, activeIdx + 1)); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); setActiveIdx(Math.max(0, activeIdx - 1)); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [currentQ, answers, activeIdx, subjectQuestions.length, isSubmitted, confirmOpen, onSelect, onToggleMark, setActiveIdx]);
+
+  const paletteItems = subjectQuestions.map((q: Question) => ({
+    key: q.id,
+    answered: answers[q.id]?.selected_index != null,
+    flagged: !!answers[q.id]?.marked,
+  }));
+  const unanswered = paletteItems.map((p, i) => (p.answered ? -1 : i)).filter((i) => i >= 0);
+  const flaggedIdx = paletteItems.map((p, i) => (p.flagged ? i : -1)).filter((i) => i >= 0);
+
+  const subjectSwitcher = (
+    <div className="flex flex-wrap gap-1.5">
+      {subjects.map((s: any) => (
+        <button key={s.id} type="button"
+          onClick={() => setActiveSubject(s.id)}
+          className={cn(
+            "px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors",
+            s.id === activeSubject ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:border-primary/40"
+          )}>
+          {s.name}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div ref={shellRef} className={cn(
@@ -323,70 +366,43 @@ function ExamShell(props: any) {
         ? "fixed inset-0 z-50"
         : "-mx-4 sm:-mx-6 -my-4 sm:-my-6 min-h-[calc(100vh-4rem)]",
     )}>
-      {/* Minimal top bar */}
       <header className="shrink-0 border-b border-border bg-card/80 backdrop-blur">
-        <div className="flex items-center gap-3 px-4 sm:px-6 h-14">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="size-7 grid place-items-center rounded-md bg-primary/15 shrink-0">
-              <ModeIcon className="size-4 text-primary" />
-            </div>
-            <div className="leading-tight min-w-0 hidden sm:block">
-              <div className="font-semibold text-sm truncate">{activeSubjectMeta?.name ?? modeLabel}</div>
-              <div className="text-[10px] text-muted-foreground truncate">{totalAnswered}/{totalQuestions} answered</div>
-            </div>
-            {lockdown && !isSubmitted && (
-              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success/10 text-success border border-success/30">
-                <ShieldCheck className="size-3" /> Proctored
-              </span>
-            )}
-          </div>
-
-          <div className="ml-auto flex items-center gap-2">
-            <div className={cn(
-              "px-3 py-1 rounded-full font-mono text-base sm:text-lg font-bold tabular-nums border",
-              lowTime ? "text-destructive border-destructive/40 bg-destructive/5 animate-pulse" : "text-foreground border-border bg-background"
-            )}>
-              {fmtClock(secondsLeft)}
-            </div>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button size="sm" variant="outline" className="px-2.5" aria-label="Question navigator">
-                  <ListChecks className="size-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[88vw] max-w-[360px] overflow-y-auto">
-                <SheetHeader><SheetTitle>Navigator</SheetTitle></SheetHeader>
-                <div className="mt-4 space-y-4">
-                  <div className="flex flex-wrap gap-1.5">
-                    {subjects.map((s: any) => (
-                      <button key={s.id} type="button"
-                        onClick={() => setActiveSubject(s.id)}
-                        className={cn(
-                          "px-2 py-1 rounded text-[11px] font-medium border",
-                          s.id === activeSubject ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
-                        )}>
-                        {s.name}
-                      </button>
-                    ))}
+        <ExamCommandBar
+          title={activeSubjectMeta?.name ?? modeLabel}
+          subtitle={`${modeLabel} · ${totalAnswered}/${totalQuestions} answered`}
+          icon={<div className="size-8 grid place-items-center rounded-md bg-primary/15 shrink-0"><ModeIcon className="size-4 text-primary" /></div>}
+          badges={lockdown && !isSubmitted ? (
+            <span className="ml-2 hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success/10 text-success border border-success/30">
+              <ShieldCheck className="size-3" /> Proctored
+            </span>
+          ) : null}
+          remaining={secondsLeft}
+          total={Math.max(1, (durationMinutes ?? 60) * 60)}
+          actions={
+            <>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button size="sm" variant="outline" className="px-2.5 lg:hidden" aria-label="Question navigator">
+                    <ListChecks className="size-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="max-h-[75vh] overflow-y-auto rounded-t-2xl">
+                  <SheetHeader><SheetTitle>Navigator</SheetTitle></SheetHeader>
+                  <div className="mt-4 space-y-4">
+                    {subjectSwitcher}
+                    <QuestionPalette items={paletteItems} activeIndex={activeIdx} onJump={setActiveIdx} compact />
                   </div>
-                  <NavigatorGrid
-                    subjectQuestions={subjectQuestions}
-                    answers={answers}
-                    activeIdx={activeIdx}
-                    setActiveIdx={setActiveIdx}
-                    answeredInSubject={answeredInSubject}
-                  />
-                </div>
-              </SheetContent>
-            </Sheet>
-            <Button size="sm" variant="ghost" onClick={toggleFs} aria-label="Toggle fullscreen" className="px-2">
-              {isFs ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
-            </Button>
-            <Button size="sm" onClick={onSubmit} disabled={submitting || isSubmitted}>
-              <CheckCircle2 className="size-4 sm:mr-1.5" /> <span className="hidden sm:inline">Submit</span>
-            </Button>
-          </div>
-        </div>
+                </SheetContent>
+              </Sheet>
+              <Button size="sm" variant="ghost" onClick={toggleFs} aria-label="Toggle fullscreen" className="px-2 hidden sm:inline-flex">
+                {isFs ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+              </Button>
+              <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={submitting || isSubmitted}>
+                <CheckCircle2 className="size-4 sm:mr-1.5" /> <span className="hidden sm:inline">Submit</span>
+              </Button>
+            </>
+          }
+        />
         {lockdown && lastWarning && !isSubmitted && (
           <div className="px-4 sm:px-6 py-1.5 text-[11px] flex items-center gap-1.5 bg-warning/10 text-warning border-t border-warning/30">
             <AlertTriangle className="size-3.5" />
@@ -396,118 +412,90 @@ function ExamShell(props: any) {
         )}
       </header>
 
-      {/* Centered, distraction-free question */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="min-h-full flex items-center justify-center px-4 py-8 sm:py-12">
-          {currentQ ? (
-            <div className="w-full max-w-2xl">
-              <div className="flex items-center justify-between mb-4 text-xs text-muted-foreground">
-                <span className="font-semibold tracking-wide uppercase">
-                  Question {activeIdx + 1} <span className="opacity-60">/ {subjectQuestions.length}</span>
-                </span>
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <Checkbox
-                    checked={!!answers[currentQ.id]?.marked}
-                    onCheckedChange={(v) => onToggleMark(!!v)}
-                  />
-                  Mark for review
-                </label>
-              </div>
+      <div className="flex-1 min-h-0 flex">
+        <main className="flex-1 overflow-y-auto">
+          <div className="px-4 py-8 sm:py-12">
+            {currentQ ? (
+              <QuestionCanvas
+                index={activeIdx}
+                total={subjectQuestions.length}
+                prompt={currentQ.prompt}
+                actions={
+                  <button
+                    type="button"
+                    onClick={() => onToggleMark(!answers[currentQ.id]?.marked)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors",
+                      answers[currentQ.id]?.marked
+                        ? "border-warning/40 bg-warning/10 text-warning"
+                        : "border-border text-muted-foreground hover:border-primary/40",
+                    )}
+                  >
+                    <Flag className="size-3.5" />
+                    {answers[currentQ.id]?.marked ? "Flagged" : "Flag"}
+                  </button>
+                }
+              >
+                <OptionList
+                  options={(currentQ.options as string[]) ?? []}
+                  selected={answers[currentQ.id]?.selected_index}
+                  onSelect={onSelect}
+                  disabled={isSubmitted}
+                />
 
-              <h2 className="text-lg sm:text-2xl font-medium leading-relaxed text-foreground mb-8 whitespace-pre-wrap break-words">
-                {currentQ.prompt}
-              </h2>
-
-              <div className="space-y-3">
-                {(currentQ.options as string[]).map((opt, oi) => {
-                  const chosen = answers[currentQ.id]?.selected_index === oi;
-                  return (
-                    <button key={oi} type="button" disabled={isSubmitted}
-                      onClick={() => onSelect(oi)}
-                      className={cn(
-                        "w-full text-left rounded-xl border px-4 py-3.5 transition-all flex items-center gap-3",
-                        chosen
-                          ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-                          : "border-border hover:border-primary/40 hover:bg-secondary/40",
-                      )}
-                    >
-                      <span className={cn(
-                        "size-8 grid place-items-center rounded-full text-sm font-semibold border shrink-0 transition-colors",
-                        chosen ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground"
-                      )}>{String.fromCharCode(65 + oi)}</span>
-                      <span className="text-sm sm:text-base break-words">{opt}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex items-center justify-between mt-10 gap-2">
-                <Button variant="ghost" size="lg" disabled={activeIdx === 0}
-                  onClick={() => setActiveIdx(Math.max(0, activeIdx - 1))}>
-                  ← Previous
-                </Button>
-                {activeIdx < subjectQuestions.length - 1 ? (
-                  <Button size="lg" onClick={() => setActiveIdx(Math.min(subjectQuestions.length - 1, activeIdx + 1))}>
-                    Next →
+                <div className="flex items-center justify-between mt-10 gap-2">
+                  <Button variant="outline" size="lg" disabled={activeIdx === 0}
+                    onClick={() => setActiveIdx(Math.max(0, activeIdx - 1))}>
+                    ← Previous
                   </Button>
-                ) : (
-                  <Button size="lg" onClick={onNextSubject}>Next subject →</Button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="text-muted-foreground text-center">No questions in this subject.</div>
-          )}
-        </div>
-      </main>
+                  {activeIdx < subjectQuestions.length - 1 ? (
+                    <Button size="lg" onClick={() => setActiveIdx(Math.min(subjectQuestions.length - 1, activeIdx + 1))}>
+                      Next →
+                    </Button>
+                  ) : (
+                    <Button size="lg" onClick={onNextSubject}>Next subject →</Button>
+                  )}
+                </div>
+              </QuestionCanvas>
+            ) : (
+              <div className="text-muted-foreground text-center">No questions in this subject.</div>
+            )}
+          </div>
+        </main>
 
-      {/* Slim progress bar */}
+        {/* Desktop right rail */}
+        <aside className="hidden lg:flex w-72 shrink-0 border-l border-border bg-card/40 p-4 flex-col gap-4 overflow-y-auto">
+          {subjects.length > 1 && (
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Subjects</div>
+              {subjectSwitcher}
+            </div>
+          )}
+          <QuestionPalette items={paletteItems} activeIndex={activeIdx} onJump={setActiveIdx} />
+          <div className="mt-auto text-[11px] text-muted-foreground">
+            {answeredInSubject} answered in this subject · {totalAnswered}/{totalQuestions} overall
+          </div>
+        </aside>
+      </div>
+
       <footer className="shrink-0 border-t border-border bg-card/80">
         <div className="h-1 bg-secondary">
           <div className="h-full bg-primary transition-all"
             style={{ width: `${(totalAnswered / Math.max(1, totalQuestions)) * 100}%` }} />
         </div>
       </footer>
+
+      <SubmitSummaryDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        total={subjectQuestions.length}
+        answered={subjectQuestions.length - unanswered.length}
+        unanswered={unanswered}
+        flagged={flaggedIdx}
+        onJump={setActiveIdx}
+        onConfirm={onSubmit}
+        submitting={submitting}
+      />
     </div>
   );
 }
-
-function NavigatorGrid({ subjectQuestions, answers, activeIdx, setActiveIdx, answeredInSubject }: {
-  subjectQuestions: Question[]; answers: AnswerMap; activeIdx: number;
-  setActiveIdx: (i: number) => void; answeredInSubject: number;
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="font-semibold text-sm">Questions</div>
-        <span className="text-xs text-muted-foreground">{subjectQuestions.length}</span>
-      </div>
-      <div className="grid grid-cols-5 gap-2">
-        {subjectQuestions.map((q, i) => {
-          const a = answers[q.id];
-          const isCurrent = i === activeIdx;
-          const cls = isCurrent ? "bg-primary text-primary-foreground border-primary"
-            : a?.marked ? "bg-warning text-warning-foreground border-warning"
-            : a?.selected_index != null ? "bg-success text-success-foreground border-success"
-            : "bg-background border-border";
-          return (
-            <button key={q.id} type="button" onClick={() => setActiveIdx(i)}
-              className={cn("size-9 rounded-md text-xs font-semibold border transition-all", cls)}>
-              {i + 1}
-            </button>
-          );
-        })}
-      </div>
-      <div>
-        <div className="flex items-center justify-between text-xs">
-          <span>Progress</span>
-          <span className="text-success font-semibold">{answeredInSubject} / {subjectQuestions.length}</span>
-        </div>
-        <div className="h-2 mt-1.5 rounded-full bg-secondary overflow-hidden">
-          <div className="h-full bg-success transition-all" style={{ width: `${(answeredInSubject / Math.max(1, subjectQuestions.length)) * 100}%` }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
