@@ -97,23 +97,42 @@ export default function Practice() {
 
 function FileList({ items, onOpen, emptyLabel }: { items: any[]; onOpen: (r: any) => void; emptyLabel: string }) {
   if (!items.length) return <EmptyState icon={FileText} title="Nothing here" desc={emptyLabel} />;
+  const groups = items.reduce<Record<string, any[]>>((acc, f) => {
+    const key = f.category || "General";
+    (acc[key] ||= []).push(f);
+    return acc;
+  }, {});
   return (
-    <ul className="divide-y divide-border">
-      {items.map(f => (
-        <li key={f.id} className="py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="size-10 rounded-lg bg-primary/10 grid place-items-center shrink-0"><FileText className="size-5 text-primary" /></div>
-            <div className="min-w-0">
-              <div className="font-medium truncate">{f.name}</div>
-              <div className="text-xs text-muted-foreground flex items-center gap-2">
-                {f.category && <Badge variant="secondary" className="text-[10px]">{f.category}</Badge>}
-                <span>{(Number(f.size_bytes || 0) / 1024).toFixed(1)} KB</span>
-              </div>
-            </div>
+    <div className="space-y-6">
+      {Object.entries(groups).map(([category, files]) => (
+        <div key={category}>
+          <div className="flex items-center gap-2 mb-2.5">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{category}</h3>
+            <Badge variant="secondary" className="text-[10px]">{files.length}</Badge>
           </div>
-          <Button size="sm" variant="outline" onClick={() => onOpen(f)}><ExternalLink className="size-4 mr-1.5" /> Study</Button>
-        </li>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {files.map(f => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => onOpen(f)}
+                className="text-left rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:shadow-sm group"
+              >
+                <div className="size-10 rounded-lg bg-primary/10 grid place-items-center mb-3">
+                  <FileText className="size-5 text-primary" />
+                </div>
+                <div className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">{f.name}</div>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>{(Number(f.size_bytes || 0) / 1024).toFixed(1)} KB</span>
+                  <span className="inline-flex items-center gap-1 text-primary font-medium">
+                    Study <ExternalLink className="size-3" />
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
