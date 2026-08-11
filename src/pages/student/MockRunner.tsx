@@ -170,7 +170,6 @@ export default function MockRunner() {
   async function submit(auto = false) {
     if (!session || isSubmitted) return;
     if (submittingRef.current) return; // guard against rapid double-clicks
-    if (!auto && !confirm("Submit your mock? You won't be able to change your answers.")) return;
     submittingRef.current = true;
     setSubmitting(true);
     const toastId = toast.loading(auto ? "Time up — submitting your answers…" : "Submitting your answers…");
