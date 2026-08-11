@@ -288,6 +288,23 @@ export default function MockPicker() {
               </div>
             </div>
 
+            {/* Pre-flight readiness */}
+            <div className="mb-4 rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pre-flight check</div>
+                <div className="flex items-center gap-4 text-xs">
+                  <span className="tabular-nums"><strong>{chosenCount || 0}</strong>/{rule.pick} subjects</span>
+                  <span className="tabular-nums"><strong>{(chosenCount || rule.pick) * perSubject}</strong> questions</span>
+                  <span className="tabular-nums"><strong>{rule.minutes}</strong> min</span>
+                </div>
+              </div>
+              <ul className="mt-3 grid sm:grid-cols-3 gap-2 text-xs">
+                <ReadyItem ok={chosenCount === rule.pick} label={chosenCount === rule.pick ? "Subjects selected" : `Pick ${rule.pick - chosenCount} more subject(s)`} />
+                <ReadyItem ok={typeof navigator !== "undefined" ? navigator.onLine : true} label="Connection stable" />
+                <ReadyItem ok={fullscreen || lockdown} label={fullscreen || lockdown ? "Full-screen enabled" : "Full-screen off (optional)"} />
+              </ul>
+            </div>
+
             {isLoading ? (
               <div className="py-10 grid place-items-center text-muted-foreground"><Loader2 className="size-4 animate-spin" /></div>
             ) : (
@@ -358,5 +375,17 @@ export default function MockPicker() {
         </div>
       </SectionCard>
     </div>
+  );
+}
+
+function ReadyItem({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <li className={cn(
+      "flex items-center gap-2 rounded-lg border px-3 py-2",
+      ok ? "border-success/30 bg-success/5 text-success" : "border-border text-muted-foreground",
+    )}>
+      <span className={cn("size-1.5 rounded-full", ok ? "bg-success" : "bg-muted-foreground/50")} />
+      {label}
+    </li>
   );
 }
