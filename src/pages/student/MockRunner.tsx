@@ -21,14 +21,6 @@ type Subject = { id: string; code: string; name: string; color: string; sort: nu
 type Question = { id: string; subject_id: string; position: number; prompt: string; options: any };
 type AnswerMap = Record<string, { selected_index: number | null; marked: boolean }>;
 
-function fmtClock(secs: number) {
-  const s = Math.max(0, Math.floor(secs));
-  const h = Math.floor(s / 3600).toString().padStart(2, "0");
-  const m = Math.floor((s % 3600) / 60).toString().padStart(2, "0");
-  const sec = (s % 60).toString().padStart(2, "0");
-  return `${h}:${m}:${sec}`;
-}
-
 export default function MockRunner() {
   const { sessionId, slug } = useParams<{ sessionId: string; slug: string }>();
   const { school, user, displayName } = useSchool();
