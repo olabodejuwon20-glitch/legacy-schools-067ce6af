@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Clock, ArrowLeft, ArrowRight, Send, ShieldCheck, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Send, ShieldCheck, CheckCircle2, ListChecks, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
@@ -9,10 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { signedUrlForAsset } from "@/lib/tradExams";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ExamCommandBar } from "@/components/exam/ExamCommandBar";
+import { QuestionCanvas } from "@/components/exam/QuestionCanvas";
+import { OptionList } from "@/components/exam/OptionList";
+import { QuestionPalette } from "@/components/exam/QuestionPalette";
+import { SubmitSummaryDialog } from "@/components/exam/SubmitSummaryDialog";
 import { cn } from "@/lib/utils";
 
 type Q = {
@@ -35,6 +37,7 @@ export default function StudentTradExamRunner() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [done, setDone] = useState(false);
+  const [flags, setFlags] = useState<Record<string, boolean>>({});
   const submittedRef = useRef(false);
   const shellRef = useRef<HTMLDivElement>(null);
   const startTsRef = useRef<number | null>(null);
@@ -168,8 +171,6 @@ export default function StudentTradExamRunner() {
     [questions, answers]
   );
   const totalMarks = useMemo(() => questions.reduce((s, q) => s + q.q_marks, 0), [questions]);
-  const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
-  const ss = String(remaining % 60).padStart(2, "0");
 
   if (done) {
     return (
@@ -190,110 +191,128 @@ export default function StudentTradExamRunner() {
 
   const q = questions[current];
 
+  const paletteItems = questions.map(qq => {
+    const a = answers[qq.q_id];
+    return {
+      key: qq.q_id,
+      answered: qq.q_type === "mcq" ? a?.selected != null : !!(a?.text?.trim()),
+      flagged: !!flags[qq.q_id],
+    };
+  });
+  const unanswered = paletteItems.map((p, i) => (p.answered ? -1 : i)).filter(i => i >= 0);
+  const flaggedIdx = paletteItems.map((p, i) => (p.flagged ? i : -1)).filter(i => i >= 0);
+
+  const palette = (
+    <QuestionPalette items={paletteItems} activeIndex={current} onJump={setCurrent} />
+  );
+
   return (
-    <div ref={shellRef} className="min-h-screen bg-background select-none">
-      <div className="sticky top-0 z-10 bg-card border-b border-border px-4 py-3 flex items-center gap-3 flex-wrap">
-        <Badge variant="outline"><ShieldCheck className="size-3 mr-1" />Proctored</Badge>
-        <div className="font-display font-semibold">Question {current + 1} of {questions.length}</div>
-        <Badge variant="secondary">{answered}/{questions.length} answered</Badge>
-        <Badge variant="secondary">{totalMarks} total marks</Badge>
-        <div className="ml-auto flex items-center gap-2">
-          <Clock className={cn("size-4", remaining < 300 && "text-destructive animate-pulse")} />
-          <span className={cn("font-mono font-semibold", remaining < 300 && "text-destructive")}>{mm}:{ss}</span>
-          <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={submitting}>
-            <Send className="size-3.5 mr-1" />Submit
-          </Button>
-        </div>
-      </div>
+    <div ref={shellRef} className="min-h-screen bg-background select-none flex flex-col">
+      <header className="sticky top-0 z-10 bg-card/85 backdrop-blur border-b border-border">
+        <ExamCommandBar
+          title={`Question ${current + 1} of ${questions.length}`}
+          subtitle={`${answered}/${questions.length} answered · ${totalMarks} total marks`}
+          icon={<div className="size-8 grid place-items-center rounded-md bg-primary/15 shrink-0"><ShieldCheck className="size-4 text-primary" /></div>}
+          badges={<Badge variant="outline" className="ml-2 hidden sm:inline-flex"><ShieldCheck className="size-3 mr-1" />Proctored</Badge>}
+          remaining={remaining}
+          total={Math.max(1, durMinRef.current * 60)}
+          actions={
+            <>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button size="sm" variant="outline" className="px-2.5 lg:hidden" aria-label="Question navigator">
+                    <ListChecks className="size-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="max-h-[75vh] overflow-y-auto rounded-t-2xl">
+                  <SheetHeader><SheetTitle>Navigator</SheetTitle></SheetHeader>
+                  <div className="mt-4">{palette}</div>
+                </SheetContent>
+              </Sheet>
+              <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={submitting}>
+                <Send className="size-3.5 sm:mr-1" /><span className="hidden sm:inline">Submit</span>
+              </Button>
+            </>
+          }
+        />
+      </header>
 
-      <div className="max-w-3xl mx-auto p-4 space-y-4">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <Badge>{q.q_type === "mcq" ? "MCQ" : "Theory"}</Badge>
-            <Badge variant="outline">{q.q_marks} marks</Badge>
-          </div>
-          <div className="text-base mb-4 whitespace-pre-wrap">{q.q_prompt}</div>
-          {q.q_image_path && <DiagramImage path={q.q_image_path} />}
+      <div className="flex-1 flex min-h-0">
+        <main className="flex-1 overflow-y-auto px-4 py-8">
+          <QuestionCanvas
+            index={current}
+            total={questions.length}
+            prompt={q.q_prompt}
+            meta={
+              <>
+                <Badge variant="secondary" className="text-[10px]">{q.q_type === "mcq" ? "MCQ" : "Theory"}</Badge>
+                <Badge variant="outline" className="text-[10px]">{q.q_marks} marks</Badge>
+              </>
+            }
+            actions={
+              <button
+                type="button"
+                onClick={() => setFlags(f => ({ ...f, [q.q_id]: !f[q.q_id] }))}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors",
+                  flags[q.q_id] ? "border-warning/40 bg-warning/10 text-warning" : "border-border text-muted-foreground hover:border-primary/40",
+                )}
+              >
+                <Flag className="size-3.5" />{flags[q.q_id] ? "Flagged" : "Flag"}
+              </button>
+            }
+          >
+            {q.q_image_path && <DiagramImage path={q.q_image_path} />}
 
-          {q.q_type === "mcq" ? (
-            <div className="space-y-2">
-              {(q.q_options ?? []).map((opt, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setAnswer(q.q_id, { selected: idx })}
-                  className={cn(
-                    "w-full text-left p-3 rounded-lg border transition",
-                    answers[q.q_id]?.selected === idx
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover:border-primary/40"
-                  )}
-                >
-                  <span className="font-semibold mr-2">{String.fromCharCode(65 + idx)}.</span>
-                  {opt}
-                </button>
-              ))}
+            {q.q_type === "mcq" ? (
+              <OptionList
+                options={q.q_options ?? []}
+                selected={answers[q.q_id]?.selected}
+                onSelect={(idx) => setAnswer(q.q_id, { selected: idx })}
+              />
+            ) : (
+              <Textarea
+                rows={10}
+                className="text-base leading-relaxed"
+                value={answers[q.q_id]?.text ?? ""}
+                onChange={e => setAnswer(q.q_id, { text: e.target.value })}
+                placeholder="Write your answer here…"
+              />
+            )}
+
+            <div className="flex items-center justify-between mt-10 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={current === 0}>
+                <ArrowLeft className="size-4 mr-1" />Previous
+              </Button>
+              {current < questions.length - 1 ? (
+                <Button size="lg" onClick={() => setCurrent(c => Math.min(questions.length - 1, c + 1))}>
+                  Next<ArrowRight className="size-4 ml-1" />
+                </Button>
+              ) : (
+                <Button size="lg" onClick={() => setConfirmOpen(true)} disabled={submitting}>
+                  <Send className="size-4 mr-1" />Submit
+                </Button>
+              )}
             </div>
-          ) : (
-            <Textarea
-              rows={8}
-              value={answers[q.q_id]?.text ?? ""}
-              onChange={e => setAnswer(q.q_id, { text: e.target.value })}
-              placeholder="Write your answer here…"
-            />
-          )}
-        </div>
+          </QuestionCanvas>
+        </main>
 
-        <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={current === 0}>
-            <ArrowLeft className="size-4 mr-1" />Previous
-          </Button>
-          {current < questions.length - 1 ? (
-            <Button onClick={() => setCurrent(c => Math.min(questions.length - 1, c + 1))}>
-              Next<ArrowRight className="size-4 ml-1" />
-            </Button>
-          ) : (
-            <Button onClick={() => setConfirmOpen(true)} disabled={submitting}>
-              <Send className="size-4 mr-1" />Submit
-            </Button>
-          )}
-        </div>
-
-        <div className="rounded-lg border border-border bg-card p-3">
-          <div className="text-xs font-semibold uppercase text-muted-foreground mb-2">Question palette</div>
-          <div className="grid grid-cols-10 gap-1.5">
-            {questions.map((qq, i) => {
-              const a = answers[qq.q_id];
-              const filled = qq.q_type === "mcq" ? a?.selected != null : !!(a?.text?.trim());
-              return (
-                <button key={qq.q_id} onClick={() => setCurrent(i)}
-                  className={cn(
-                    "size-8 rounded text-xs font-semibold border transition",
-                    i === current ? "ring-2 ring-primary" : "",
-                    filled ? "bg-primary/15 border-primary/40 text-primary" : "bg-card border-border text-muted-foreground"
-                  )}
-                >{i + 1}</button>
-              );
-            })}
-          </div>
-        </div>
+        <aside className="hidden lg:block w-72 shrink-0 border-l border-border bg-card/40 p-4 overflow-y-auto">
+          {palette}
+        </aside>
       </div>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Submit exam?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have answered {answered} of {questions.length} questions. You cannot edit answers after submission.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep going</AlertDialogCancel>
-            <AlertDialogAction onClick={() => submit()}>
-              {submitting ? "Submitting…" : "Submit final answers"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SubmitSummaryDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        total={questions.length}
+        answered={answered}
+        unanswered={unanswered}
+        flagged={flaggedIdx}
+        onJump={setCurrent}
+        onConfirm={() => submit()}
+        submitting={submitting}
+      />
     </div>
   );
 }
