@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Award, CheckCircle2, GraduationCap, Loader2, ListChecks, Maximize2, Minimize2 } from "lucide-react";
+import { Award, CheckCircle2, GraduationCap, Loader2, ListChecks, Maximize2, Minimize2, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useExamLockdown } from "@/lib/examLockdown";
+import { ExamCommandBar } from "@/components/exam/ExamCommandBar";
+import { QuestionCanvas } from "@/components/exam/QuestionCanvas";
+import { OptionList } from "@/components/exam/OptionList";
+import { QuestionPalette } from "@/components/exam/QuestionPalette";
+import { SubmitSummaryDialog } from "@/components/exam/SubmitSummaryDialog";
 import { ShieldCheck, AlertTriangle } from "lucide-react";
 
 type Subject = { id: string; code: string; name: string; color: string; sort: number };
@@ -262,6 +266,7 @@ export default function MockRunner() {
       totalAnswered={totalAnswered}
       totalQuestions={allQuestions.length}
       secondsLeft={secondsLeft}
+      durationMinutes={session.duration_minutes}
       isSubmitted={isSubmitted}
       submitting={submitting}
       onSubmit={() => submit(false)}
