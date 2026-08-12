@@ -21,6 +21,9 @@ import { toast } from "sonner";
 import { useModuleConfig } from "@/modules/useModules";
 import { Math as MathText } from "@/components/exam/Math";
 import { TimerRing } from "@/components/exam/TimerRing";
+import { OptionList } from "@/components/exam/OptionList";
+import { QuestionPalette } from "@/components/exam/QuestionPalette";
+import { SubmitSummaryDialog } from "@/components/exam/SubmitSummaryDialog";
 import { cn } from "@/lib/utils";
 
 const LS_KEY = (attemptId: string) => `cbt:attempt:${attemptId}`;
@@ -648,30 +651,12 @@ export default function ExamInterface() {
                     <div className="text-base leading-relaxed">
                       <MathText>{q.prompt}</MathText>
                     </div>
-                    <div className="mt-5 space-y-2">
-                      {(q.options as string[]).map((o, oi) => {
-                        const isPicked = picked === oi;
-                        const letter = String.fromCharCode(65 + oi);
-                        return (
-                          <button
-                            key={oi}
-                            type="button"
-                            onClick={() => selectAnswer(q.id, oi)}
-                            className={cn(
-                              "w-full flex items-center gap-3 p-3 md:p-4 rounded-lg border text-left transition group",
-                              isPicked
-                                ? "border-success bg-success/10 ring-2 ring-success/20"
-                                : "border-border hover:border-primary/40 hover:bg-secondary/50",
-                            )}
-                          >
-                            <span className={cn(
-                              "size-8 shrink-0 rounded-full grid place-items-center font-semibold text-sm border transition",
-                              isPicked ? "bg-success text-success-foreground border-success" : "bg-card border-border text-muted-foreground group-hover:border-primary/50",
-                            )}>{letter}</span>
-                            <span className="text-sm flex-1"><MathText>{o}</MathText></span>
-                          </button>
-                        );
-                      })}
+                    <div className="mt-5">
+                      <OptionList
+                        options={(q.options as string[]) ?? []}
+                        selected={picked}
+                        onSelect={(oi) => selectAnswer(q.id, oi)}
+                      />
                     </div>
                     <div className="mt-6 flex items-center justify-between gap-2">
                       <Button variant="outline" disabled={current === 0} onClick={() => jumpTo(current - 1)}>
@@ -707,29 +692,13 @@ export default function ExamInterface() {
                 <div className="font-display font-semibold">Question Navigator</div>
                 <span className="text-xs text-muted-foreground">{questions.length}</span>
               </div>
-              <div className="mt-4 grid grid-cols-6 gap-1.5">
-                {questions.map((qq, i) => {
-                  const answered = answers[qq.id] !== undefined;
-                  const isMarked = !!marked[qq.id];
-                  const isCurrent = current === i;
-                  return (
-                    <button
-                      key={qq.id}
-                      onClick={() => jumpTo(i)}
-                      className={cn(
-                        "aspect-square rounded-md text-xs font-semibold border transition",
-                        isCurrent
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : isMarked
-                            ? "bg-warning text-warning-foreground border-warning"
-                            : answered
-                              ? "bg-success text-success-foreground border-success"
-                              : "bg-card border-border text-muted-foreground hover:border-primary/40",
-                      )}
-                      title={isCurrent ? "Current" : isMarked ? "Marked for review" : answered ? "Answered" : "Unanswered"}
-                    >{i + 1}</button>
-                  );
-                })}
+              <div className="mt-4">
+                <QuestionPalette
+                  items={questions.map((qq: any) => ({ key: qq.id, answered: answers[qq.id] !== undefined, flagged: !!marked[qq.id] }))}
+                  activeIndex={current}
+                  onJump={jumpTo}
+                  compact
+                />
               </div>
             </div>
 
@@ -770,25 +739,17 @@ export default function ExamInterface() {
         <video ref={videoRef} muted playsInline className="fixed bottom-3 right-3 w-32 h-24 rounded-md border border-border bg-black/60 z-20" style={{ display: proctorOn ? "block" : "none" }} />
 
         {/* Submit confirm */}
-        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Submit your exam?</AlertDialogTitle>
-              <AlertDialogDescription>
-                You have answered <span className="font-semibold text-foreground">{answeredCount}</span> of <span className="font-semibold text-foreground">{questions.length}</span> questions.
-                {answeredCount < questions.length && <> You still have <span className="font-semibold text-destructive">{questions.length - answeredCount}</span> unanswered.</>}
-                {markedCount > 0 && <> {markedCount} marked for review.</>}
-                {" "}This cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={submitting}>Keep working</AlertDialogCancel>
-              <AlertDialogAction disabled={submitting} onClick={() => { setConfirmOpen(false); submit(); }}>
-                {submitting ? "Submitting…" : "Submit now"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <SubmitSummaryDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          total={questions.length}
+          answered={answeredCount}
+          unanswered={questions.map((qq: any, i: number) => (answers[qq.id] === undefined ? i : -1)).filter((i: number) => i >= 0)}
+          flagged={questions.map((qq: any, i: number) => (marked[qq.id] ? i : -1)).filter((i: number) => i >= 0)}
+          onJump={jumpTo}
+          onConfirm={() => { setConfirmOpen(false); submit(); }}
+          submitting={submitting}
+        />
 
         {/* End exam (early exit) */}
         <AlertDialog open={endOpen} onOpenChange={setEndOpen}>

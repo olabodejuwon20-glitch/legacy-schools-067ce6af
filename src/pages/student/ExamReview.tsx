@@ -27,6 +27,7 @@ export default function ExamReview() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<Record<string, boolean>>({});
+  const [filter, setFilter] = useState<"all" | "wrong" | "correct">("all");
 
   useEffect(() => {
     (async () => {
@@ -77,6 +78,8 @@ Explain in 3-5 sentences why the correct answer is right and (if wrong) why the 
 
   const correct = rows.filter(r => r.q_is_correct).length;
   const total = rows.length;
+  const pct = total ? Math.round((correct / total) * 100) : 0;
+  const visible = rows.filter(r => filter === "all" || (filter === "wrong" ? !r.q_is_correct : r.q_is_correct));
 
   if (loading) return <div className="py-20 grid place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
 
@@ -88,14 +91,40 @@ Explain in 3-5 sentences why the correct answer is right and (if wrong) why the 
         </Button>
         <div>
           <h1 className="font-display text-xl font-bold">Answer review</h1>
-          <p className="text-sm text-muted-foreground">{correct} of {total} correct ({total ? Math.round(correct / total * 100) : 0}%)</p>
+          <p className="text-sm text-muted-foreground">{correct} of {total} correct ({pct}%)</p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-5 flex items-center gap-5">
+        <div className="relative size-20 shrink-0 grid place-items-center">
+          <svg viewBox="0 0 36 36" className="size-20 -rotate-90">
+            <circle cx="18" cy="18" r="15.5" fill="none" stroke="hsl(var(--border))" strokeWidth="3.5" />
+            <circle cx="18" cy="18" r="15.5" fill="none" strokeWidth="3.5" strokeLinecap="round"
+              stroke={pct >= 50 ? "hsl(var(--success))" : "hsl(var(--destructive))"}
+              strokeDasharray={`${(pct / 100) * 97.4} 97.4`} />
+          </svg>
+          <span className="absolute text-lg font-bold tabular-nums">{pct}%</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold mb-2">Performance</div>
+          <div className="flex flex-wrap gap-2">
+            {(["all", "wrong", "correct"] as const).map(f => (
+              <button key={f} type="button" onClick={() => setFilter(f)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
+                  filter === f ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/40",
+                )}>
+                {f === "all" ? `All (${total})` : f === "wrong" ? `Wrong (${total - correct})` : `Correct (${correct})`}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {rows.length === 0 && <p className="text-sm text-muted-foreground">No questions found.</p>}
 
       <ol className="space-y-4">
-        {rows.map((r, i) => {
+        {visible.map((r, i) => {
           const opts = Array.isArray(r.q_options) ? r.q_options : [];
           const open = openId === r.q_id;
           return (
