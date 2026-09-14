@@ -66,12 +66,53 @@ export default function Practice() {
   const school_resources = rows.filter(r => r.uploaded_by !== user?.id);
   const filterFn = (arr: any[]) => arr.filter(r => !q || r.name.toLowerCase().includes(q.toLowerCase()));
 
+  if (practiceSubject) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Untimed practice"
+          description="No countdown, no score sent anywhere. Answer, see the explanation, move at your own pace."
+        />
+        <PracticeRunner subject={practiceSubject} onExit={() => setPracticeSubject(null)} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Practice Mode"
-        description="Study with resources from your school library or your own uploads. No timer, no score — just learn."
+        description="Practise real questions with no timer, or study with resources from your school library."
       />
+
+      <SectionCard
+        title="Untimed question practice"
+        description="Pick a subject and work through questions at your own pace — instant answer and explanation, no countdown."
+      >
+        {subjects.length === 0 ? (
+          <EmptyState icon={ListChecks} title="No subjects yet" desc="Your school hasn't set up practice subjects yet." />
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {subjects.map(s => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setPracticeSubject(s)}
+                className="text-left rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:shadow-sm group"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="size-2.5 rounded-full shrink-0" style={{ background: s.color || "hsl(var(--primary))" }} />
+                  <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{s.name}</div>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1"><InfinityIcon className="size-3" /> No timer</span>
+                  <span className="text-primary font-medium">Start practice →</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
       <SectionCard
         title="Practice resources"
