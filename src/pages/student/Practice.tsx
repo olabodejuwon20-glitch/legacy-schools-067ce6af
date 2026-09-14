@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { BookOpenCheck, FileText, Upload, Search, Sparkles, ExternalLink } from "lucide-react";
+import { BookOpenCheck, FileText, Upload, Search, Sparkles, ExternalLink, ListChecks, Infinity as InfinityIcon } from "lucide-react";
+import { PracticeRunner } from "@/components/exam/PracticeRunner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -16,6 +17,8 @@ export default function Practice() {
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [practiceSubject, setPracticeSubject] = useState<any>(null);
 
   async function refresh() {
     if (!school) return;
@@ -23,6 +26,17 @@ export default function Practice() {
     setRows(data ?? []);
   }
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [school?.id]);
+
+  useEffect(() => {
+    if (!school) return;
+    (async () => {
+      const { data } = await supabase.from("mock_subjects")
+        .select("id, name, code, color, sort")
+        .eq("school_id", school.id)
+        .order("sort");
+      setSubjects(data ?? []);
+    })();
+  }, [school?.id]);
 
   async function open(r: any) {
     const { data } = await supabase.storage.from("library").createSignedUrl(r.storage_path, 60 * 10);
@@ -52,12 +66,53 @@ export default function Practice() {
   const school_resources = rows.filter(r => r.uploaded_by !== user?.id);
   const filterFn = (arr: any[]) => arr.filter(r => !q || r.name.toLowerCase().includes(q.toLowerCase()));
 
+  if (practiceSubject) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Untimed practice"
+          description="No countdown, no score sent anywhere. Answer, see the explanation, move at your own pace."
+        />
+        <PracticeRunner subject={practiceSubject} onExit={() => setPracticeSubject(null)} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Practice Mode"
-        description="Study with resources from your school library or your own uploads. No timer, no score — just learn."
+        description="Practise real questions with no timer, or study with resources from your school library."
       />
+
+      <SectionCard
+        title="Untimed question practice"
+        description="Pick a subject and work through questions at your own pace — instant answer and explanation, no countdown."
+      >
+        {subjects.length === 0 ? (
+          <EmptyState icon={ListChecks} title="No subjects yet" desc="Your school hasn't set up practice subjects yet." />
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {subjects.map(s => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setPracticeSubject(s)}
+                className="text-left rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:shadow-sm group"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="size-2.5 rounded-full shrink-0" style={{ background: s.color || "hsl(var(--primary))" }} />
+                  <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{s.name}</div>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1"><InfinityIcon className="size-3" /> No timer</span>
+                  <span className="text-primary font-medium">Start practice →</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
       <SectionCard
         title="Practice resources"

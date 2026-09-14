@@ -33,8 +33,11 @@ Deno.serve(async (req) => {
     if (session.student_id !== user.id) return json({ error: "Forbidden" }, 403);
     if (!session.submitted_at) return json({ error: "Session not submitted" }, 400);
 
-    // Return cached summary if present
-    if (session.ai_summary) return json(session.ai_summary);
+    // Return cached summary if present (older cached payloads lack per_topic — recompute those)
+    if (session.ai_summary && Array.isArray((session.ai_summary as any).per_topic)) {
+      return json(session.ai_summary);
+    }
+    const cached = session.ai_summary as any | null;
 
     const [{ data: subs }, { data: answers }] = await Promise.all([
       admin.from("mock_session_subjects").select("subject_id,score,answered_count").eq("session_id", session_id),
