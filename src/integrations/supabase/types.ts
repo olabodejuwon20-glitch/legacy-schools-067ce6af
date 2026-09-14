@@ -3984,6 +3984,7 @@ export type Database = {
           prompt: string
           school_id: string
           subject_id: string
+          topic: string | null
         }
         Insert: {
           correct_index?: number
@@ -3995,6 +3996,7 @@ export type Database = {
           prompt: string
           school_id: string
           subject_id: string
+          topic?: string | null
         }
         Update: {
           correct_index?: number
@@ -4006,6 +4008,7 @@ export type Database = {
           prompt?: string
           school_id?: string
           subject_id?: string
+          topic?: string | null
         }
         Relationships: [
           {
@@ -8231,6 +8234,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_mock_answer: {
+        Args: { _question_id: string; _selected: number }
+        Returns: {
+          correct_index: number
+          explanation: string
+          is_correct: boolean
+        }[]
+      }
       check_rate_limit: {
         Args: {
           _key: string
@@ -8327,6 +8338,16 @@ export type Database = {
           q_position: number
           q_prompt: string
           q_selected_index: number
+        }[]
+      }
+      get_mock_practice_questions: {
+        Args: { _limit?: number; _subject_id: string }
+        Returns: {
+          q_id: string
+          q_options: Json
+          q_position: number
+          q_prompt: string
+          q_topic: string
         }[]
       }
       get_mock_questions_for_session: {
