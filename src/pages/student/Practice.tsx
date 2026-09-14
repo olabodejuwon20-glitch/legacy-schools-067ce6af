@@ -17,6 +17,8 @@ export default function Practice() {
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [practiceSubject, setPracticeSubject] = useState<any>(null);
 
   async function refresh() {
     if (!school) return;
@@ -24,6 +26,17 @@ export default function Practice() {
     setRows(data ?? []);
   }
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [school?.id]);
+
+  useEffect(() => {
+    if (!school) return;
+    (async () => {
+      const { data } = await supabase.from("mock_subjects")
+        .select("id, name, code, color, sort")
+        .eq("school_id", school.id)
+        .order("sort");
+      setSubjects(data ?? []);
+    })();
+  }, [school?.id]);
 
   async function open(r: any) {
     const { data } = await supabase.storage.from("library").createSignedUrl(r.storage_path, 60 * 10);
