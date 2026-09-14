@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { BookOpenCheck, FileText, Upload, Search, Sparkles, ExternalLink } from "lucide-react";
+import { BookOpenCheck, FileText, Upload, Search, Sparkles, ExternalLink, ListChecks, Infinity as InfinityIcon } from "lucide-react";
+import { PracticeRunner } from "@/components/exam/PracticeRunner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { PageHeader } from "@/components/dashboard/PageHeader";
