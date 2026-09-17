@@ -446,6 +446,7 @@ function ExamShell(props: any) {
           ) : null}
           remaining={secondsLeft}
           total={Math.max(1, (durationMinutes ?? 60) * 60)}
+          saveState={isSubmitted ? "idle" : saveState}
           actions={
             <>
               <Sheet>
@@ -471,6 +472,12 @@ function ExamShell(props: any) {
             </>
           }
         />
+        {offline && !isSubmitted && (
+          <div className="px-4 sm:px-6 py-1.5 text-[11px] flex items-center gap-1.5 bg-warning/10 text-warning border-t border-warning/30">
+            <AlertTriangle className="size-3.5" />
+            <span className="truncate">You're offline — keep answering, your progress saves as soon as you reconnect.</span>
+          </div>
+        )}
         {lockdown && lastWarning && !isSubmitted && (
           <div className="px-4 sm:px-6 py-1.5 text-[11px] flex items-center gap-1.5 bg-warning/10 text-warning border-t border-warning/30">
             <AlertTriangle className="size-3.5" />
