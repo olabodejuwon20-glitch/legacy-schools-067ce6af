@@ -329,6 +329,8 @@ export default function MockRunner() {
       secondsLeft={secondsLeft}
       durationMinutes={session.duration_minutes}
       isSubmitted={isSubmitted}
+      saveState={saveState}
+      offline={offline}
       submitting={submitting}
       onSubmit={() => submit(false)}
       onForceSubmit={() => submit(true)}
@@ -350,7 +352,7 @@ function ExamShell(props: any) {
     modeLabel, ModeIcon, preferFullscreen, lockdown, sessionId, subjects, activeSubject, setActiveSubject, activeSubjectMeta,
     subjectQuestions, answers, activeIdx, setActiveIdx, answeredInSubject,
     totalAnswered, totalQuestions, secondsLeft, isSubmitted, submitting, onSubmit, onForceSubmit,
-    currentQ, onSelect, onToggleMark, onNextSubject, durationMinutes,
+    currentQ, onSelect, onToggleMark, onNextSubject, durationMinutes, saveState, offline,
   } = props;
   const shellRef = useRef<HTMLDivElement>(null);
   const [isFs, setIsFs] = useState(false);
