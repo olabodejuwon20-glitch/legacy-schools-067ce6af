@@ -174,7 +174,8 @@ export default function MockRunner() {
   useEffect(() => {
     const id = setInterval(async () => {
       if (!sessionId || upsertQueue.current.size === 0) return;
-      const batch = Array.from(upsertQueue.current.entries()).map(([question_id, v]) => ({
+      const entries = Array.from(upsertQueue.current.entries());
+      const batch = entries.map(([question_id, v]) => ({
         session_id: sessionId,
         question_id,
         subject_id: v.subject_id,
@@ -182,7 +183,17 @@ export default function MockRunner() {
         marked_for_review: v.marked,
       }));
       upsertQueue.current.clear();
-      await supabase.from("mock_answers").upsert(batch, { onConflict: "session_id,question_id" });
+      setSaveState("saving");
+      const { error } = await supabase.from("mock_answers").upsert(batch, { onConflict: "session_id,question_id" });
+      if (error) {
+        // Put the work back so the next tick (or reconnect) retries it.
+        for (const [qid, v] of entries) {
+          if (!upsertQueue.current.has(qid)) upsertQueue.current.set(qid, v);
+        }
+        setSaveState("saving");
+      } else {
+        setSaveState("saved");
+      }
     }, 1200);
     return () => clearInterval(id);
   }, [sessionId]);
