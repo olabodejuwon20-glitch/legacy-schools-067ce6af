@@ -178,6 +178,37 @@ export default function MockResult() {
         </div>
       </SectionCard>
 
+      {/* Per-topic accuracy */}
+      {Array.isArray(summary.per_topic) && summary.per_topic.length > 0 && (
+        <SectionCard title="Topic accuracy" description="Weakest topics first — start your revision at the top">
+          <div className="space-y-3">
+            {summary.per_topic.map((t: any) => {
+              const tone = t.percentage >= 70 ? "bg-success" : t.percentage >= 40 ? "bg-warning" : "bg-destructive";
+              return (
+                <div key={`${t.subject}-${t.topic}`} className="rounded-xl border border-border bg-card shadow-sm p-3.5">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm truncate">{t.topic}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">{t.subject}</div>
+                    </div>
+                    <span className="tabular-nums text-sm font-bold shrink-0">{t.correct}/{t.total}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-secondary overflow-hidden flex">
+                    <div className={cn("h-full", tone)} style={{ width: `${t.percentage}%` }} />
+                  </div>
+                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
+                    <span className="font-semibold tabular-nums">{t.percentage}%</span>
+                    <span className="text-success">{t.correct} right</span>
+                    <span className="text-destructive">{t.wrong} wrong</span>
+                    {t.skipped > 0 && <span>{t.skipped} skipped</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
+
       {/* AI summary */}
       <SectionCard title="AI coach analysis" description="Personalised feedback to guide your next study session">
         <div className="flex items-start gap-3">
