@@ -30,9 +30,14 @@ export default function MockRunner() {
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [offline, setOffline] = useState(!navigator.onLine);
   const upsertQueue = useRef<Map<string, { selected_index: number | null; marked: boolean; subject_id: string }>>(new Map());
   const submittingRef = useRef(false);
   const autoSubmitFiredRef = useRef(false);
+  const restoredRef = useRef(false);
+  const qc = useQueryClient();
+  const resumeKey = `mock-resume:${sessionId}`;
 
   const { data, isLoading } = useQuery({
     queryKey: ["mock-runner", sessionId],
