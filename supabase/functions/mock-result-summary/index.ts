@@ -55,6 +55,41 @@ Deno.serve(async (req) => {
       return { id: s.subject_id, name: meta.name ?? "Subject", code: meta.code, color: meta.color, score: s.score ?? 0, total, percentage: pct, answered: s.answered_count ?? 0 };
     }).sort((a: any, b: any) => b.percentage - a.percentage);
 
+    // ---- Per-topic accuracy -------------------------------------------------
+    // Take the same slice of the bank the runner served (position order, capped
+    // per subject) so unattempted questions still count as "wrong".
+    const perSubjectLimit = session.questions_per_subject ?? 20;
+    const { data: bank } = await admin.from("mock_questions")
+      .select("id,subject_id,position,topic,correct_index")
+      .in("subject_id", subjectIds.length ? subjectIds : ["00000000-0000-0000-0000-000000000000"])
+      .order("position");
+    const bySubject: Record<string, any[]> = {};
+    for (const q of bank ?? []) {
+      (bySubject[q.subject_id] ||= []).push(q);
+    }
+    const answerMap = new Map<string, number | null>(
+      (answers ?? []).map((a: any) => [a.question_id, a.selected_index]),
+    );
+    const topicAgg = new Map<string, { topic: string; subject: string; color: string | null; correct: number; wrong: number; skipped: number }>();
+    for (const sid of Object.keys(bySubject)) {
+      const meta = subjMap[sid] || {};
+      for (const q of bySubject[sid].slice(0, perSubjectLimit)) {
+        const label = (q.topic && String(q.topic).trim()) || `${meta.name ?? "Subject"} — General`;
+        const key = `${sid}::${label}`;
+        const row = topicAgg.get(key) ?? { topic: label, subject: meta.name ?? "Subject", color: meta.color ?? null, correct: 0, wrong: 0, skipped: 0 };
+        const sel = answerMap.get(q.id);
+        if (sel === undefined || sel === null) row.skipped += 1;
+        else if (sel === q.correct_index) row.correct += 1;
+        else row.wrong += 1;
+        topicAgg.set(key, row);
+      }
+    }
+    const perTopic = Array.from(topicAgg.values()).map((t) => {
+      const total = t.correct + t.wrong + t.skipped;
+      return { ...t, total, percentage: total ? Math.round((t.correct / total) * 100) : 0 };
+    }).sort((a, b) => a.percentage - b.percentage || b.total - a.total);
+
+
     const totalQ = session.total_questions ?? perSubject.reduce((a, b) => a + b.total, 0);
     const totalScore = session.total_score ?? perSubject.reduce((a, b) => a + b.score, 0);
     const overallPct = totalQ ? Math.round((totalScore / totalQ) * 100) : 0;
@@ -81,26 +116,30 @@ Write a personalised result analysis in markdown with these sections:
 
 Keep it warm, motivating, and under 400 words. Avoid generic platitudes.`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${aiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "You are a supportive exam coach who writes well-structured, motivating feedback in markdown." },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
-    if (aiRes.status === 429) return json({ error: "Rate limited, try again shortly" }, 429);
-    if (aiRes.status === 402) return json({ error: "AI credits exhausted" }, 402);
-    if (!aiRes.ok) {
-      const txt = await aiRes.text();
-      console.error("[mock-result-summary] AI error", aiRes.status, txt);
-      return json({ error: "AI request failed" }, 500);
+    // Reuse the coach analysis when we're only backfilling the topic breakdown.
+    let markdown: string = cached?.markdown ?? "";
+    if (!markdown) {
+      const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${aiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: "You are a supportive exam coach who writes well-structured, motivating feedback in markdown." },
+            { role: "user", content: prompt },
+          ],
+        }),
+      });
+      if (aiRes.status === 429) return json({ error: "Rate limited, try again shortly" }, 429);
+      if (aiRes.status === 402) return json({ error: "AI credits exhausted" }, 402);
+      if (!aiRes.ok) {
+        const txt = await aiRes.text();
+        console.error("[mock-result-summary] AI error", aiRes.status, txt);
+        return json({ error: "AI request failed" }, 500);
+      }
+      const aiJson = await aiRes.json();
+      markdown = aiJson?.choices?.[0]?.message?.content ?? "No analysis available.";
     }
-    const aiJson = await aiRes.json();
-    const markdown = aiJson?.choices?.[0]?.message?.content ?? "No analysis available.";
 
     const payload = {
       mode: session.mode,
@@ -109,6 +148,7 @@ Keep it warm, motivating, and under 400 words. Avoid generic platitudes.`;
       percentage: overallPct,
       jamb_projection: jambProjection,
       per_subject: perSubject,
+      per_topic: perTopic,
       markdown,
       generated_at: new Date().toISOString(),
     };

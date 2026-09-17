@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Award, CheckCircle2, GraduationCap, Loader2, ListChecks, Maximize2, Minimize2, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
@@ -30,9 +30,14 @@ export default function MockRunner() {
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [offline, setOffline] = useState(!navigator.onLine);
   const upsertQueue = useRef<Map<string, { selected_index: number | null; marked: boolean; subject_id: string }>>(new Map());
   const submittingRef = useRef(false);
   const autoSubmitFiredRef = useRef(false);
+  const restoredRef = useRef(false);
+  const qc = useQueryClient();
+  const resumeKey = `mock-resume:${sessionId}`;
 
   const { data, isLoading } = useQuery({
     queryKey: ["mock-runner", sessionId],
@@ -66,16 +71,69 @@ export default function MockRunner() {
     },
   });
 
-  // Seed answers + active subject when loaded
+  // Seed answers + active subject when loaded, and resume the exact spot we left off.
   useEffect(() => {
     if (!data) return;
     const init: AnswerMap = {};
     for (const a of data.answers) {
       init[a.question_id] = { selected_index: a.selected_index, marked: a.marked_for_review };
     }
-    setAnswers(init);
-    setActiveSubject(prev => prev ?? data.subjects[0]?.id ?? null);
+    // Never let a stale server read overwrite answers still waiting to be saved.
+    setAnswers(prev => {
+      const merged = { ...init };
+      for (const [qid, v] of upsertQueue.current.entries()) {
+        merged[qid] = { selected_index: v.selected_index, marked: v.marked };
+      }
+      return Object.keys(prev).length && restoredRef.current ? { ...prev, ...merged } : merged;
+    });
+
+    if (!restoredRef.current) {
+      restoredRef.current = true;
+      let saved: { subjectId?: string; idx?: number } | null = null;
+      try { saved = JSON.parse(localStorage.getItem(resumeKey) || "null"); } catch { /* ignore */ }
+      const validSubject = saved?.subjectId && data.subjects.some(s => s.id === saved!.subjectId)
+        ? saved!.subjectId : data.subjects[0]?.id ?? null;
+      setActiveSubject(validSubject);
+      if (typeof saved?.idx === "number" && saved.idx > 0) {
+        setActiveIdx(saved.idx);
+        if (data.session?.status !== "submitted") {
+          toast.info(`Resumed at question ${saved.idx + 1}`);
+        }
+      }
+    } else {
+      setActiveSubject(prev => prev ?? data.subjects[0]?.id ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  // Remember where the student is so a refresh or reconnect lands on the same question.
+  useEffect(() => {
+    if (!sessionId || !activeSubject || !restoredRef.current) return;
+    try {
+      localStorage.setItem(resumeKey, JSON.stringify({ subjectId: activeSubject, idx: activeIdx }));
+    } catch { /* storage full / private mode — resume is best-effort */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, activeSubject, activeIdx]);
+
+  // Reconnect handling: refetch saved answers and retry the pending queue.
+  useEffect(() => {
+    const goOnline = () => {
+      setOffline(false);
+      toast.success("Back online — syncing your answers");
+      qc.invalidateQueries({ queryKey: ["mock-runner", sessionId] });
+    };
+    const goOffline = () => {
+      setOffline(true);
+      toast.warning("You're offline. Keep answering — everything saves when you reconnect.");
+    };
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   // Timer
   useEffect(() => {
@@ -116,7 +174,8 @@ export default function MockRunner() {
   useEffect(() => {
     const id = setInterval(async () => {
       if (!sessionId || upsertQueue.current.size === 0) return;
-      const batch = Array.from(upsertQueue.current.entries()).map(([question_id, v]) => ({
+      const entries = Array.from(upsertQueue.current.entries());
+      const batch = entries.map(([question_id, v]) => ({
         session_id: sessionId,
         question_id,
         subject_id: v.subject_id,
@@ -124,7 +183,17 @@ export default function MockRunner() {
         marked_for_review: v.marked,
       }));
       upsertQueue.current.clear();
-      await supabase.from("mock_answers").upsert(batch, { onConflict: "session_id,question_id" });
+      setSaveState("saving");
+      const { error } = await supabase.from("mock_answers").upsert(batch, { onConflict: "session_id,question_id" });
+      if (error) {
+        // Put the work back so the next tick (or reconnect) retries it.
+        for (const [qid, v] of entries) {
+          if (!upsertQueue.current.has(qid)) upsertQueue.current.set(qid, v);
+        }
+        setSaveState("saving");
+      } else {
+        setSaveState("saved");
+      }
     }, 1200);
     return () => clearInterval(id);
   }, [sessionId]);
@@ -260,6 +329,8 @@ export default function MockRunner() {
       secondsLeft={secondsLeft}
       durationMinutes={session.duration_minutes}
       isSubmitted={isSubmitted}
+      saveState={saveState}
+      offline={offline}
       submitting={submitting}
       onSubmit={() => submit(false)}
       onForceSubmit={() => submit(true)}
@@ -281,7 +352,7 @@ function ExamShell(props: any) {
     modeLabel, ModeIcon, preferFullscreen, lockdown, sessionId, subjects, activeSubject, setActiveSubject, activeSubjectMeta,
     subjectQuestions, answers, activeIdx, setActiveIdx, answeredInSubject,
     totalAnswered, totalQuestions, secondsLeft, isSubmitted, submitting, onSubmit, onForceSubmit,
-    currentQ, onSelect, onToggleMark, onNextSubject, durationMinutes,
+    currentQ, onSelect, onToggleMark, onNextSubject, durationMinutes, saveState, offline,
   } = props;
   const shellRef = useRef<HTMLDivElement>(null);
   const [isFs, setIsFs] = useState(false);
@@ -375,6 +446,7 @@ function ExamShell(props: any) {
           ) : null}
           remaining={secondsLeft}
           total={Math.max(1, (durationMinutes ?? 60) * 60)}
+          saveState={isSubmitted ? "idle" : saveState}
           actions={
             <>
               <Sheet>
@@ -400,6 +472,12 @@ function ExamShell(props: any) {
             </>
           }
         />
+        {offline && !isSubmitted && (
+          <div className="px-4 sm:px-6 py-1.5 text-[11px] flex items-center gap-1.5 bg-warning/10 text-warning border-t border-warning/30">
+            <AlertTriangle className="size-3.5" />
+            <span className="truncate">You're offline — keep answering, your progress saves as soon as you reconnect.</span>
+          </div>
+        )}
         {lockdown && lastWarning && !isSubmitted && (
           <div className="px-4 sm:px-6 py-1.5 text-[11px] flex items-center gap-1.5 bg-warning/10 text-warning border-t border-warning/30">
             <AlertTriangle className="size-3.5" />
