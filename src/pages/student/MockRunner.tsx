@@ -71,16 +71,69 @@ export default function MockRunner() {
     },
   });
 
-  // Seed answers + active subject when loaded
+  // Seed answers + active subject when loaded, and resume the exact spot we left off.
   useEffect(() => {
     if (!data) return;
     const init: AnswerMap = {};
     for (const a of data.answers) {
       init[a.question_id] = { selected_index: a.selected_index, marked: a.marked_for_review };
     }
-    setAnswers(init);
-    setActiveSubject(prev => prev ?? data.subjects[0]?.id ?? null);
+    // Never let a stale server read overwrite answers still waiting to be saved.
+    setAnswers(prev => {
+      const merged = { ...init };
+      for (const [qid, v] of upsertQueue.current.entries()) {
+        merged[qid] = { selected_index: v.selected_index, marked: v.marked };
+      }
+      return Object.keys(prev).length && restoredRef.current ? { ...prev, ...merged } : merged;
+    });
+
+    if (!restoredRef.current) {
+      restoredRef.current = true;
+      let saved: { subjectId?: string; idx?: number } | null = null;
+      try { saved = JSON.parse(localStorage.getItem(resumeKey) || "null"); } catch { /* ignore */ }
+      const validSubject = saved?.subjectId && data.subjects.some(s => s.id === saved!.subjectId)
+        ? saved!.subjectId : data.subjects[0]?.id ?? null;
+      setActiveSubject(validSubject);
+      if (typeof saved?.idx === "number" && saved.idx > 0) {
+        setActiveIdx(saved.idx);
+        if (data.session?.status !== "submitted") {
+          toast.info(`Resumed at question ${saved.idx + 1}`);
+        }
+      }
+    } else {
+      setActiveSubject(prev => prev ?? data.subjects[0]?.id ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  // Remember where the student is so a refresh or reconnect lands on the same question.
+  useEffect(() => {
+    if (!sessionId || !activeSubject || !restoredRef.current) return;
+    try {
+      localStorage.setItem(resumeKey, JSON.stringify({ subjectId: activeSubject, idx: activeIdx }));
+    } catch { /* storage full / private mode — resume is best-effort */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, activeSubject, activeIdx]);
+
+  // Reconnect handling: refetch saved answers and retry the pending queue.
+  useEffect(() => {
+    const goOnline = () => {
+      setOffline(false);
+      toast.success("Back online — syncing your answers");
+      qc.invalidateQueries({ queryKey: ["mock-runner", sessionId] });
+    };
+    const goOffline = () => {
+      setOffline(true);
+      toast.warning("You're offline. Keep answering — everything saves when you reconnect.");
+    };
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   // Timer
   useEffect(() => {
