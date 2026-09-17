@@ -116,26 +116,30 @@ Write a personalised result analysis in markdown with these sections:
 
 Keep it warm, motivating, and under 400 words. Avoid generic platitudes.`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${aiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "You are a supportive exam coach who writes well-structured, motivating feedback in markdown." },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
-    if (aiRes.status === 429) return json({ error: "Rate limited, try again shortly" }, 429);
-    if (aiRes.status === 402) return json({ error: "AI credits exhausted" }, 402);
-    if (!aiRes.ok) {
-      const txt = await aiRes.text();
-      console.error("[mock-result-summary] AI error", aiRes.status, txt);
-      return json({ error: "AI request failed" }, 500);
+    // Reuse the coach analysis when we're only backfilling the topic breakdown.
+    let markdown: string = cached?.markdown ?? "";
+    if (!markdown) {
+      const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${aiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: "You are a supportive exam coach who writes well-structured, motivating feedback in markdown." },
+            { role: "user", content: prompt },
+          ],
+        }),
+      });
+      if (aiRes.status === 429) return json({ error: "Rate limited, try again shortly" }, 429);
+      if (aiRes.status === 402) return json({ error: "AI credits exhausted" }, 402);
+      if (!aiRes.ok) {
+        const txt = await aiRes.text();
+        console.error("[mock-result-summary] AI error", aiRes.status, txt);
+        return json({ error: "AI request failed" }, 500);
+      }
+      const aiJson = await aiRes.json();
+      markdown = aiJson?.choices?.[0]?.message?.content ?? "No analysis available.";
     }
-    const aiJson = await aiRes.json();
-    const markdown = aiJson?.choices?.[0]?.message?.content ?? "No analysis available.";
 
     const payload = {
       mode: session.mode,
@@ -144,6 +148,7 @@ Keep it warm, motivating, and under 400 words. Avoid generic platitudes.`;
       percentage: overallPct,
       jamb_projection: jambProjection,
       per_subject: perSubject,
+      per_topic: perTopic,
       markdown,
       generated_at: new Date().toISOString(),
     };
