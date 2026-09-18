@@ -8419,6 +8419,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      infer_mock_topic: {
+        Args: { _explanation?: string; _prompt: string; _subject: string }
+        Returns: string
+      }
       is_conversation_participant: {
         Args: { _conv: string; _user: string }
         Returns: boolean
