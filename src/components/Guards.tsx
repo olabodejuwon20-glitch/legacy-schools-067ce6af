@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useSchool, Role } from "@/contexts/SchoolContext";
 import { schoolPath, getResolvedSchoolSlug } from "@/lib/tenant";
+import { PortalAccessGate } from "@/components/PortalAccessGate";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useSchool();
