@@ -42,6 +42,13 @@ function resolveFont(key?: string | null) {
 
 const cache = new Map<string, Promise<ExportBrand>>();
 
+/** Drop cached branding so the next export picks up freshly saved settings. */
+export function clearExportBrandCache(schoolId?: string) {
+  if (schoolId) cache.delete(schoolId);
+  else cache.clear();
+}
+
+
 /** Fetch (and cache) a school's export branding: logo, colors, typography. */
 export function fetchExportBrand(schoolId: string, fallbackName?: string, fallbackLogo?: string | null) {
   const existing = cache.get(schoolId);
