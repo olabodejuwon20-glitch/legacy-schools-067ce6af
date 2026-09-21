@@ -10,12 +10,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { buildSchoolUrl } from "@/lib/tenant";
-import { Copy, Upload, Loader2, Image as ImageIcon, Plus, Trash2, Eye, Download, HelpCircle, BookOpen, ArrowRight } from "lucide-react";
+import { Copy, Upload, Loader2, Image as ImageIcon, Plus, Trash2, Eye, Download, HelpCircle, BookOpen, ArrowRight, Lock, Unlock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { schoolPath } from "@/lib/tenant";
 import { GradingWeightsCard } from "@/components/admin/GradingWeightsCard";
 import { PilotDetailsCard } from "@/components/pilot/PilotDetailsCard";
 import { openPremiumReportCard, DEFAULT_REPORT_THEME, type ReportTheme } from "@/lib/reportCard";
+import { EXPORT_FONTS, clearExportBrandCache } from "@/lib/exportBrand";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function AdminSettings() {
   const { school } = useSchool();
@@ -34,6 +36,14 @@ export default function AdminSettings() {
   const [savingTheme, setSavingTheme] = useState(false);
   const [appInstall, setAppInstall] = useState({ display_name: "", short_name: "", short_description: "" });
   const [savingAppInstall, setSavingAppInstall] = useState(false);
+  const exportLogoRef = useRef<HTMLInputElement>(null);
+  const [exportLogo, setExportLogo] = useState<string | null>(null);
+  const [exportFont, setExportFont] = useState("inter");
+  const [exportLogoBusy, setExportLogoBusy] = useState(false);
+  const [savingExport, setSavingExport] = useState(false);
+  const [portalOpen, setPortalOpen] = useState(true);
+  const [portalMessage, setPortalMessage] = useState("");
+  const [savingPortal, setSavingPortal] = useState(false);
 
   useEffect(() => {
     if (!school) return;
@@ -58,12 +68,19 @@ export default function AdminSettings() {
           gradientFrom: rt.gradientFrom ?? DEFAULT_REPORT_THEME.gradientFrom,
           gradientTo: rt.gradientTo ?? DEFAULT_REPORT_THEME.gradientTo,
         });
-        const ai = (((data as any).settings ?? {}).app_install ?? {}) as any;
+        const settings = ((data as any).settings ?? {}) as any;
+        const ai = (settings.app_install ?? {}) as any;
         setAppInstall({
           display_name: ai.display_name ?? "",
           short_name: ai.short_name ?? "",
           short_description: ai.short_description ?? "",
         });
+        const identity = (settings.identity ?? {}) as any;
+        setExportLogo(identity.report_logo_url ?? null);
+        setExportFont(String(identity.export_font ?? identity.font_family ?? "inter").toLowerCase());
+        const access = (settings.portal_access ?? {}) as any;
+        setPortalOpen(access.open !== false);
+        setPortalMessage(access.message ?? "");
       });
   }, [school]);
 
@@ -179,6 +196,84 @@ export default function AdminSettings() {
     }
   }
 
+  /** Merge a patch into schools.settings without clobbering other keys. */
+  async function patchSettings(patch: Record<string, any>) {
+    if (!school) throw new Error("no school");
+    const { data: row } = await supabase.from("schools").select("settings").eq("id", school.id).maybeSingle();
+    const current = ((row?.settings ?? {}) as any);
+    const next = { ...current, ...patch };
+    const { error } = await supabase.from("schools").update({ settings: next as any }).eq("id", school.id);
+    if (error) throw error;
+    return next;
+  }
+
+  async function onExportLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !school) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error("Logo must be under 2MB"); return; }
+    setExportLogoBusy(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${school.id}/export-logo-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("school-logos").upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("school-logos").getPublicUrl(path);
+      setExportLogo(pub.publicUrl);
+      toast.success("Logo uploaded — remember to save the template");
+    } catch (err: any) {
+      toast.error(err.message ?? "Upload failed");
+    } finally {
+      setExportLogoBusy(false);
+      if (exportLogoRef.current) exportLogoRef.current.value = "";
+    }
+  }
+
+  /** Saves logo + colours + font used on every PDF, Word and CSV export. */
+  async function saveExportTemplate() {
+    if (!school || savingExport) return;
+    setSavingExport(true);
+    try {
+      const { data: row } = await supabase.from("schools").select("settings").eq("id", school.id).maybeSingle();
+      const current = ((row?.settings ?? {}) as any);
+      await patchSettings({
+        identity: {
+          ...(current.identity ?? {}),
+          report_logo_url: exportLogo,
+          export_font: exportFont,
+          primary_color: theme.primary,
+          accent_color: theme.accent,
+        },
+      });
+      await supabase.from("schools").update({ report_theme: theme as any }).eq("id", school.id);
+      clearExportBrandCache(school.id);
+      toast.success("Export template saved — new downloads use your logo, colours and font");
+    } catch {
+      toast.error("Could not save the export template. Please try again.");
+    } finally {
+      setSavingExport(false);
+    }
+  }
+
+  async function savePortalAccess(nextOpen: boolean, message = portalMessage) {
+    if (!school || savingPortal) return;
+    setSavingPortal(true);
+    try {
+      await patchSettings({
+        portal_access: {
+          open: nextOpen,
+          message: message.trim(),
+          updated_at: new Date().toISOString(),
+        },
+      });
+      setPortalOpen(nextOpen);
+      toast.success(nextOpen ? "Portal opened for students, teachers and parents" : "Portal closed — only admins can sign in now");
+    } catch {
+      toast.error("Could not update portal access. Please try again.");
+    } finally {
+      setSavingPortal(false);
+    }
+  }
+
   function previewReportCard() {
     if (!school) return;
     openPremiumReportCard({
@@ -235,12 +330,14 @@ export default function AdminSettings() {
       )}
 
       <Tabs defaultValue="academic" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="academic">Academic</TabsTrigger>
-          <TabsTrigger value="branding">Report Card</TabsTrigger>
-          <TabsTrigger value="neco">Exams & NECO</TabsTrigger>
-          <TabsTrigger value="pilot">Pilot</TabsTrigger>
-          <TabsTrigger value="help">Help & Guide</TabsTrigger>
+        <TabsList className="flex w-full overflow-x-auto no-scrollbar justify-start">
+          <TabsTrigger value="academic" className="shrink-0 whitespace-nowrap">Academic</TabsTrigger>
+          <TabsTrigger value="branding" className="shrink-0 whitespace-nowrap">Report Card</TabsTrigger>
+          <TabsTrigger value="exports" className="shrink-0 whitespace-nowrap">Export template</TabsTrigger>
+          <TabsTrigger value="portal" className="shrink-0 whitespace-nowrap">Portal access</TabsTrigger>
+          <TabsTrigger value="neco" className="shrink-0 whitespace-nowrap">Exams & NECO</TabsTrigger>
+          <TabsTrigger value="pilot" className="shrink-0 whitespace-nowrap">Pilot</TabsTrigger>
+          <TabsTrigger value="help" className="shrink-0 whitespace-nowrap">Help & Guide</TabsTrigger>
         </TabsList>
 
         {/* General school info now lives on the admin Profile page so the admin
@@ -525,6 +622,143 @@ export default function AdminSettings() {
                 </div>
                 <ArrowRight className="size-4 text-muted-foreground mt-1" />
               </button>
+            </div>
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="exports" className="space-y-4">
+          <SectionCard
+            title="Export template"
+            description="Upload your logo, pick your colours and font once — every PDF, Word and CSV download uses them automatically."
+          >
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <Label>Logo for downloads</Label>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="size-16 rounded-lg border border-border bg-muted/40 grid place-items-center overflow-hidden shrink-0">
+                      {(exportLogo || logoUrl)
+                        ? <img src={(exportLogo || logoUrl) as string} alt="export logo" className="size-full object-contain" />
+                        : <ImageIcon className="size-6 text-muted-foreground" />}
+                    </div>
+                    <div className="flex-1">
+                      <input ref={exportLogoRef} type="file" accept="image/*" className="hidden" onChange={onExportLogoChange} />
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm" disabled={exportLogoBusy} onClick={() => exportLogoRef.current?.click()}>
+                          {exportLogoBusy ? <Loader2 className="size-3.5 mr-1 animate-spin" /> : <Upload className="size-3.5 mr-1" />}
+                          {exportLogo ? "Replace logo" : "Upload logo"}
+                        </Button>
+                        {exportLogo && (
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setExportLogo(null)}>
+                            Use my school logo
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1">PNG / JPG / SVG. Max 2 MB. Falls back to your school logo.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Font used in documents</Label>
+                  <select
+                    value={exportFont}
+                    onChange={e => setExportFont(e.target.value)}
+                    className="mt-1 w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {Object.keys(EXPORT_FONTS).map(k => (
+                      <option key={k} value={k}>{k.charAt(0).toUpperCase() + k.slice(1)}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground mt-1">Applies to PDF and Word downloads.</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {(["primary", "accent"] as const).map(key => (
+                    <div key={key}>
+                      <Label className="capitalize text-xs">{key === "primary" ? "Main colour" : "Accent colour"}</Label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={theme[key]}
+                          onChange={e => setTheme({ ...theme, [key]: e.target.value })}
+                          className="h-9 w-12 rounded-md border border-border bg-transparent cursor-pointer"
+                        />
+                        <Input value={theme[key]} onChange={e => setTheme({ ...theme, [key]: e.target.value })} className="font-mono text-xs" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Live preview of a document header */}
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="p-4 text-white" style={{ background: theme.primary, fontFamily: EXPORT_FONTS[exportFont]?.css }}>
+                  <div className="flex items-center gap-3">
+                    {(exportLogo || logoUrl)
+                      ? <img src={(exportLogo || logoUrl) as string} alt="" className="size-10 rounded-md bg-white p-1 object-contain" />
+                      : <div className="size-10 rounded-md bg-white grid place-items-center font-bold" style={{ color: theme.primary }}>{(info.name || "S").charAt(0)}</div>}
+                    <div className="min-w-0">
+                      <div className="font-bold truncate">{info.name || school?.name || "Your School Name"}</div>
+                      <div className="text-xs opacity-90">Students report · Preview</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 space-y-2 text-xs" style={{ fontFamily: EXPORT_FONTS[exportFont]?.css }}>
+                  <div className="font-semibold" style={{ color: theme.primary }}>Summary</div>
+                  <div className="h-2 rounded-full w-3/4" style={{ background: theme.accent }} />
+                  <div className="h-2 rounded-full w-1/2 bg-muted" />
+                  <div className="h-2 rounded-full w-2/3 bg-muted" />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <Button type="button" onClick={saveExportTemplate} disabled={savingExport}>
+                {savingExport ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
+                Save export template
+              </Button>
+            </div>
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="portal" className="space-y-4">
+          <SectionCard
+            title="Open or close your portal"
+            description="Close the portal during holidays or maintenance. Students, teachers, parents, staff and drivers are signed out of their pages — your admin portal keeps working normally."
+          >
+            <div className="flex items-start gap-4 p-4 rounded-xl border border-border bg-muted/30">
+              <span className={`size-11 rounded-lg grid place-items-center shrink-0 ${portalOpen ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"}`}>
+                {portalOpen ? <Unlock className="size-5" /> : <Lock className="size-5" />}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm">{portalOpen ? "Portal is open" : "Portal is closed"}</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {portalOpen
+                    ? "Everyone in your school can sign in and use their portal."
+                    : "Only admins can get in. Everyone else sees your message below."}
+                </p>
+              </div>
+              <Switch checked={portalOpen} disabled={savingPortal} onCheckedChange={v => savePortalAccess(v)} />
+            </div>
+
+            <div className="mt-4">
+              <Label>Message shown while closed</Label>
+              <Textarea
+                value={portalMessage}
+                onChange={e => setPortalMessage(e.target.value)}
+                placeholder="The portal is closed for the holidays. We reopen on 9 January."
+                maxLength={300}
+                rows={3}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">Keep it short and friendly — parents and students will read this.</p>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button type="button" variant="outline" disabled={savingPortal} onClick={() => savePortalAccess(portalOpen, portalMessage)}>
+                {savingPortal ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
+                Save message
+              </Button>
             </div>
           </SectionCard>
         </TabsContent>

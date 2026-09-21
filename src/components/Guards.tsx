@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useSchool, Role } from "@/contexts/SchoolContext";
 import { schoolPath, getResolvedSchoolSlug } from "@/lib/tenant";
+import { PortalAccessGate } from "@/components/PortalAccessGate";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useSchool();
@@ -20,7 +21,7 @@ export function RequireSchool({ children }: { children: ReactNode }) {
   const m = memberships.find(x => x.school_id === school.id && x.role === activeRole);
   if (m?.must_change_pin) return <Navigate to={schoolPath(school.slug, "/change-pin")} replace />;
   if (m && m.bio_completed === false && activeRole !== "admin") return <Navigate to={schoolPath(school.slug, "/bio")} replace />;
-  return <>{children}</>;
+  return <PortalAccessGate>{children}</PortalAccessGate>;
 }
 
 export function RoleGate({ allow, children }: { allow: Role | Role[]; children: ReactNode }) {
