@@ -21,7 +21,7 @@ export function RequireSchool({ children }: { children: ReactNode }) {
   const m = memberships.find(x => x.school_id === school.id && x.role === activeRole);
   if (m?.must_change_pin) return <Navigate to={schoolPath(school.slug, "/change-pin")} replace />;
   if (m && m.bio_completed === false && activeRole !== "admin") return <Navigate to={schoolPath(school.slug, "/bio")} replace />;
-  return <>{children}</>;
+  return <PortalAccessGate>{children}</PortalAccessGate>;
 }
 
 export function RoleGate({ allow, children }: { allow: Role | Role[]; children: ReactNode }) {
