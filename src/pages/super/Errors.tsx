@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Skel } from "@/components/super/primitives";
+import { ConfirmDeleteDialog } from "@/components/super/ConfirmDeleteDialog";
 import { formatDistanceToNow } from "date-fns";
-import { AlertCircle, CheckCircle2, EyeOff, Loader2, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, CheckCircle2, EyeOff, RefreshCw, Search, Trash2, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
+import { superAction } from "@/lib/super";
 
 type ErrorRow = {
   id: string;
@@ -29,13 +32,13 @@ type ErrorRow = {
   resolved_at: string | null;
   school_id: string | null;
   affected_users: string[] | null;
-  metadata: any;
+  metadata: Record<string, unknown> | null;
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  open: "bg-red-500/15 text-red-600 border-red-500/30",
-  investigating: "bg-amber-500/15 text-amber-700 border-amber-500/30",
-  resolved: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+  open: "bg-destructive/15 text-destructive border-destructive/30",
+  investigating: "bg-warning/15 text-warning border-warning/30",
+  resolved: "bg-success/15 text-success border-success/30",
   ignored: "bg-muted text-muted-foreground border-border",
 };
 
@@ -46,19 +49,22 @@ export default function SuperErrors() {
   const [role, setRole] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ErrorRow | null>(null);
+  const [trashTarget, setTrashTarget] = useState<ErrorRow | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   async function load() {
     setLoading(true);
     let q = supabase
       .from("client_errors")
       .select("*")
+      .is("deleted_at", null)
       .order("last_seen_at", { ascending: false })
       .limit(200);
     if (status !== "all") q = q.eq("resolution_status", status);
     if (role !== "all") q = q.eq("role", role);
     const { data, error } = await q;
     if (error) toast.error("Could not load errors");
-    setRows((data as any) ?? []);
+    setRows((data as ErrorRow[]) ?? []);
     setLoading(false);
   }
 
@@ -93,7 +99,7 @@ export default function SuperErrors() {
   }), [rows]);
 
   async function updateStatus(id: string, next: string, note?: string) {
-    const patch: any = { resolution_status: next, resolution_note: note ?? null };
+    const patch: Record<string, unknown> = { resolution_status: next, resolution_note: note ?? null };
     if (next === "resolved") patch.resolved_at = new Date().toISOString();
     else if (next === "open") patch.resolved_at = null;
     const { error } = await supabase.from("client_errors").update(patch).eq("id", id);
@@ -103,22 +109,44 @@ export default function SuperErrors() {
     void load();
   }
 
+  async function resolveAllVisible() {
+    const openIds = filtered.filter(r => r.resolution_status === "open" || r.resolution_status === "investigating").map(r => r.id);
+    if (openIds.length === 0) return;
+    setBulkBusy(true);
+    try {
+      await superAction("bulk_resolve_errors", { ids: openIds, status: "resolved", note: "Bulk resolved by Super Admin" });
+      toast.success(`Resolved ${openIds.length} incident${openIds.length === 1 ? "" : "s"}`);
+      void load();
+    } catch {
+      /* toasted */
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Live Error Console</h1>
-          <p className="text-sm text-muted-foreground mt-1">Every error across every school, grouped by cause. Streams in real time.</p>
+          <p className="text-sm text-muted-foreground mt-1">Every runtime error across every school, grouped by fingerprint. Streams in real time.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCw className={`size-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {totals.open > 0 && (
+            <Button variant="outline" size="sm" onClick={() => void resolveAllVisible()} disabled={bulkBusy}>
+              <CheckCheck className="size-4 mr-1.5" /> Resolve shown ({totals.open})
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={`size-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Open" value={totals.open} color="text-red-600" />
-        <Stat label="Investigating" value={totals.investigating} color="text-amber-700" />
-        <Stat label="Resolved" value={totals.resolved} color="text-emerald-700" />
+        <Stat label="Open" value={totals.open} color="text-destructive" />
+        <Stat label="Investigating" value={totals.investigating} color="text-warning" />
+        <Stat label="Resolved" value={totals.resolved} color="text-success" />
         <Stat label="Occurrences (shown)" value={totals.occurrences} color="text-foreground" />
       </div>
 
@@ -153,10 +181,10 @@ export default function SuperErrors() {
 
       <Card className="overflow-hidden">
         {loading && rows.length === 0 ? (
-          <div className="p-12 grid place-items-center text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>
+          <div className="p-4 space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skel key={i} className="h-14" />)}</div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-sm text-muted-foreground">
-            <CheckCircle2 className="size-8 mx-auto mb-2 text-emerald-600" />
+            <CheckCircle2 className="size-8 mx-auto mb-2 text-success" />
             No errors match these filters. Nice.
           </div>
         ) : (
@@ -167,7 +195,7 @@ export default function SuperErrors() {
                 onClick={() => setSelected(r)}
                 className="w-full text-left px-4 py-3 hover:bg-muted/50 flex items-start gap-3"
               >
-                <AlertCircle className={`size-4 mt-0.5 shrink-0 ${r.resolution_status === "resolved" ? "text-emerald-600" : "text-red-500"}`} />
+                <AlertCircle className={`size-4 mt-0.5 shrink-0 ${r.resolution_status === "resolved" ? "text-success" : "text-destructive"}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="font-medium text-sm truncate">{r.message}</div>
@@ -190,7 +218,27 @@ export default function SuperErrors() {
         )}
       </Card>
 
-      <ErrorDetail row={selected} onClose={() => setSelected(null)} onUpdate={updateStatus} />
+      <ErrorDetail
+        row={selected}
+        onClose={() => setSelected(null)}
+        onUpdate={updateStatus}
+        onTrash={(r) => { setSelected(null); setTrashTarget(r); }}
+      />
+
+      {trashTarget && (
+        <ConfirmDeleteDialog
+          open={!!trashTarget}
+          onOpenChange={o => !o && setTrashTarget(null)}
+          title="Move incident to 30-day Trash"
+          description={`Soft-delete "${trashTarget.message.slice(0, 80)}"? You can restore it from Trash within 30 days.`}
+          onConfirm={async () => {
+            await superAction("soft_delete", { table: "client_errors", id: trashTarget.id, confirm: "DELETE" });
+            toast.success("Incident moved to Trash");
+            setTrashTarget(null);
+            void load();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -204,10 +252,11 @@ function Stat({ label, value, color }: { label: string; value: number; color: st
   );
 }
 
-function ErrorDetail({ row, onClose, onUpdate }: {
+function ErrorDetail({ row, onClose, onUpdate, onTrash }: {
   row: ErrorRow | null;
   onClose: () => void;
   onUpdate: (id: string, next: string, note?: string) => void;
+  onTrash: (row: ErrorRow) => void;
 }) {
   const [note, setNote] = useState("");
   useEffect(() => { setNote(row?.resolution_note ?? ""); }, [row?.id]);
@@ -250,13 +299,16 @@ function ErrorDetail({ row, onClose, onUpdate }: {
           </div>
           <div className="flex gap-2 flex-wrap pt-2 border-t border-border">
             <Button size="sm" variant="outline" onClick={() => onUpdate(row.id, "investigating", note)}>Investigating</Button>
-            <Button size="sm" onClick={() => onUpdate(row.id, "resolved", note)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button size="sm" onClick={() => onUpdate(row.id, "resolved", note)} className="bg-success hover:bg-success/90 text-primary-foreground">
               <CheckCircle2 className="size-4 mr-1.5" /> Resolved
             </Button>
             <Button size="sm" variant="ghost" onClick={() => onUpdate(row.id, "ignored", note)}>
               <EyeOff className="size-4 mr-1.5" /> Ignore
             </Button>
             <div className="flex-1" />
+            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onTrash(row)}>
+              <Trash2 className="size-4 mr-1.5" /> Trash
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => onUpdate(row.id, "open", note)}>Reopen</Button>
           </div>
         </div>

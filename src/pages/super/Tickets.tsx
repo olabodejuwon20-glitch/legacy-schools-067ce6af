@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, Section, StatusBadge, Skel, EmptyState } from "@/components/super/primitives";
+import { ConfirmDeleteDialog } from "@/components/super/ConfirmDeleteDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { LifeBuoy, Search, Send, UserCheck } from "lucide-react";
+import { LifeBuoy, Search, Send, UserCheck, Trash2, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { superAction, timeAgo } from "@/lib/super";
 import { useSchool } from "@/contexts/SchoolContext";
@@ -21,6 +23,7 @@ export default function SuperTickets() {
   const [tab, setTab] = useState("open");
   const [q, setQ] = useState("");
   const [active, setActive] = useState<Ticket | null>(null);
+  const [trashTarget, setTrashTarget] = useState<Ticket | null>(null);
   const [thread, setThread] = useState<Msg[]>([]);
   const [reply, setReply] = useState("");
   const [internal, setInternal] = useState(false);
@@ -28,25 +31,25 @@ export default function SuperTickets() {
 
   async function load() {
     setTickets(null);
-    const { data } = await supabase.from("support_tickets").select("*").order("updated_at", { ascending: false }).limit(500);
-    const schoolIds = Array.from(new Set((data ?? []).map((t: any) => t.school_id)));
+    const { data } = await supabase.from("support_tickets").select("*").is("deleted_at", null).order("updated_at", { ascending: false }).limit(500);
+    const schoolIds = Array.from(new Set((data ?? []).map((t: Ticket) => t.school_id)));
     const { data: schools } = schoolIds.length
       ? await supabase.from("schools").select("id,name").in("id", schoolIds)
-      : { data: [] as any[] };
-    const smap = new Map((schools ?? []).map((s: any) => [s.id, s.name]));
-    setTickets((data ?? []).map((t: any) => ({ ...t, school_name: smap.get(t.school_id) ?? "—" })));
+      : { data: [] as { id: string; name: string }[] };
+    const smap = new Map((schools ?? []).map((s: { id: string; name: string }) => [s.id, s.name]));
+    setTickets((data ?? []).map((t: Ticket) => ({ ...t, school_name: smap.get(t.school_id) ?? "—" })));
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { void load(); }, []);
 
   async function openTicket(t: Ticket) {
     setActive(t); setThread([]); setReply(""); setInternal(false);
     const { data: msgs } = await supabase.from("support_messages").select("*").eq("ticket_id", t.id).order("created_at");
-    const authorIds = Array.from(new Set((msgs ?? []).map((m: any) => m.author)));
+    const authorIds = Array.from(new Set((msgs ?? []).map((m: Msg) => m.author)));
     const { data: profs } = authorIds.length
       ? await supabase.from("profiles").select("id,full_name").in("id", authorIds)
-      : { data: [] as any[] };
-    const pmap = new Map((profs ?? []).map((p: any) => [p.id, p.full_name]));
-    setThread((msgs ?? []).map((m: any) => ({ ...m, author_name: pmap.get(m.author) ?? "User" })));
+      : { data: [] as { id: string; full_name: string }[] };
+    const pmap = new Map((profs ?? []).map((p: { id: string; full_name: string }) => [p.id, p.full_name]));
+    setThread((msgs ?? []).map((m: Msg) => ({ ...m, author_name: pmap.get(m.author) ?? "User" })));
   }
 
   async function send() {
@@ -66,6 +69,14 @@ export default function SuperTickets() {
     await superAction("update_ticket", { ticket_id: active.id, status });
     setActive({ ...active, status }); await load();
   }
+
+  async function changePriority(priority: string) {
+    if (!active) return;
+    await superAction("update_ticket", { ticket_id: active.id, priority });
+    setActive({ ...active, priority }); await load();
+    toast.success(`Priority set to ${priority}`);
+  }
+
   async function assignSelf() {
     if (!active || !user) return;
     await superAction("update_ticket", { ticket_id: active.id, assignee: user.id });
@@ -90,9 +101,9 @@ export default function SuperTickets() {
 
   return (
     <div>
-      <PageHeader title="Support Tickets" description="Inbound issues from every tenant. Reply, assign, and close from here." />
+      <PageHeader title="Support Tickets" description="Inbound issues from every tenant. Reply, set priority, assign, or move to 30-day Trash." />
 
-      <div className="flex items-center justify-between mb-4 gap-3">
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="open">Open · {counts.open ?? 0}</TabsTrigger>
@@ -110,7 +121,7 @@ export default function SuperTickets() {
 
       <Section title={`Inbox · ${filtered.length}`}>
         {tickets === null ? (
-          <div className="space-y-2">{Array.from({length:6}).map((_,i)=><Skel key={i} className="h-14" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skel key={i} className="h-14" />)}</div>
         ) : filtered.length === 0 ? (
           <EmptyState icon={<LifeBuoy className="size-5 text-muted-foreground" />} title="Nothing here" />
         ) : (
@@ -143,11 +154,14 @@ export default function SuperTickets() {
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <StatusBadge status={active.status} />
                   <StatusBadge status={active.priority} />
-                  <span className="text-[11px] text-muted-foreground">{active.school_name}</span>
+                  <Link to={`/super/schools/${active.school_id}`} className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5">
+                    {active.school_name}
+                    <ArrowUpRight className="size-3" />
+                  </Link>
                 </div>
               </SheetHeader>
 
-              <div className="flex items-center gap-2 mt-4 mb-4">
+              <div className="flex items-center gap-2 mt-4 mb-4 flex-wrap">
                 <Select value={active.status} onValueChange={changeStatus}>
                   <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -157,9 +171,27 @@ export default function SuperTickets() {
                     <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={active.priority} onValueChange={changePriority}>
+                  <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
                 {active.assignee !== user?.id && (
-                  <Button size="sm" variant="outline" onClick={assignSelf}><UserCheck className="size-3.5 mr-1.5" />Assign to me</Button>
+                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={assignSelf}><UserCheck className="size-3.5 mr-1.5" />Assign to me</Button>
                 )}
+                <div className="flex-1" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-xs text-destructive"
+                  onClick={() => { setTrashTarget(active); setActive(null); }}
+                >
+                  <Trash2 className="size-3.5 mr-1" />Trash
+                </Button>
               </div>
 
               <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm whitespace-pre-wrap mb-4">{active.body}</div>
@@ -188,6 +220,21 @@ export default function SuperTickets() {
           )}
         </SheetContent>
       </Sheet>
+
+      {trashTarget && (
+        <ConfirmDeleteDialog
+          open={!!trashTarget}
+          onOpenChange={o => !o && setTrashTarget(null)}
+          title="Move ticket to 30-day Trash"
+          description={`Move "${trashTarget.subject}" to Trash? You can restore it from Trash within 30 days.`}
+          onConfirm={async () => {
+            await superAction("soft_delete", { table: "support_tickets", id: trashTarget.id, confirm: "DELETE" });
+            toast.success("Ticket moved to Trash");
+            setTrashTarget(null);
+            void load();
+          }}
+        />
+      )}
     </div>
   );
 }

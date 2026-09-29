@@ -598,6 +598,126 @@ Deno.serve(async (req) => {
         await audit(null, { module_id: mod.id, slug: mod.slug, rollout: "approved_to_products", enable_all_schools });
         return json({ ok: true, module: { ...mod, status: "available", global_default: !!global_default, default_config: nextCfg } });
       }
+      case "upsert_plan_pricing": {
+        const { plan, label, term_price_kobo, included_students, extra_student_kobo, sort_order } = payload;
+        if (!plan || !label) return json({ error: "plan and label required" }, 400);
+        const row: any = {
+          plan: String(plan).trim().toLowerCase(),
+          label: String(label).trim(),
+          term_price_kobo: Math.max(0, Number(term_price_kobo ?? 0)),
+          included_students: Math.max(0, Number(included_students ?? 0)),
+          extra_student_kobo: Math.max(0, Number(extra_student_kobo ?? 0)),
+          updated_at: new Date().toISOString(),
+        };
+        if (sort_order !== undefined) row.sort_order = Number(sort_order);
+        const { data, error } = await admin.from("plan_pricing").upsert(row, { onConflict: "plan" }).select("*").single();
+        if (error) throw error;
+        await audit(null, { plan: row.plan, term_price_kobo: row.term_price_kobo });
+        return json({ ok: true, plan_pricing: data });
+      }
+      case "create_platform_invoice": {
+        const { school_id, amount_kobo, kind, plan, due_at, line_items } = payload;
+        const kobo = Math.round(Number(amount_kobo ?? 0));
+        if (!school_id || kobo <= 0) return json({ error: "Valid school_id and positive amount_kobo required" }, 400);
+        const { data: inv, error } = await admin.from("invoices").insert({
+          school_id,
+          amount_kobo: kobo,
+          amount_cents: kobo,
+          currency: "NGN",
+          status: "open",
+          kind: kind || "subscription",
+          plan: plan || null,
+          issued_at: new Date().toISOString(),
+          due_at: due_at || null,
+          line_items: Array.isArray(line_items) ? line_items : [],
+        }).select("*").single();
+        if (error) throw error;
+        await audit(school_id, { invoice_id: inv?.id, amount_kobo: kobo, kind: kind || "subscription" });
+        return json({ ok: true, invoice: inv });
+      }
+      case "update_invoice_status": {
+        const { invoice_id, status, paid_method } = payload;
+        if (!invoice_id || !status) return json({ error: "invoice_id and status required" }, 400);
+        const patch: any = { status };
+        if (status === "paid") {
+          patch.paid_at = new Date().toISOString();
+          patch.paid_method = paid_method || "bank_transfer";
+        } else if (status === "open") {
+          patch.paid_at = null;
+          patch.paid_method = null;
+        }
+        const { data: inv, error } = await admin.from("invoices").update(patch).eq("id", invoice_id).select("*").single();
+        if (error) throw error;
+        await audit(inv?.school_id ?? null, { invoice_id, status, paid_method: patch.paid_method });
+        return json({ ok: true, invoice: inv });
+      }
+      case "bulk_resolve_errors": {
+        const { ids, status, note, all_open } = payload;
+        const nextStatus = status || "resolved";
+        const patch: any = {
+          resolution_status: nextStatus,
+          resolution_note: note ?? null,
+          resolved_at: nextStatus === "resolved" ? new Date().toISOString() : null,
+          resolved_by: nextStatus === "resolved" ? user.id : null,
+        };
+        let q = admin.from("client_errors").update(patch);
+        if (all_open) {
+          q = q.in("resolution_status", ["open", "investigating"]);
+        } else if (Array.isArray(ids) && ids.length > 0) {
+          q = q.in("id", ids);
+        } else {
+          return json({ error: "Provide ids or all_open: true" }, 400);
+        }
+        const { error } = await q;
+        if (error) throw error;
+        await audit(null, { count: Array.isArray(ids) ? ids.length : "all_open", status: nextStatus });
+        return json({ ok: true });
+      }
+      case "clear_rate_limit": {
+        const { id, key, all } = payload;
+        if (all) {
+          const { error } = await admin.from("rate_limits").delete().gte("count", 0);
+          if (error) throw error;
+        } else if (id) {
+          const { error } = await admin.from("rate_limits").delete().eq("id", id);
+          if (error) throw error;
+        } else if (key) {
+          const { error } = await admin.from("rate_limits").delete().eq("key", key);
+          if (error) throw error;
+        } else {
+          return json({ error: "id, key, or all required" }, 400);
+        }
+        await audit(null, { id, key, all: !!all });
+        return json({ ok: true });
+      }
+      case "run_platform_automation": {
+        const { job_key } = payload;
+        const started = Date.now();
+        let summary: any = {};
+        if (job_key === "trash_and_errors_maintenance") {
+          const { error } = await admin.rpc("trash_and_errors_maintenance");
+          if (error) throw error;
+          summary = { rpc: "trash_and_errors_maintenance", status: "completed" };
+        } else if (["pilot-alerts-scan", "parent-alerts-scan", "broadcast-dispatch", "super-daily-intel", "automation-runner"].includes(job_key)) {
+          const res = await fetch(`${url}/functions/v1/${job_key}`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${service}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ triggered_by: user.id, manual: true }),
+          });
+          const text = await res.text();
+          let parsed: any = text;
+          try { parsed = JSON.parse(text); } catch { /* raw text */ }
+          summary = { function: job_key, http_status: res.status, result: parsed };
+        } else {
+          return json({ error: "Unknown automation job_key" }, 400);
+        }
+        const duration_ms = Date.now() - started;
+        await audit(null, { job_key, duration_ms, summary });
+        return json({ ok: true, job_key, duration_ms, summary });
+      }
       default:
         return json({ error: "unknown action" }, 400);
     }

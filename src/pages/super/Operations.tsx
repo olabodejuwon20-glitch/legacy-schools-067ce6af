@@ -1,22 +1,25 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LifeBuoy, AlertCircle, Megaphone, Activity, ScrollText, Sparkles, Loader2, Bug, Radio } from "lucide-react";
+import { LifeBuoy, AlertCircle, Megaphone, Activity, ScrollText, Sparkles, Bug, Radio, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Skel } from "@/components/super/primitives";
 
 const TicketsTab       = lazy(() => import("./Tickets"));
 const IncidentsTab     = lazy(() => import("./Errors"));
 const AnnouncementsTab = lazy(() => import("./Announcements"));
 const SystemHealthTab  = lazy(() => import("./operations/SystemHealth"));
+const AutomationsTab   = lazy(() => import("./operations/Automations"));
 const LogsTab          = lazy(() => import("./Logs"));
 
-type TabKey = "tickets" | "incidents" | "announcements" | "health" | "logs";
+type TabKey = "tickets" | "incidents" | "announcements" | "health" | "automations" | "logs";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; description: string }[] = [
   { key: "tickets",       label: "Tickets",       icon: LifeBuoy,    description: "Support inbox — assign, reply, close." },
   { key: "incidents",     label: "Incidents",     icon: AlertCircle, description: "Runtime errors grouped by fingerprint." },
   { key: "announcements", label: "Announcements", icon: Megaphone,   description: "Platform-wide notices, scheduled and live." },
   { key: "health",        label: "System Health", icon: Activity,    description: "Auth, rate limits, and edge status at a glance." },
+  { key: "automations",   label: "Automations",   icon: Workflow,    description: "Scheduled maintenance jobs, scanners, and manual dispatch." },
   { key: "logs",          label: "Logs",          icon: ScrollText,  description: "Filtered platform audit trail." },
 ];
 
@@ -30,7 +33,9 @@ type Insights = {
 export default function SuperOperations() {
   const [params, setParams] = useSearchParams();
   const raw = params.get("tab") as TabKey | null;
-  const active: TabKey = (["tickets","incidents","announcements","health","logs"] as TabKey[]).includes(raw as TabKey) ? (raw as TabKey) : "tickets";
+  const active: TabKey = (["tickets", "incidents", "announcements", "health", "automations", "logs"] as TabKey[]).includes(raw as TabKey)
+    ? (raw as TabKey)
+    : "tickets";
   const [insights, setInsights] = useState<Insights | null>(null);
 
   useEffect(() => {
@@ -38,9 +43,9 @@ export default function SuperOperations() {
     (async () => {
       const since = new Date(Date.now() - 24 * 3600_000).toISOString();
       const [t, iOpen, e24, ann] = await Promise.all([
-        supabase.from("support_tickets").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
-        supabase.from("client_errors").select("id", { count: "exact", head: true }).eq("resolution_status", "open"),
-        supabase.from("client_errors").select("id", { count: "exact", head: true }).gte("created_at", since),
+        supabase.from("support_tickets").select("id", { count: "exact", head: true }).is("deleted_at", null).in("status", ["open", "in_progress"]),
+        supabase.from("client_errors").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("resolution_status", "open"),
+        supabase.from("client_errors").select("id", { count: "exact", head: true }).is("deleted_at", null).gte("created_at", since),
         supabase.from("platform_announcements").select("id, scheduled_for, deleted_at"),
       ]);
       if (!alive) return;
@@ -65,9 +70,9 @@ export default function SuperOperations() {
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
           <Sparkles className="size-3" /><span>Operations workspace</span>
         </div>
-        <h1 className="text-[22px] font-semibold tracking-tight text-foreground">Support &amp; system health</h1>
+        <h1 className="text-[22px] font-semibold tracking-tight text-foreground">Support, incidents &amp; system health</h1>
         <p className="mt-1 text-[13px] text-muted-foreground max-w-2xl">
-          The queue our support and on-call staff live in — tickets, incidents, announcements, and platform vitals in one place.
+          The command queue for support and on-call engineers — tickets, runtime incidents, broadcasts, rate-limit vitals, and scheduled automations.
         </p>
       </div>
 
@@ -99,11 +104,12 @@ export default function SuperOperations() {
         </nav>
       </div>
 
-      <Suspense fallback={<div className="min-h-[240px] grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>}>
+      <Suspense fallback={<div className="space-y-3"><Skel className="h-24" /><Skel className="h-64" /></div>}>
         {active === "tickets"       && <TicketsTab />}
         {active === "incidents"     && <IncidentsTab />}
         {active === "announcements" && <AnnouncementsTab />}
         {active === "health"        && <SystemHealthTab />}
+        {active === "automations"   && <AutomationsTab />}
         {active === "logs"          && <LogsTab />}
       </Suspense>
     </div>

@@ -1,153 +1,147 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { MetricCard, Section, Skel, EmptyState } from "@/components/super/primitives";
-import { TrendingUp, DollarSign, AlertCircle, Users, Banknote } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
+import { Section, MetricCard, Skel, EmptyState } from "@/components/super/primitives";
+import { fmtNgn } from "@/lib/super";
+import { Wallet, TrendingUp, AlertCircle, CheckCircle2, Layers, ArrowUpRight } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-type Invoice = { id: string; school_id: string; amount_cents: number | null; amount_kobo: number | null; status: string; issued_at: string; paid_at: string | null; plan: string | null; kind: string | null };
-type School = { id: string; name: string; plan: string | null; status: string; plan_started_at: string | null };
+type Inv = { id: string; school_id: string; amount_kobo: number | null; amount_cents: number; status: string; paid_at: string | null; issued_at: string; due_at: string | null };
+type School = { id: string; name: string; slug: string; plan: string; status: string };
+type PlanPrice = { plan: string; term_price_kobo: number };
+type AddonSub = { school_id: string; enabled: boolean; term_price_kobo_override: number | null; module_id: string };
+type ModRow = { id: string; pricing_model: string; term_price_kobo: number };
 
-const naira = (kobo: number) => `₦${Math.round(kobo / 100).toLocaleString("en-NG")}`;
+const amountOf = (i: Inv) => Number(i.amount_kobo ?? i.amount_cents ?? 0);
 
 export default function BusinessRevenue() {
-  const [invoices, setInvoices] = useState<Invoice[] | null>(null);
-  const [schools, setSchools] = useState<School[]>([]);
+  const [invoices, setInvoices] = useState<Inv[] | null>(null);
+  const [schools, setSchools] = useState<Map<string, School>>(new Map());
+  const [committedRunRate, setCommittedRunRate] = useState<{ baseKobo: number; addonKobo: number } | null>(null);
 
   useEffect(() => {
+    let alive = true;
     (async () => {
-      const [i, s] = await Promise.all([
-        supabase.from("invoices").select("id, school_id, amount_cents, amount_kobo, status, issued_at, paid_at, plan, kind").order("issued_at", { ascending: false }).limit(2000),
-        supabase.from("schools").select("id, name, plan, status, plan_started_at"),
+      const [inv, sch, plans, sm, mods] = await Promise.all([
+        supabase.from("invoices").select("id, school_id, amount_kobo, amount_cents, status, paid_at, issued_at, due_at").order("issued_at", { ascending: false }).limit(500),
+        supabase.from("schools").select("id, name, slug, plan, status").is("deleted_at", null),
+        supabase.from("plan_pricing").select("plan, term_price_kobo"),
+        supabase.from("school_modules").select("school_id, module_id, enabled, term_price_kobo_override").eq("enabled", true),
+        supabase.from("modules").select("id, pricing_model, term_price_kobo"),
       ]);
-      setInvoices((i.data as Invoice[]) ?? []);
-      setSchools((s.data as School[]) ?? []);
+      if (!alive) return;
+      const schList = (sch.data as School[]) ?? [];
+      setInvoices((inv.data as Inv[]) ?? []);
+      setSchools(new Map(schList.map(s => [s.id, s])));
+
+      const planMap = new Map(((plans.data as PlanPrice[]) ?? []).map(p => [p.plan, Number(p.term_price_kobo ?? 0)]));
+      const activeIds = new Set(schList.filter(s => s.status === "active").map(s => s.id));
+      const baseKobo = schList
+        .filter(s => s.status === "active")
+        .reduce((sum, s) => sum + (planMap.get(s.plan) ?? 0), 0);
+
+      const modMap = new Map(((mods.data as ModRow[]) ?? []).map(m => [m.id, m]));
+      let addonKobo = 0;
+      for (const row of ((sm.data as AddonSub[]) ?? [])) {
+        if (!activeIds.has(row.school_id)) continue;
+        const m = modMap.get(row.module_id);
+        if (!m || m.pricing_model === "included") continue;
+        addonKobo += Number(row.term_price_kobo_override ?? m.term_price_kobo ?? 0);
+      }
+      setCommittedRunRate({ baseKobo, addonKobo });
     })();
+    return () => { alive = false; };
   }, []);
 
-  const amt = (x: Invoice) => (x.amount_kobo ?? (x.amount_cents ?? 0) * 1) || 0;
-
-  const kpis = useMemo(() => {
-    const list = invoices ?? [];
-    const paid = list.filter(x => x.status === "paid" && x.paid_at);
+  const stats = useMemo(() => {
+    if (!invoices) return null;
     const now = Date.now();
     const d30 = now - 30 * 86400_000;
-    const d60 = now - 60 * 86400_000;
-    const rev30 = paid.filter(x => new Date(x.paid_at!).getTime() >= d30).reduce((a, x) => a + amt(x), 0);
-    const rev60_30 = paid.filter(x => { const t = new Date(x.paid_at!).getTime(); return t >= d60 && t < d30; }).reduce((a, x) => a + amt(x), 0);
-    const growth = rev60_30 > 0 ? Math.round(((rev30 - rev60_30) / rev60_30) * 100) : null;
-    const mrr = rev30; // proxy: 30d paid revenue
-    const arr = mrr * 12;
-    const overdue = list.filter(x => x.status === "open").reduce((a, x) => a + amt(x), 0);
-    const activePayers = new Set(paid.filter(x => new Date(x.paid_at!).getTime() >= d30).map(x => x.school_id)).size;
-    return { mrr, arr, growth, overdue, activePayers };
-  }, [invoices]);
+    const d90 = now - 90 * 86400_000;
+    let rev30 = 0, rev90 = 0, revAll = 0, openTotal = 0, overdueTotal = 0;
+    const bySchool = new Map<string, number>();
 
-  const trend = useMemo(() => {
-    const buckets: Record<string, number> = {};
-    for (let i = 89; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); buckets[d.toISOString().slice(0, 10)] = 0; }
-    (invoices ?? []).filter(x => x.status === "paid" && x.paid_at).forEach(x => {
-      const k = x.paid_at!.slice(0, 10);
-      if (k in buckets) buckets[k] += amt(x) / 100;
-    });
-    return Object.entries(buckets).map(([date, value]) => ({ date: date.slice(5), value: Math.round(value) }));
-  }, [invoices]);
+    for (const i of invoices) {
+      const amt = amountOf(i);
+      if (i.status === "paid") {
+        revAll += amt;
+        const t = i.paid_at ? new Date(i.paid_at).getTime() : new Date(i.issued_at).getTime();
+        if (t >= d30) rev30 += amt;
+        if (t >= d90) rev90 += amt;
+        bySchool.set(i.school_id, (bySchool.get(i.school_id) ?? 0) + amt);
+      } else if (i.status === "open") {
+        openTotal += amt;
+        if (i.due_at && new Date(i.due_at).getTime() < now) overdueTotal += amt;
+      }
+    }
 
-  const topSchools = useMemo(() => {
-    const totals = new Map<string, number>();
-    (invoices ?? []).filter(x => x.status === "paid").forEach(x => {
-      totals.set(x.school_id, (totals.get(x.school_id) ?? 0) + amt(x));
-    });
-    const rows = Array.from(totals.entries()).map(([id, k]) => ({
-      id, kobo: k, name: schools.find(s => s.id === id)?.name ?? "—", plan: schools.find(s => s.id === id)?.plan ?? "—",
-    }));
-    rows.sort((a, b) => b.kobo - a.kobo);
-    return rows.slice(0, 8);
+    const topSchools = Array.from(bySchool.entries())
+      .map(([school_id, kobo]) => ({ school: schools.get(school_id), school_id, kobo }))
+      .sort((a, b) => b.kobo - a.kobo)
+      .slice(0, 10);
+
+    return { rev30, rev90, revAll, openTotal, overdueTotal, topSchools };
   }, [invoices, schools]);
-
-  const planMix = useMemo(() => {
-    const totals = new Map<string, number>();
-    (invoices ?? []).filter(x => x.status === "paid").forEach(x => {
-      const p = x.plan ?? "unknown";
-      totals.set(p, (totals.get(p) ?? 0) + amt(x));
-    });
-    return Array.from(totals.entries()).map(([plan, kobo]) => ({ plan, value: Math.round(kobo / 100) })).sort((a, b) => b.value - a.value);
-  }, [invoices]);
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <MetricCard label="MRR (30d paid)" value={naira(kpis.mrr)} icon={<DollarSign className="size-4" />} />
-        <MetricCard label="ARR (annualized)" value={naira(kpis.arr)} icon={<TrendingUp className="size-4" />} />
-        <MetricCard label="Net new MRR" value={kpis.growth === null ? "—" : `${kpis.growth >= 0 ? "+" : ""}${kpis.growth}%`} icon={<TrendingUp className="size-4" />} />
-        <MetricCard label="Overdue" value={naira(kpis.overdue)} icon={<AlertCircle className="size-4" />} />
-        <MetricCard label="Active payers" value={kpis.activePayers} icon={<Users className="size-4" />} />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <MetricCard label="Paid · last 30d"   value={stats ? fmtNgn(stats.rev30) : "—"}       icon={<Wallet className="size-4" />} />
+        <MetricCard label="Paid · last 90d"   value={stats ? fmtNgn(stats.rev90) : "—"}       icon={<TrendingUp className="size-4" />} />
+        <MetricCard label="Paid · all time"   value={stats ? fmtNgn(stats.revAll) : "—"}      icon={<CheckCircle2 className="size-4" />} />
+        <MetricCard
+          label="Committed Term Run-Rate"
+          value={committedRunRate ? fmtNgn(committedRunRate.baseKobo + committedRunRate.addonKobo) : "—"}
+          sub={committedRunRate ? `Plans ${fmtNgn(committedRunRate.baseKobo)} + Add-ons ${fmtNgn(committedRunRate.addonKobo)}` : undefined}
+          icon={<Layers className="size-4 text-info" />}
+        />
+        <MetricCard
+          label="Outstanding"
+          value={stats ? fmtNgn(stats.openTotal) : "—"}
+          sub={stats && stats.overdueTotal > 0 ? `${fmtNgn(stats.overdueTotal)} overdue` : "No overdue"}
+          icon={<AlertCircle className="size-4" />}
+        />
       </div>
 
-      <Section title="Revenue — last 90 days" description="Paid invoices per day (₦)">
-        {invoices === null ? <Skel className="h-56" /> : trend.every(t => t.value === 0) ? (
-          <EmptyState icon={<Banknote className="size-6" />} title="No paid revenue yet" description="Paid invoices will start showing up here." />
+      <Section title="Top Paying Schools" description="Ranked by cumulative paid invoices in NGN. Click any school to inspect its tenant workspace.">
+        {!stats ? (
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skel key={i} className="h-9" />)}</div>
+        ) : stats.topSchools.length === 0 ? (
+          <EmptyState icon={<Wallet className="size-5 text-muted-foreground" />} title="No paid invoices yet" description="Collections will appear here once schools settle their first invoice." />
         ) : (
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} />
-                <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#revFill)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </Section>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Section title="Revenue by plan" description="Lifetime paid, all-time">
-          {invoices === null ? <Skel className="h-56" /> : planMix.length === 0 ? (
-            <EmptyState icon={<Banknote className="size-6" />} title="No revenue yet" />
-          ) : (
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={planMix} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-                  <XAxis dataKey="plan" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </Section>
-
-        <Section title="Top-paying schools" description="Lifetime paid revenue">
-          {invoices === null ? <Skel className="h-56" /> : topSchools.length === 0 ? (
-            <EmptyState icon={<Users className="size-6" />} title="No paying schools yet" />
-          ) : (
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow><TableHead>School</TableHead><TableHead>Plan</TableHead><TableHead className="text-right">Total</TableHead></TableRow>
+                <TableRow>
+                  <TableHead className="w-10">#</TableHead>
+                  <TableHead>School</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead className="text-right">Lifetime Paid (NGN)</TableHead>
+                </TableRow>
               </TableHeader>
               <TableBody>
-                {topSchools.map(r => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.name}</TableCell>
-                    <TableCell className="text-muted-foreground capitalize">{r.plan}</TableCell>
-                    <TableCell className="text-right tabular-nums">{naira(r.kobo)}</TableCell>
+                {stats.topSchools.map((row, idx) => (
+                  <TableRow key={row.school_id}>
+                    <TableCell className="text-muted-foreground tabular-nums">{idx + 1}</TableCell>
+                    <TableCell className="font-medium">
+                      {row.school ? (
+                        <Link to={`/super/schools/${row.school_id}`} className="inline-flex items-center gap-1 hover:underline text-foreground">
+                          {row.school.name}
+                          <ArrowUpRight className="size-3 text-muted-foreground" />
+                        </Link>
+                      ) : (
+                        row.school_id.slice(0, 8)
+                      )}
+                    </TableCell>
+                    <TableCell className="capitalize text-xs text-muted-foreground">{row.school?.plan ?? "—"}</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">{fmtNgn(row.kobo)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          )}
-        </Section>
-      </div>
+          </div>
+        )}
+      </Section>
     </div>
   );
 }

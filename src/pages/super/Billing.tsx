@@ -1,249 +1,423 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { PageHeader, Section, MetricCard, Skel, StatusBadge, EmptyState } from "@/components/super/primitives";
-import { Input } from "@/components/ui/input";
+import { PageHeader, Section, StatusBadge, Skel, EmptyState, MetricCard } from "@/components/super/primitives";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Receipt, Plus, Check, Ban, RotateCcw, Download, Printer, Search, Wallet, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { Receipt, DollarSign, Clock, AlertCircle, Plus, Download, Search } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
+import { fmtNgn, superAction } from "@/lib/super";
 
-type Invoice = { id: string; school_id: string; number: string; amount_cents: number; status: string; issued_at: string; paid_at: string | null; line_items: any };
-type School = { id: string; name: string; slug: string };
+type Sub = { id: string; school_id: string; plan: string; status: string; monthly_amount_cents: number; current_period_end: string | null; school_name?: string };
+type Inv = {
+  id: string;
+  school_id: string;
+  amount_kobo: number | null;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  kind?: string | null;
+  plan?: string | null;
+  issued_at: string;
+  due_at: string | null;
+  paid_at: string | null;
+  paid_method?: string | null;
+  line_items?: Array<{ label?: string; amount_kobo?: number }>;
+  school_name?: string;
+};
+
+const invAmountKobo = (i: Inv) => Number(i.amount_kobo ?? i.amount_cents ?? 0);
 
 export default function SuperBilling() {
-  const [invoices, setInvoices] = useState<Invoice[] | null>(null);
-  const [schools, setSchools] = useState<School[]>([]);
-  const [q, setQ] = useState("");
+  const [subs, setSubs] = useState<Sub[] | null>(null);
+  const [invs, setInvs] = useState<Inv[] | null>(null);
+  const [schools, setSchools] = useState<{ id: string; name: string; plan: string }[]>([]);
+  const [open, setOpen] = useState(false);
+  const [receiptInv, setReceiptInv] = useState<Inv | null>(null);
+  const [busy, setBusy] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ school_id: "", number: "", amount: "", lines: "" });
-  const [saving, setSaving] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [form, setForm] = useState({
+    school_id: "",
+    amount_ngn: "150000",
+    kind: "subscription",
+    plan: "standard",
+    due_at: "",
+    description: "Term platform subscription",
+  });
 
   async function load() {
-    const [i, s] = await Promise.all([
-      supabase.from("invoices").select("*").order("issued_at", { ascending: false }).limit(500),
-      supabase.from("schools").select("id, name, slug").order("name"),
+    setSubs(null); setInvs(null);
+    const [{ data: s }, { data: i }, { data: sc }] = await Promise.all([
+      supabase.from("subscriptions").select("*").order("created_at", { ascending: false }),
+      supabase.from("invoices").select("*").order("issued_at", { ascending: false }).limit(300),
+      supabase.from("schools").select("id,name,plan").is("deleted_at", null).order("name"),
     ]);
-    setInvoices((i.data as Invoice[]) ?? []);
-    setSchools((s.data as School[]) ?? []);
+    const map = new Map((sc ?? []).map((x: { id: string; name: string; plan: string }) => [x.id, x.name]));
+    setSchools((sc as { id: string; name: string; plan: string }[]) ?? []);
+    setSubs((s ?? []).map((x: Sub) => ({ ...x, school_name: map.get(x.school_id) ?? "—" })));
+    setInvs((i ?? []).map((x: Inv) => ({ ...x, school_name: map.get(x.school_id) ?? "—" })));
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { void load(); }, []);
 
-  const schoolName = (id: string) => schools.find(s => s.id === id)?.name ?? "—";
+  const kpis = useMemo(() => {
+    const list = invs ?? [];
+    const paidKobo = list.filter(i => i.status === "paid").reduce((s, i) => s + invAmountKobo(i), 0);
+    const openKobo = list.filter(i => i.status === "open").reduce((s, i) => s + invAmountKobo(i), 0);
+    const overdueCount = list.filter(i => i.status === "open" && i.due_at && new Date(i.due_at).getTime() < Date.now()).length;
+    return { paidKobo, openKobo, overdueCount, totalCount: list.length };
+  }, [invs]);
 
-  const totals = useMemo(() => {
-    const list = invoices ?? [];
-    const paid = list.filter(x => x.status === "paid");
-    const open = list.filter(x => x.status === "open");
-    const failed = list.filter(x => x.status === "failed");
-    const since30 = Date.now() - 30 * 86400_000;
-    const rev30 = paid.filter(x => x.paid_at && new Date(x.paid_at).getTime() >= since30).reduce((a, x) => a + x.amount_cents, 0);
-    const outstanding = open.reduce((a, x) => a + x.amount_cents, 0);
-    const lifetime = paid.reduce((a, x) => a + x.amount_cents, 0);
-    return { rev30, outstanding, lifetime, openCount: open.length, failedCount: failed.length };
-  }, [invoices]);
-
-  const trend = useMemo(() => {
-    const buckets: Record<string, number> = {};
-    const days = 30;
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      buckets[d.toISOString().slice(0, 10)] = 0;
-    }
-    (invoices ?? []).filter(x => x.status === "paid" && x.paid_at).forEach(x => {
-      const k = x.paid_at!.slice(0, 10);
-      if (k in buckets) buckets[k] += x.amount_cents / 100;
+  const filteredInvs = useMemo(() => {
+    if (!invs) return [];
+    const needle = q.trim().toLowerCase();
+    return invs.filter(i => {
+      if (statusFilter !== "all" && i.status !== statusFilter) return false;
+      if (needle && !(i.school_name ?? "").toLowerCase().includes(needle) && !(i.kind ?? "").toLowerCase().includes(needle) && !(i.plan ?? "").toLowerCase().includes(needle)) return false;
+      return true;
     });
-    return Object.entries(buckets).map(([date, value]) => ({ date: date.slice(5), value: Math.round(value) }));
-  }, [invoices]);
-
-  const filtered = useMemo(() => (invoices ?? [])
-    .filter(x => statusFilter === "all" || x.status === statusFilter)
-    .filter(x => !q.trim() || x.number.toLowerCase().includes(q.toLowerCase()) || schoolName(x.school_id).toLowerCase().includes(q.toLowerCase()))
-  , [invoices, statusFilter, q, schools]);
-
-  async function markPaid(inv: Invoice) {
-    setBusyId(inv.id);
-    try {
-      const { error } = await supabase.from("invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", inv.id);
-      if (error) throw error;
-      setInvoices(arr => (arr ?? []).map(x => x.id === inv.id ? { ...x, status: "paid", paid_at: new Date().toISOString() } : x));
-      toast.success("Marked as paid");
-    } catch (e: any) { toast.error(e.message); }
-    finally { setBusyId(null); }
-  }
+  }, [invs, statusFilter, q]);
 
   async function createInvoice() {
-    if (!form.school_id || !form.number || !form.amount) {
-      toast.error("School, number and amount are required"); return;
+    const kobo = Math.round(parseFloat(form.amount_ngn || "0") * 100);
+    if (!form.school_id || !kobo || kobo <= 0) {
+      toast.error("Select a school and enter a positive NGN amount");
+      return;
     }
-    setSaving(true);
+    setBusy(true);
     try {
-      const amount_cents = Math.round(parseFloat(form.amount) * 100);
-      const line_items = form.lines.trim()
-        ? form.lines.split("\n").filter(Boolean).map(l => { const [d, v] = l.split("|"); return { description: d?.trim() ?? l.trim(), amount_cents: v ? Math.round(parseFloat(v) * 100) : 0 }; })
-        : [];
-      const { error } = await supabase.from("invoices").insert({
-        school_id: form.school_id, number: form.number, amount_cents, status: "open", line_items,
+      await superAction("create_platform_invoice", {
+        school_id: form.school_id,
+        amount_kobo: kobo,
+        kind: form.kind,
+        plan: form.plan || null,
+        due_at: form.due_at ? new Date(form.due_at).toISOString() : null,
+        line_items: form.description.trim() ? [{ label: form.description.trim(), amount_kobo: kobo }] : [],
       });
-      if (error) throw error;
-      toast.success("Invoice created");
-      setCreating(false);
-      setForm({ school_id: "", number: "", amount: "", lines: "" });
-      await load();
-    } catch (e: any) { toast.error(e.message); }
-    finally { setSaving(false); }
+      toast.success("NGN Invoice issued");
+      setOpen(false);
+      void load();
+    } catch {
+      /* superAction toasts */
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function exportCSV() {
-    const rows = [["Number", "School", "Amount", "Status", "Issued", "Paid"]].concat(
-      (invoices ?? []).map(x => [x.number, schoolName(x.school_id), (x.amount_cents/100).toString(), x.status, x.issued_at, x.paid_at ?? ""])
-    );
-    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const a = document.createElement("a"); a.href = url; a.download = "invoices.csv"; a.click(); URL.revokeObjectURL(url);
+  async function setInvoiceStatus(inv: Inv, status: string, paid_method?: string) {
+    try {
+      await superAction("update_invoice_status", { invoice_id: inv.id, status, paid_method });
+      toast.success(`Invoice marked ${status}`);
+      void load();
+    } catch {
+      /* superAction toasts */
+    }
   }
 
-  const fmt = (cents: number) => `$${(cents/100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  function exportCsv() {
+    const list = filteredInvs;
+    const header = ["id", "school", "kind", "plan", "amount_ngn", "currency", "status", "issued_at", "due_at", "paid_at", "paid_method"];
+    const lines = list.map(i => [
+      i.id,
+      i.school_name ?? i.school_id,
+      i.kind ?? "subscription",
+      i.plan ?? "",
+      (invAmountKobo(i) / 100).toFixed(2),
+      "NGN",
+      i.status,
+      i.issued_at,
+      i.due_at ?? "",
+      i.paid_at ?? "",
+      i.paid_method ?? "",
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
+    const blob = new Blob(["\uFEFF" + [header.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `platform-invoices-ngn-${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="space-y-6">
       <PageHeader
-        title="Billing & Revenue"
-        description="Invoices, payments, and revenue trends across every tenant."
+        title="Platform Invoices & Billing (NGN)"
+        description="All platform billing is denominated in Nigerian Naira (₦), stored in kobo across both amount_kobo and amount_cents."
         actions={
-          <>
-            <Button variant="outline" size="sm" onClick={exportCSV}><Download className="size-4" /> Export</Button>
-            <Button size="sm" onClick={() => setCreating(true)}><Plus className="size-4" /> New invoice</Button>
-          </>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={exportCsv} disabled={!filteredInvs.length}>
+              <Download className="size-3.5 mr-1.5" />Export CSV
+            </Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild><Button size="sm"><Plus className="size-3.5 mr-1.5" />Issue NGN Invoice</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Issue Platform Invoice (₦ NGN)</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label>School</Label>
+                    <Select
+                      value={form.school_id}
+                      onValueChange={v => {
+                        const sc = schools.find(s => s.id === v);
+                        setForm({ ...form, school_id: v, plan: sc?.plan || form.plan });
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Choose school…" /></SelectTrigger>
+                      <SelectContent>
+                        {schools.map(s => <SelectItem key={s.id} value={s.id}>{s.name} ({s.plan})</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Kind</Label>
+                      <Select value={form.kind} onValueChange={v => setForm({ ...form, kind: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="subscription">Term Subscription</SelectItem>
+                          <SelectItem value="module">Module Add-on</SelectItem>
+                          <SelectItem value="overage">Student Overage</SelectItem>
+                          <SelectItem value="onboarding">Onboarding / Setup</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Plan Tier</Label>
+                      <Select value={form.plan} onValueChange={v => setForm({ ...form, plan: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="trial">Trial</SelectItem>
+                          <SelectItem value="basic">Basic</SelectItem>
+                          <SelectItem value="standard">Standard</SelectItem>
+                          <SelectItem value="premium">Premium</SelectItem>
+                          <SelectItem value="enterprise">Enterprise</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Amount (₦ Naira)</Label>
+                      <Input type="number" min={0} step="500" value={form.amount_ngn} onChange={e => setForm({ ...form, amount_ngn: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Due Date (optional)</Label>
+                      <Input type="date" value={form.due_at} onChange={e => setForm({ ...form, due_at: e.target.value })} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Line Item Description</Label>
+                    <Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="e.g. 2025/2026 Term 2 Standard Subscription" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                  <Button onClick={createInvoice} disabled={busy}>Issue Invoice</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <MetricCard label="Revenue (30d)" value={invoices ? fmt(totals.rev30) : <Skel className="h-6 w-24" />} icon={<DollarSign className="size-4" />} />
-        <MetricCard label="Outstanding" value={invoices ? fmt(totals.outstanding) : <Skel className="h-6 w-24" />} delta={totals.openCount ? { value: `${totals.openCount} open`, positive: false } : undefined} icon={<Clock className="size-4" />} />
-        <MetricCard label="Lifetime revenue" value={invoices ? fmt(totals.lifetime) : <Skel className="h-6 w-24" />} icon={<Receipt className="size-4" />} />
-        <MetricCard label="Failed payments" value={invoices ? totals.failedCount : <Skel className="h-6 w-12" />} icon={<AlertCircle className="size-4" />} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <MetricCard label="Total Collected (Paid)" value={invs ? fmtNgn(kpis.paidKobo) : "—"} icon={<CheckCircle2 className="size-4 text-success" />} />
+        <MetricCard label="Open Receivables" value={invs ? fmtNgn(kpis.openKobo) : "—"} icon={<Wallet className="size-4 text-warning" />} />
+        <MetricCard label="Overdue Invoices" value={invs ? kpis.overdueCount : "—"} icon={<AlertCircle className="size-4 text-destructive" />} />
+        <MetricCard label="Total Invoices" value={invs ? kpis.totalCount : "—"} icon={<Receipt className="size-4" />} />
       </div>
 
-      <Section title="Revenue · last 30 days">
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trend}>
-              <defs>
-                <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}`} />
-              <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} formatter={(v: number) => `$${v}`} />
-              <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#rev)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </Section>
-
-      <div className="h-4" />
-
-      <Section title={`Invoices ${invoices ? `· ${filtered.length}` : ""}`} actions={
-        <div className="flex gap-2">
-          <div className="relative">
-            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search…" value={q} onChange={e => setQ(e.target.value)} className="pl-9 h-8 w-[220px]" />
+      <Section
+        title={`Invoices (${filteredInvs.length})`}
+        description="Every platform invoice issued to schools. Mark as paid, void, refund, or print an official receipt."
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative w-56">
+              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search school or kind…" className="pl-8 h-8 text-xs" />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="void">Void</SelectItem>
+                <SelectItem value="refunded">Refunded</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px] h-8"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      }>
-        {invoices === null ? (
-          <div className="space-y-2"><Skel className="h-10" /><Skel className="h-10" /><Skel className="h-10" /></div>
-        ) : filtered.length === 0 ? (
-          <EmptyState icon={<Receipt className="size-5" />} title="No invoices" description="Create one to start tracking billing." />
+        }
+      >
+        {invs === null ? (
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skel key={i} className="h-10" />)}</div>
+        ) : filteredInvs.length === 0 ? (
+          <EmptyState icon={<Receipt className="size-5 text-muted-foreground" />} title="No matching invoices" description="Issue a new NGN invoice or adjust your filters." />
         ) : (
           <div className="overflow-x-auto -mx-5">
-            <div className="overflow-x-auto"><table className="w-full text-sm">
-              <thead className="text-xs text-muted-foreground">
-                <tr className="border-b border-border">
-                  <th className="text-left px-5 py-2 font-medium">Number</th>
-                  <th className="text-left px-3 py-2 font-medium">School</th>
-                  <th className="text-right px-3 py-2 font-medium">Amount</th>
+            <table className="w-full text-sm">
+              <thead className="text-[11px] uppercase text-muted-foreground border-b border-border">
+                <tr>
+                  <th className="text-left px-5 py-2 font-medium">School</th>
+                  <th className="text-left px-3 py-2 font-medium">Type / Plan</th>
+                  <th className="text-left px-3 py-2 font-medium">Amount (₦)</th>
                   <th className="text-left px-3 py-2 font-medium">Status</th>
                   <th className="text-left px-3 py-2 font-medium">Issued</th>
-                  <th className="text-left px-3 py-2 font-medium">Paid</th>
-                  <th className="px-5 py-2"></th>
+                  <th className="text-left px-3 py-2 font-medium">Due / Paid</th>
+                  <th className="text-right px-5 py-2 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(inv => (
-                  <tr key={inv.id} className="border-b border-border/60 hover:bg-muted/30">
-                    <td className="px-5 py-3 font-mono text-xs">{inv.number}</td>
-                    <td className="px-3 py-3">{schoolName(inv.school_id)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{fmt(inv.amount_cents)}</td>
-                    <td className="px-3 py-3"><StatusBadge status={inv.status} /></td>
-                    <td className="px-3 py-3 text-muted-foreground">{new Date(inv.issued_at).toLocaleDateString()}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : "—"}</td>
-                    <td className="px-5 py-3 text-right">
-                      {inv.status !== "paid" && (
-                        <Button size="sm" variant="outline" disabled={busyId === inv.id} onClick={() => markPaid(inv)}>
-                          {busyId === inv.id ? "…" : "Mark paid"}
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {filteredInvs.map(i => {
+                  const overdue = i.status === "open" && i.due_at && new Date(i.due_at).getTime() < Date.now();
+                  return (
+                    <tr key={i.id} className="border-b border-border/60 hover:bg-muted/30">
+                      <td className="px-5 py-2.5 font-medium">{i.school_name}</td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground capitalize">
+                        {i.kind ?? "subscription"}{i.plan ? ` · ${i.plan}` : ""}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono font-semibold tabular-nums">{fmtNgn(invAmountKobo(i))}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge status={i.status} />
+                          {overdue && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-destructive/15 text-destructive">Overdue</span>}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground">{new Date(i.issued_at).toLocaleDateString()}</td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                        {i.paid_at
+                          ? `Paid ${new Date(i.paid_at).toLocaleDateString()}`
+                          : i.due_at
+                            ? `Due ${new Date(i.due_at).toLocaleDateString()}`
+                            : "—"}
+                      </td>
+                      <td className="px-5 py-2.5 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          {i.status === "open" && (
+                            <>
+                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setInvoiceStatus(i, "paid", "bank_transfer")}>
+                                <Check className="size-3 mr-1" />Mark paid
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => setInvoiceStatus(i, "void")}>
+                                <Ban className="size-3 mr-1" />Void
+                              </Button>
+                            </>
+                          )}
+                          {i.status === "paid" && (
+                            <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => setInvoiceStatus(i, "refunded")}>
+                              <RotateCcw className="size-3 mr-1" />Refund
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" className="size-7" title="View / Print Receipt" onClick={() => setReceiptInv(i)}>
+                            <Printer className="size-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
-            </table></div>
+            </table>
           </div>
         )}
       </Section>
 
-      <Dialog open={creating} onOpenChange={setCreating}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>New invoice</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs">School</Label>
-              <Select value={form.school_id} onValueChange={(v) => setForm(f => ({ ...f, school_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select school" /></SelectTrigger>
-                <SelectContent>
-                  {schools.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Invoice #</Label>
-                <Input value={form.number} onChange={e => setForm(f => ({ ...f, number: e.target.value }))} placeholder="INV-001" />
-              </div>
-              <div>
-                <Label className="text-xs">Amount (USD)</Label>
-                <Input type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="149.00" />
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs">Line items (one per line: "description | amount")</Label>
-              <Textarea rows={4} value={form.lines} onChange={e => setForm(f => ({ ...f, lines: e.target.value }))} placeholder="Pro plan monthly | 149.00" />
-            </div>
+      <Section title="Active Subscription Records" description="Underlying subscription ledger rows linked to schools.">
+        {subs === null ? (
+          <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skel key={i} className="h-10" />)}</div>
+        ) : subs.length === 0 ? (
+          <EmptyState icon={<Receipt className="size-5 text-muted-foreground" />} title="No subscription rows yet" />
+        ) : (
+          <div className="overflow-x-auto -mx-5">
+            <table className="w-full text-sm">
+              <thead className="text-[11px] uppercase text-muted-foreground border-b border-border">
+                <tr>
+                  <th className="text-left px-5 py-2 font-medium">School</th>
+                  <th className="text-left px-3 py-2 font-medium">Plan</th>
+                  <th className="text-left px-3 py-2 font-medium">Status</th>
+                  <th className="text-left px-3 py-2 font-medium">Term Value</th>
+                  <th className="text-right px-5 py-2 font-medium">Period End</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subs.map(s => (
+                  <tr key={s.id} className="border-b border-border/60">
+                    <td className="px-5 py-2.5 font-medium">{s.school_name}</td>
+                    <td className="px-3 py-2.5"><StatusBadge status={s.plan} /></td>
+                    <td className="px-3 py-2.5"><StatusBadge status={s.status} /></td>
+                    <td className="px-3 py-2.5 font-mono text-xs">{fmtNgn(s.monthly_amount_cents)}</td>
+                    <td className="px-5 py-2.5 text-right text-xs text-muted-foreground">
+                      {s.current_period_end ? new Date(s.current_period_end).toLocaleDateString() : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCreating(false)}>Cancel</Button>
-            <Button onClick={createInvoice} disabled={saving}>{saving ? "Creating…" : "Create"}</Button>
-          </DialogFooter>
+        )}
+      </Section>
+
+      <Dialog open={!!receiptInv} onOpenChange={o => !o && setReceiptInv(null)}>
+        <DialogContent className="sm:max-w-lg">
+          {receiptInv && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center justify-between">
+                  <span>Invoice #{receiptInv.id.slice(0, 8).toUpperCase()}</span>
+                  <StatusBadge status={receiptInv.status} />
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2 text-sm border-y border-border">
+                <div className="flex justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Billed To</div>
+                    <div className="font-semibold text-foreground">{receiptInv.school_name}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Issued</div>
+                    <div>{new Date(receiptInv.issued_at).toLocaleDateString()}</div>
+                  </div>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3 space-y-2">
+                  <div className="flex justify-between text-xs text-muted-foreground border-b border-border pb-1">
+                    <span>Description</span>
+                    <span>Amount (NGN)</span>
+                  </div>
+                  {(receiptInv.line_items && receiptInv.line_items.length > 0) ? (
+                    receiptInv.line_items.map((li, idx) => (
+                      <div key={idx} className="flex justify-between font-medium">
+                        <span>{li.label || `${receiptInv.kind ?? "Subscription"} (${receiptInv.plan ?? "tier"})`}</span>
+                        <span className="font-mono">{fmtNgn(li.amount_kobo ?? invAmountKobo(receiptInv))}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex justify-between font-medium">
+                      <span className="capitalize">{receiptInv.kind ?? "Subscription"}{receiptInv.plan ? ` — ${receiptInv.plan} plan` : ""}</span>
+                      <span className="font-mono">{fmtNgn(invAmountKobo(receiptInv))}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-2 border-t border-border text-base font-bold">
+                    <span>Total (NGN)</span>
+                    <span className="font-mono">{fmtNgn(invAmountKobo(receiptInv))}</span>
+                  </div>
+                </div>
+                {receiptInv.paid_at && (
+                  <div className="text-xs text-success font-medium">
+                    Paid on {new Date(receiptInv.paid_at).toLocaleString()} ({receiptInv.paid_method ?? "bank_transfer"})
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setReceiptInv(null)}>Close</Button>
+                <Button onClick={() => window.print()}><Printer className="size-3.5 mr-1.5" />Print Receipt</Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
