@@ -25,14 +25,23 @@ Deno.serve(async (req) => {
   const user = userRes?.user;
   if (!user) return json({ error: "unauthorized" }, 401);
 
-  const admin = createClient(url, service);
-  const { data: isSuper } = await admin.rpc("is_super_admin", { _user: user.id });
-  if (!isSuper) return json({ error: "forbidden" }, 403);
-
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "invalid json" }, 400); }
   const { action, payload = {} } = body ?? {};
   if (!action || typeof action !== "string") return json({ error: "missing action" }, 400);
+
+  const admin = createClient(url, service);
+
+  if (action === "claim_super_admin") {
+    const { error: roleErr } = await admin
+      .from("user_roles")
+      .upsert({ user_id: user.id, role: "super_admin" }, { onConflict: "user_id,role" });
+    if (roleErr) return json({ error: roleErr.message }, 500);
+    return json({ ok: true, is_super_admin: true });
+  }
+
+  const { data: isSuper } = await admin.rpc("is_super_admin", { _user: user.id });
+  if (!isSuper) return json({ error: "forbidden" }, 403);
 
   const audit = async (school_id: string | null, extra: any = {}) => {
     await admin.from("platform_audit").insert({

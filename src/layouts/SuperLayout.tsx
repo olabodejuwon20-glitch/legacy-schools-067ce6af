@@ -77,27 +77,44 @@ function useIsSuperAdmin() {
   const [hasAny, setHasAny] = useState<boolean | null>(null);
   useEffect(() => {
     if (loading) return;
+    let cancelled = false;
+    setState("loading");
     (async () => {
-      const { count } = await supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "super_admin");
-      setHasAny((count ?? 0) > 0);
-      if (!user) { setState("no"); return; }
-      const { data } = await supabase.rpc("is_super_admin" as any, { _user: user.id });
-      setState(data ? "yes" : "no");
+      const { data: existsData } = await supabase.rpc("super_admin_exists" as any);
+      const anyExists = !!existsData;
+      if (!cancelled) setHasAny(anyExists);
+
+      let activeUser = user;
+      if (!activeUser) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        activeUser = sessionData.session?.user ?? null;
+      }
+      if (!activeUser) {
+        if (!cancelled) setState("no");
+        return;
+      }
+
+      let { data: isSuper } = await supabase.rpc("is_super_admin" as any, { _user: activeUser.id });
+      if (!isSuper) {
+        await supabase.functions.invoke("super-action", { body: { action: "claim_super_admin" } });
+        const retry = await supabase.rpc("is_super_admin" as any, { _user: activeUser.id });
+        isSuper = retry.data;
+      }
+      if (!cancelled) setState(isSuper ? "yes" : "no");
     })();
+    return () => { cancelled = true; };
   }, [user, loading]);
   return { state, hasAny, user };
 }
 
 export function SuperGuard({ children }: { children: ReactNode }) {
   const nav = useNavigate();
-  const { state, hasAny, user } = useIsSuperAdmin();
+  const { state } = useIsSuperAdmin();
   useEffect(() => {
     if (state === "no") {
-      if (!user) nav("/super/claim", { replace: true });
-      else if (hasAny === false) nav("/super/claim", { replace: true });
-      else nav("/", { replace: true });
+      nav("/super/claim", { replace: true });
     }
-  }, [state, hasAny, user, nav]);
+  }, [state, nav]);
   if (state !== "yes") return <div className="min-h-screen grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   return <>{children}</>;
 }

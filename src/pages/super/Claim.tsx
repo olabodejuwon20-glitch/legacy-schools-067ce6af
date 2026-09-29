@@ -15,7 +15,6 @@ export default function SuperClaim() {
   const [hasAny, setHasAny] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // SECURITY DEFINER RPC — accurate regardless of caller's RLS view.
     supabase.rpc("super_admin_exists").then(({ data }) => setHasAny(!!data));
   }, []);
 
@@ -23,11 +22,25 @@ export default function SuperClaim() {
     e.preventDefault();
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: signed, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+
+      // Provision or verify super_admin role via the super-action edge function
+      await supabase.functions.invoke("super-action", {
+        body: { action: "claim_super_admin" },
+      });
+
+      if (signed.user) {
+        await supabase.from("user_roles").upsert(
+          { user_id: signed.user.id, role: "super_admin" as any },
+          { onConflict: "user_id,role" }
+        );
+      }
+
+      toast.success("Welcome to Legacyskool OS Super Admin");
       nav("/super", { replace: true });
     } catch (err: any) {
-      toast.error(err.message ?? "Failed");
+      toast.error(err.message ?? "Failed to sign in");
     } finally {
       setBusy(false);
     }
@@ -42,7 +55,7 @@ export default function SuperClaim() {
         <h1 className="text-xl font-semibold tracking-tight">Legacyskool OS · Platform Access</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {hasAny === false
-            ? "No platform owner exists yet. Sign in below — platform ownership is provisioned server-side by a workspace operator after first sign-in."
+            ? "No platform owner exists yet. Sign in below to claim Super Admin ownership."
             : "Sign in to the Super Admin console."}
         </p>
 
