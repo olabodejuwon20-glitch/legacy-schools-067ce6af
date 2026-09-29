@@ -30,9 +30,15 @@ export default function TeacherDashboard() {
         supabase.from("classes").select("*").eq("school_id", school.id).eq("teacher_id", user.id),
         supabase.from("exams").select("id", { count: "exact", head: true }).eq("school_id", school.id).eq("created_by", user.id),
         supabase.from("timetable").select("*").eq("school_id", school.id).eq("teacher_id", user.id).eq("day_of_week", dow).order("start_time"),
-        supabase.from("attendance").select("status").eq("school_id", school.id).eq("marked_by", user.id),
+        supabase.from("attendance").select("status,class_id").eq("school_id", school.id).eq("marked_by", user.id),
       ]);
-      setClasses(cls ?? []); setExamCount(ec ?? 0); setToday(tt ?? []);
+      const attRows = att ?? [];
+      const clsWithAtt = (cls ?? []).map((c: any) => {
+        const cAtt = attRows.filter((a: any) => a.class_id === c.id);
+        const cPct = cAtt.length ? Math.round((cAtt.filter((a: any) => a.status === "present").length / cAtt.length) * 100) : null;
+        return { ...c, liveAttPct: cPct };
+      });
+      setClasses(clsWithAtt); setExamCount(ec ?? 0); setToday(tt ?? []);
       const total = att?.length ?? 0;
       setAttPct(total ? Math.round(((att!.filter(a => a.status === "present").length) / total) * 100) : 0);
       setAttBreakdown({
@@ -121,7 +127,11 @@ export default function TeacherDashboard() {
                   <div className="font-semibold mt-1">{c.name}</div>
                   <div className="text-xs text-muted-foreground">{c.subject || "—"}</div>
                   <div className="mt-3 text-xs">
-                    <span className="text-success font-semibold">90%</span> <span className="text-muted-foreground">Attendance</span>
+                    {c.liveAttPct !== null && c.liveAttPct !== undefined ? (
+                      <><span className="text-success font-semibold">{c.liveAttPct}%</span> <span className="text-muted-foreground">Attendance</span></>
+                    ) : (
+                      <span className="text-muted-foreground">No attendance marked yet</span>
+                    )}
                   </div>
                 </div>
               ))}

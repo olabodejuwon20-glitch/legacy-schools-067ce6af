@@ -43,19 +43,22 @@ export default function AdminDashboard() {
       setIsLoading(true);
       try {
       const sid = school.id;
-      const [stu, tea, cls, fees, recent, ann, att, results, classes] = await Promise.all([
+      const [stu, tea, cls, fees, invs, recent, ann, att, results, classes] = await Promise.all([
         supabase.from("memberships").select("id,user_id,created_at", { count: "exact" }).eq("school_id", sid).eq("role", "student").order("created_at", { ascending: false }),
         supabase.from("memberships").select("id", { count: "exact", head: true }).eq("school_id", sid).eq("role", "teacher"),
         supabase.from("classes").select("id,name,code", { count: "exact" }).eq("school_id", sid),
         supabase.from("fees").select("amount,status").eq("school_id", sid),
+        supabase.from("school_invoices").select("amount_paid_kobo,status").eq("school_id", sid),
         supabase.from("memberships").select("user_id,role,created_at").eq("school_id", sid).order("created_at", { ascending: false }).limit(8),
         supabase.from("announcements").select("title,created_at").eq("school_id", sid).order("created_at", { ascending: false }).limit(5),
         supabase.from("attendance").select("status").eq("school_id", sid),
-        supabase.from("results").select("student_id,score,subject"),
+        supabase.from("results").select("student_id,score,subject").eq("school_id", sid),
         supabase.from("classes").select("id,name").eq("school_id", sid),
       ]);
 
-      const revenue = (fees.data ?? []).filter(f => f.status === "paid").reduce((s, f) => s + Number(f.amount), 0);
+      const legacyRev = (fees.data ?? []).filter(f => f.status === "paid").reduce((s, f) => s + Number(f.amount), 0);
+      const modernRev = (invs.data ?? []).reduce((s, inv: any) => s + Math.round(Number(inv.amount_paid_kobo ?? 0) / 100), 0);
+      const revenue = legacyRev + modernRev;
       setCounts({ students: stu.count ?? 0, teachers: tea.count ?? 0, classes: cls.count ?? 0, revenue });
 
       // Recent students profiles
@@ -90,9 +93,20 @@ export default function AdminDashboard() {
         const { data: profs } = await supabase.from("profiles").select("id,full_name").in("id", top.map(t => t.id));
         setTopStudents(top.map(t => ({ ...t, name: profs?.find(p => p.id === t.id)?.full_name ?? t.id.slice(0,8) })));
       }
-      // Class perf placeholder: average of all results per first 5 classes
-      const allAvg = (results.data ?? []).length ? (results.data ?? []).reduce((s,r) => s + Number(r.score), 0) / (results.data ?? []).length : 0;
-      setClassPerf((classes.data ?? []).slice(0, 5).map(c => ({ name: c.name, score: Math.round(allAvg) })));
+      // Real per-class performance from enrolled students' results
+      const classIds = (classes.data ?? []).map(c => c.id);
+      if (classIds.length && (results.data ?? []).length) {
+        const { data: enrRows } = await supabase.from("class_enrollments").select("class_id,student_id").in("class_id", classIds);
+        const perfRows = (classes.data ?? []).map(c => {
+          const stuInClass = new Set((enrRows ?? []).filter(e => e.class_id === c.id).map(e => e.student_id));
+          const scores = (results.data ?? []).filter(r => stuInClass.has(r.student_id)).map(r => Number(r.score));
+          const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+          return { name: c.name, score: avg, hasData: scores.length > 0 };
+        }).filter(x => x.hasData).slice(0, 6);
+        setClassPerf(perfRows);
+      } else {
+        setClassPerf([]);
+      }
 
       // Attendance summary
       const a = att.data ?? [];
@@ -137,10 +151,10 @@ export default function AdminDashboard() {
       </Link>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="Total Students" value={isLoading ? <span className="inline-block h-7 w-16 animate-pulse bg-muted rounded align-middle" /> : counts.students.toLocaleString()} icon={Users} tone="admin" trend={isLoading ? undefined : "12.5%"} />
-        <StatCard label="Total Teachers" value={isLoading ? <span className="inline-block h-7 w-16 animate-pulse bg-muted rounded align-middle" /> : counts.teachers.toLocaleString()} icon={GraduationCap} tone="success" trend={isLoading ? undefined : "8.4%"} />
-        <StatCard label="Active Classes" value={isLoading ? <span className="inline-block h-7 w-16 animate-pulse bg-muted rounded align-middle" /> : counts.classes.toLocaleString()} icon={BookOpen} tone="student" trend={isLoading ? undefined : "6.2%"} />
-        <StatCard label="Total Revenue" value={isLoading ? <span className="inline-block h-7 w-24 animate-pulse bg-muted rounded align-middle" /> : `₦${counts.revenue.toLocaleString()}`} icon={DollarSign} tone="warning" trend={isLoading ? undefined : "15.3%"} />
+        <StatCard label="Total Students" value={isLoading ? <span className="inline-block h-7 w-16 animate-pulse bg-muted rounded align-middle" /> : counts.students.toLocaleString()} icon={Users} tone="admin" sub="Enrolled students" />
+        <StatCard label="Total Teachers" value={isLoading ? <span className="inline-block h-7 w-16 animate-pulse bg-muted rounded align-middle" /> : counts.teachers.toLocaleString()} icon={GraduationCap} tone="success" sub="Active teaching staff" />
+        <StatCard label="Active Classes" value={isLoading ? <span className="inline-block h-7 w-16 animate-pulse bg-muted rounded align-middle" /> : counts.classes.toLocaleString()} icon={BookOpen} tone="student" sub="Configured classes" />
+        <StatCard label="Total Revenue" value={isLoading ? <span className="inline-block h-7 w-24 animate-pulse bg-muted rounded align-middle" /> : `₦${counts.revenue.toLocaleString()}`} icon={DollarSign} tone="warning" sub="Collected school fees" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

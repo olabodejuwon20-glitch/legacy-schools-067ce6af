@@ -39,12 +39,13 @@ export default function ParentDashboard() {
   }, [school, user]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || !school) return;
     (async () => {
-      const [{ data: rs }, { data: att }, { data: fees }] = await Promise.all([
-        supabase.from("results").select("*").eq("student_id", active.id).order("created_at", { ascending: false }).limit(8),
-        supabase.from("attendance").select("status").eq("student_id", active.id),
-        supabase.from("fees").select("amount,status").eq("student_id", active.id).neq("status", "paid"),
+      const [{ data: rs }, { data: att }, { data: fees }, { data: invs }] = await Promise.all([
+        supabase.from("results").select("*").eq("school_id", school.id).eq("student_id", active.id).order("created_at", { ascending: false }).limit(8),
+        supabase.from("attendance").select("status").eq("school_id", school.id).eq("student_id", active.id),
+        supabase.from("fees").select("amount,status").eq("school_id", school.id).eq("student_id", active.id).neq("status", "paid"),
+        supabase.from("school_invoices").select("total_kobo,amount_paid_kobo,status").eq("school_id", school.id).eq("student_id", active.id).neq("status", "paid").neq("status", "void"),
       ]);
       setResults(rs ?? []);
       const a = att ?? [];
@@ -53,9 +54,11 @@ export default function ParentDashboard() {
         absent: a.filter(x => x.status === "absent").length,
         late: a.filter(x => x.status === "late").length,
       });
-      setPendingFees((fees ?? []).reduce((s, f) => s + Number(f.amount), 0));
+      const legacyOutstanding = (fees ?? []).reduce((s, f) => s + Number(f.amount), 0);
+      const modernOutstanding = (invs ?? []).reduce((s, inv: any) => s + Math.max(0, Math.round((Number(inv.total_kobo ?? 0) - Number(inv.amount_paid_kobo ?? 0)) / 100)), 0);
+      setPendingFees(legacyOutstanding + modernOutstanding);
     })();
-  }, [active]);
+  }, [active, school]);
 
   const total = attendance.present + attendance.absent + attendance.late;
   const attPct = total ? Math.round((attendance.present / total) * 100) : 0;

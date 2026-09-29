@@ -63,6 +63,7 @@ const DEFAULT_VIEWS: SavedView[] = [
 
 export default function SuperSchools() {
   const [rows, setRows] = useState<School[] | null>(null);
+  const [liveMap, setLiveMap] = useState<Record<string, { students: number; teachers: number; parents: number; admins: number; aiTokens: number }>>({});
   const [impSchool, setImpSchool] = useState<School | null>(null);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(0);
@@ -124,8 +125,33 @@ export default function SuperSchools() {
     q = q.range(from, from + PAGE_SIZE - 1);
     const { data, count: c, error } = await q;
     if (error) { toast.error(error.message); setRows([]); return; }
-    setRows((data ?? []) as School[]);
+    const list = (data ?? []) as School[];
+    setRows(list);
     setCount(c ?? 0);
+    if (list.length > 0) {
+      const ids = list.map(s => s.id);
+      const [mems, quotas] = await Promise.all([
+        supabase.from("memberships").select("school_id,role").in("school_id", ids),
+        supabase.from("school_ai_quotas").select("school_id,tokens_used").in("school_id", ids),
+      ]);
+      const nextMap: Record<string, { students: number; teachers: number; parents: number; admins: number; aiTokens: number }> = {};
+      ids.forEach(id => { nextMap[id] = { students: 0, teachers: 0, parents: 0, admins: 0, aiTokens: 0 }; });
+      (mems.data ?? []).forEach((m: any) => {
+        const entry = nextMap[m.school_id];
+        if (!entry) return;
+        if (m.role === "student") entry.students++;
+        else if (m.role === "teacher") entry.teachers++;
+        else if (m.role === "parent") entry.parents++;
+        else if (m.role === "admin") entry.admins++;
+      });
+      (quotas.data ?? []).forEach((qt: any) => {
+        const entry = nextMap[qt.school_id];
+        if (entry) entry.aiTokens = Number(qt.tokens_used ?? 0);
+      });
+      setLiveMap(nextMap);
+    } else {
+      setLiveMap({});
+    }
   }
 
   async function loadStats() {
@@ -144,7 +170,7 @@ export default function SuperSchools() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [debounced, planFilter, statusFilter, sort, page]);
   useEffect(() => { loadStats(); }, []);
 
-  const enriched = useMemo(() => (rows ?? []).map(s => ({ ...s, ...enrichSchool(s) })), [rows]);
+  const enriched = useMemo(() => (rows ?? []).map(s => ({ ...s, ...enrichSchool(s, liveMap[s.id]) })), [rows, liveMap]);
   const insights = useMemo(() => buildInsights(enriched.map(e => ({ status: e.status, plan_expires_at: e.plan_expires_at, healthScore: e.healthScore, storageBytes: e.storageBytes, aiTokens: e.aiTokens }))), [enriched]);
   const allSelected = enriched.length > 0 && enriched.every(r => selected.has(r.id));
   const someSelected = selected.size > 0 && !allSelected;
@@ -365,8 +391,8 @@ export default function SuperSchools() {
                   </div>
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-sm">
-                  <div className="font-medium">{formatCompact(s.students + s.teachers + s.parents)}</div>
-                  <div className="text-[10px] text-muted-foreground">{formatCompact(s.students)} students · {formatCompact(s.teachers)} staff</div>
+                  <div className="font-medium">{formatCompact(s.students + s.teachers + s.parents + (s.admins ?? 0))}</div>
+                  <div className="text-[10px] text-muted-foreground">{formatCompact(s.students)} students · {formatCompact(s.teachers + (s.admins ?? 0))} staff</div>
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-sm">{formatBytes(s.storageBytes)}</TableCell>
                 <TableCell className="text-right tabular-nums text-sm">{formatCompact(s.aiTokens)}<div className="text-[10px] text-muted-foreground">tokens/mo</div></TableCell>

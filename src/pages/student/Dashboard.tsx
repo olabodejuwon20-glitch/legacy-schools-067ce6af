@@ -23,8 +23,8 @@ export default function StudentDashboard() {
     (async () => {
       const [{ data: ex }, { data: rs }, { data: att }, { data: ann }, { data: mocks }] = await Promise.all([
         supabase.from("exams").select("id,title,subject,scheduled_at,status").eq("school_id", school.id).in("status", ["scheduled","active"]).order("scheduled_at", { ascending: true }).limit(5),
-        supabase.from("results").select("subject,score,created_at").eq("student_id", user.id).order("created_at", { ascending: true }),
-        supabase.from("attendance").select("status").eq("student_id", user.id),
+        supabase.from("results").select("subject,score,created_at").eq("school_id", school.id).eq("student_id", user.id).order("created_at", { ascending: true }),
+        supabase.from("attendance").select("status").eq("school_id", school.id).eq("student_id", user.id),
         supabase.from("announcements").select("title,body,created_at").eq("school_id", school.id).order("created_at", { ascending: false }).limit(3),
         supabase.from("mock_sessions").select("mode,total_score,total_questions,submitted_at").eq("student_id", user.id).eq("status", "submitted").order("submitted_at", { ascending: false }),
       ]);
