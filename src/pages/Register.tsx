@@ -12,6 +12,13 @@ import { getCurrentSchoolSlug, schoolPath, buildSchoolUrl } from "@/lib/tenant";
 import SEO from "@/components/SEO";
 import { friendlyError, friendlyInvokeError } from "@/lib/errors";
 
+const slugify = (s: string) =>
+  s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 28) || "school";
+const rand2 = () => {
+  const a = "abcdefghijklmnopqrstuvwxyz";
+  return a[Math.floor(Math.random() * 26)] + a[Math.floor(Math.random() * 26)];
+};
+
 export default function Register() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -22,18 +29,92 @@ export default function Register() {
 
   useEffect(() => { if (getCurrentSchoolSlug()) navigate("/", { replace: true }); }, [navigate]);
 
+  async function registerDirectly(): Promise<string> {
+    // 1. Sign up user (or sign in if account was just created)
+    let uid: string | undefined;
+    const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName } },
+    });
+
+    if (signUpErr) {
+      if (/already/i.test(signUpErr.message)) {
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInErr) throw new Error("An account with this email already exists. Please sign in instead.");
+        uid = signInData.user?.id;
+      } else {
+        throw signUpErr;
+      }
+    } else {
+      uid = signUpData.user?.id;
+      if (!signUpData.session) {
+        // Attempt sign-in in case auto-confirm trigger is active
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInErr) {
+          throw new Error("Please disable 'Confirm email' in Supabase Dashboard → Authentication → Providers → Email (or confirm the email sent to your inbox) and try again.");
+        }
+        uid = signInData.user?.id;
+      }
+    }
+
+    if (!uid) throw new Error("Could not create admin user account.");
+
+    await supabase.from("profiles").upsert({ id: uid, full_name: fullName, email });
+
+    // 2. Allocate collision-safe slug
+    const base = slugify(schoolName);
+    let slug = `${base}-${rand2()}`;
+    for (let i = 0; i < 8; i++) {
+      const candidate = `${base}-${rand2()}`;
+      const { data: existing } = await supabase.from("schools").select("id").eq("slug", candidate).maybeSingle();
+      if (!existing) {
+        slug = candidate;
+        break;
+      }
+    }
+
+    // 3. Insert school (schools_bootstrap_admin trigger automatically adds admin membership)
+    const { error: schoolErr } = await supabase.from("schools").insert({
+      name: schoolName,
+      slug,
+      created_by: uid,
+    });
+    if (schoolErr) throw schoolErr;
+
+    const { data: createdSchool } = await supabase
+      .from("schools")
+      .select("id, slug")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (createdSchool?.id) {
+      await supabase
+        .from("memberships")
+        .update({ bio_completed: true })
+        .eq("school_id", createdSchool.id)
+        .eq("user_id", uid);
+    }
+
+    return slug;
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
+      let slug = "";
       const { data, error } = await supabase.functions.invoke("register-school", {
         body: { schoolName, fullName, email, password },
       });
-      if (error) throw new Error(await friendlyInvokeError(error, "We couldn't register your school. Please try again."));
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const slug = (data as any).slug as string;
-      const { error: sErr } = await supabase.auth.signInWithPassword({ email, password });
-      if (sErr) throw sErr;
+      if (!error && !(data as any)?.error && (data as any)?.slug) {
+        slug = (data as any).slug as string;
+        const { error: sErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (sErr) throw sErr;
+      } else {
+        // Fallback to direct registration when the Edge Function isn't deployed yet
+        slug = await registerDirectly();
+      }
       toast.success(`School created — ${buildSchoolUrl(slug, "")}`);
       window.location.href = schoolPath(slug, "/onboarding");
     } catch (err) {
