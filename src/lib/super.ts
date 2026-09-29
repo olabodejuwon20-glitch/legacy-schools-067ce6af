@@ -17,6 +17,10 @@ export function compact(n: number) {
   return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n ?? 0);
 }
 
+export function fmtNgn(kobo: number) {
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format((kobo ?? 0) / 100);
+}
+
 export function timeAgo(iso?: string | null) {
   if (!iso) return "—";
   const d = (Date.now() - new Date(iso).getTime()) / 1000;
