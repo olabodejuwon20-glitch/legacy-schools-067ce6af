@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createHmac } from "node:crypto";
+import { getPaystackKey } from "../_shared/paystack.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,11 +12,11 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("method not allowed", { status: 405, headers: corsHeaders });
 
   const raw = await req.text();
-  const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
-  if (!secret) return new Response("service unavailable", { status: 503, headers: corsHeaders });
+  const pk = getPaystackKey();
+  if (!pk) return new Response("service unavailable", { status: 503, headers: corsHeaders });
 
   const signature = req.headers.get("x-paystack-signature") ?? "";
-  const expected = createHmac("sha512", secret).update(raw).digest("hex");
+  const expected = createHmac("sha512", pk.key).update(raw).digest("hex");
   if (signature !== expected) return new Response("invalid signature", { status: 401, headers: corsHeaders });
 
   const event = JSON.parse(raw);
