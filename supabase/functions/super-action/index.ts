@@ -174,17 +174,73 @@ Deno.serve(async (req) => {
       }
       case "upsert_module": {
         const { module } = payload;
-        const { error } = await admin.from("modules").upsert(module, { onConflict: "slug" });
+        if (!module?.slug || !module?.name) return json({ error: "Slug and name are required" }, 400);
+        const row: any = {
+          slug: String(module.slug).trim().toLowerCase().replace(/[^a-z0-9-_]/g, "-"),
+          name: String(module.name).trim(),
+          description: module.description ?? null,
+          category: module.category || "general",
+          status: module.status || "available",
+          version: module.version || "1.0.0",
+          global_default: !!module.global_default,
+          pricing_model: module.pricing_model || "included",
+          term_price_kobo: Number(module.term_price_kobo ?? 0),
+          monthly_price_cents: Number(module.monthly_price_cents ?? 0),
+          default_config: module.default_config ?? {},
+        };
+        if (module.config_schema !== undefined) row.config_schema = module.config_schema;
+        if (module.id) row.id = module.id;
+        const { data: saved, error } = await admin.from("modules").upsert(row, { onConflict: "slug" }).select("*").single();
         if (error) throw error;
-        await audit(null);
-        return json({ ok: true });
+        await audit(null, { module_id: saved?.id, slug: row.slug });
+        return json({ ok: true, module: saved });
       }
       case "archive_module": {
         const { module_id } = payload;
-        const { error } = await admin.from("modules").update({ status: "archived" }).eq("id", module_id);
+        const { error } = await admin.from("modules").update({ status: "archived", deleted_at: new Date().toISOString() }).eq("id", module_id);
         if (error) throw error;
-        await audit(null);
+        await audit(null, { module_id });
         return json({ ok: true });
+      }
+      case "delete_module": {
+        const { module_id, confirm } = payload;
+        if (confirm !== "DELETE") return json({ error: "Type DELETE to confirm." }, 400);
+        await admin.from("school_modules").delete().eq("module_id", module_id);
+        const { error } = await admin.from("modules").delete().eq("id", module_id);
+        if (error) throw error;
+        await audit(null, { module_id, hard: true });
+        return json({ ok: true });
+      }
+      case "update_entitlement": {
+        const { school_id, module_id, enabled, beta, term_price_kobo_override, expires_at } = payload;
+        if (!school_id || !module_id) return json({ error: "school_id and module_id required" }, 400);
+        const { data: saved, error } = await admin.from("school_modules").upsert({
+          school_id,
+          module_id,
+          enabled: !!enabled,
+          beta: !!beta,
+          term_price_kobo_override: term_price_kobo_override === null || term_price_kobo_override === undefined || term_price_kobo_override === "" ? null : Number(term_price_kobo_override),
+          expires_at: expires_at || null,
+        }, { onConflict: "school_id,module_id" }).select("*").single();
+        if (error) throw error;
+        await audit(school_id, { module_id, enabled, beta, term_price_kobo_override, expires_at });
+        return json({ ok: true, entitlement: saved });
+      }
+      case "bulk_set_entitlements": {
+        const { school_ids, module_id, enabled, beta } = payload;
+        if (!Array.isArray(school_ids) || !school_ids.length || !module_id) {
+          return json({ error: "school_ids and module_id are required" }, 400);
+        }
+        const rows = school_ids.map((sid: string) => ({
+          school_id: sid,
+          module_id,
+          enabled: !!enabled,
+          ...(beta !== undefined ? { beta: !!beta } : {}),
+        }));
+        const { error } = await admin.from("school_modules").upsert(rows, { onConflict: "school_id,module_id" });
+        if (error) throw error;
+        await audit(null, { module_id, count: school_ids.length, enabled });
+        return json({ ok: true, count: school_ids.length });
       }
       case "broadcast_announcement": {
         const { title, body: msg, priority, audience, target, scheduled_for } = payload;
@@ -244,12 +300,46 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
       case "update_module_request": {
-        const { request_id, status, module_id } = payload;
+        const { request_id, status, module_id, auto_enable = true } = payload;
+        const { data: reqRow } = await admin.from("module_requests").select("*").eq("id", request_id).maybeSingle();
+        const targetModuleId = module_id ?? reqRow?.module_id ?? null;
         const upd: any = { status };
-        if (module_id !== undefined) upd.module_id = module_id;
+        if (targetModuleId) upd.module_id = targetModuleId;
         const { error } = await admin.from("module_requests").update(upd).eq("id", request_id);
         if (error) throw error;
-        await audit(null);
+        if (status === "approved" && auto_enable && reqRow?.school_id && targetModuleId) {
+          await admin.from("school_modules").upsert({
+            school_id: reqRow.school_id,
+            module_id: targetModuleId,
+            enabled: true,
+          }, { onConflict: "school_id,module_id" });
+        }
+        await audit(reqRow?.school_id ?? null, { request_id, status, module_id: targetModuleId });
+        return json({ ok: true, provisioned: status === "approved" && !!targetModuleId });
+      }
+      case "create_module_request": {
+        const { school_id, title, description, module_id } = payload;
+        if (!school_id || !title) return json({ error: "school_id and title required" }, 400);
+        const { data: created, error } = await admin.from("module_requests").insert({
+          school_id,
+          title: String(title).trim(),
+          description: description || null,
+          module_id: module_id || null,
+          status: "pending",
+          requested_by: user.id,
+        }).select("*").single();
+        if (error) throw error;
+        await audit(school_id, { request_id: created?.id, title });
+        return json({ ok: true, request: created });
+      }
+      case "trip_kill_switch": {
+        const { flag_key } = payload;
+        if (!flag_key) return json({ error: "flag_key required" }, 400);
+        const { data: f } = await admin.from("feature_flags").select("id").eq("key", flag_key).maybeSingle();
+        if (!f) return json({ error: "flag not found" }, 404);
+        await admin.from("feature_flags").update({ default_enabled: false, default_rollout_percent: 0 }).eq("id", f.id);
+        await admin.from("school_feature_flags").update({ enabled: false, rollout_percent: 0 }).eq("flag_id", f.id);
+        await audit(null, { flag_key, kill_switch: "tripped" });
         return json({ ok: true });
       }
       case "grant_super": {
