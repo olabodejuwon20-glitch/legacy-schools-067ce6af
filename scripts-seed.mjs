@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-const url = "https://fiigsvxlxaqyzcvykkvw.supabase.co";
+const url = "https://vcescjtrhgwvbappmwcp.supabase.co";
 const sb = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
 const TEACHERS = [

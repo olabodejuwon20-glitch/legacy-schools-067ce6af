@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { useEffect, useState } from "react";
 import { useSchool } from "@/contexts/SchoolContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 
 /** Convert "#3b82f6" → "210 100% 60%" (Tailwind HSL token format) */
 function hexToHslTriplet(hex: string): string | null {
@@ -59,7 +59,7 @@ export default function TenantHead() {
 
   if (!school) return null;
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const supabaseUrl = SUPABASE_URL;
   const manifestHref = supabaseUrl
     ? `${supabaseUrl}/functions/v1/school-manifest?slug=${encodeURIComponent(school.slug)}`
     : "/manifest.webmanifest";

@@ -63,7 +63,7 @@ var verify_result_default = defineTool2({
 });
 
 // src/lib/mcp/index.ts
-var projectRef = "fiigsvxlxaqyzcvykkvw";
+var projectRef = "vcescjtrhgwvbappmwcp";
 var mcp_default = defineMcp({
   name: "legacykool-mcp",
   title: "LegacyKool MCP",

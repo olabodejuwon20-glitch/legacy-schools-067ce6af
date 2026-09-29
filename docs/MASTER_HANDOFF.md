@@ -8,7 +8,7 @@
 
 > READ THIS FIRST — three facts that will save the next agent hours:
 > 1. **The database schema is NOT in the repo.** `drizzle/migrations/` contains exactly one migration (`0000_mock_question_topic_tagger.sql`). Every other table, RLS policy, function and trigger was applied directly to the hosted Postgres by the Lovable Cloud tooling. The only in-repo source of schema truth is the generated file `src/integrations/supabase/types.ts` (9,096 lines, 146 tables, 3 views, ~140 RPC functions, 30+ enums). **Before doing anything else, dump the real schema** (`pg_dump --schema-only`) from the Supabase project and commit it. Instructions in §7.4.
-> 2. **The backend is a real Supabase project** (`project ref: fiigsvxlxaqyzcvykkvw`, region default, one instance serves both preview and production). Lovable Cloud is just a management wrapper. Once you own the Supabase project directly you keep the database, auth users, storage buckets and all 46 edge functions. Nothing needs re-platforming.
+> 2. **The backend is a real Supabase project** (`project ref: vcescjtrhgwvbappmwcp`, region default, one instance serves both preview and production). Lovable Cloud is just a management wrapper. Once you own the Supabase project directly you keep the database, auth users, storage buckets and all 46 edge functions. Nothing needs re-platforming.
 > 3. **All business logic that matters for security lives in Postgres**, not in React. ~140 `SECURITY DEFINER` RPCs + RLS policies enforce multi-tenancy. The React app is a thin, trusting client. Do not "move logic to the frontend."
 
 ---
@@ -220,10 +220,10 @@ Admin hubs: Dashboard, People, Academics, Assessments, Library, Finance, Communi
 
 ## 3. Database & Backend (Supabase)
 
-**Project ref:** `fiigsvxlxaqyzcvykkvw` · **anon key** is public and committed in `.env` (safe — RLS enforces everything).
+**Project ref:** `vcescjtrhgwvbappmwcp` · **anon key** is public and committed in `.env` (safe — RLS enforces everything).
 **Counts:** 146 tables, 3 views, ~140 RPC functions, 33 enums, 46 edge functions.
 
-> Authoritative schema reference in-repo: `src/integrations/supabase/types.ts`. It lists, per table, the exact `Row`, `Insert`, `Update` shapes **and every foreign-key relationship** in the `Relationships` array. Regenerate with the Supabase CLI: `supabase gen types typescript --project-id fiigsvxlxaqyzcvykkvw > src/integrations/supabase/types.ts`.
+> Authoritative schema reference in-repo: `src/integrations/supabase/types.ts`. It lists, per table, the exact `Row`, `Insert`, `Update` shapes **and every foreign-key relationship** in the `Relationships` array. Regenerate with the Supabase CLI: `supabase gen types typescript --project-id vcescjtrhgwvbappmwcp > src/integrations/supabase/types.ts`.
 
 ### 3.1 Enums (complete list)
 
@@ -525,7 +525,7 @@ Platform                super-action, super-metrics, automation-runner, school-m
 
 `supabase/config.toml` is the only function config file:
 ```toml
-project_id = "fiigsvxlxaqyzcvykkvw"
+project_id = "vcescjtrhgwvbappmwcp"
 [functions.subscription-webhook] verify_jwt = false
 [functions.subscription-verify]  verify_jwt = false
 [functions.school-manifest]      verify_jwt = false
@@ -737,8 +737,8 @@ RAG: `ingest-knowledge` chunks + embeds documents (`_shared/embed.ts`) into `kno
 ### 7.1 Frontend `.env` (Vite — these are PUBLIC, embedded in the bundle)
 
 ```
-VITE_SUPABASE_PROJECT_ID="fiigsvxlxaqyzcvykkvw"
-VITE_SUPABASE_URL="https://fiigsvxlxaqyzcvykkvw.supabase.co"
+VITE_SUPABASE_PROJECT_ID="vcescjtrhgwvbappmwcp"
+VITE_SUPABASE_URL="https://vcescjtrhgwvbappmwcp.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY="<supabase anon/publishable key — safe to commit, RLS enforces access>"
 ```
 
