@@ -30,8 +30,6 @@ export default function Register() {
   useEffect(() => { if (getCurrentSchoolSlug()) navigate("/", { replace: true }); }, [navigate]);
 
   async function registerDirectly(): Promise<string> {
-    // 1. Sign up user (or sign in if account was just created)
-    let uid: string | undefined;
     const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
       email,
       password,
@@ -39,30 +37,40 @@ export default function Register() {
     });
 
     if (signUpErr) {
-      if (/already/i.test(signUpErr.message)) {
-        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInErr) throw new Error("An account with this email already exists. Please sign in instead.");
-        uid = signInData.user?.id;
-      } else {
-        throw signUpErr;
+      if (/already|exists|registered/i.test(signUpErr.message)) {
+        throw new Error("An account with this email already exists. Please sign in instead.");
       }
-    } else {
-      uid = signUpData.user?.id;
-      if (!signUpData.session) {
-        // Attempt sign-in in case auto-confirm trigger is active
-        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInErr) {
-          throw new Error("Please disable 'Confirm email' in Supabase Dashboard → Authentication → Providers → Email (or confirm the email sent to your inbox) and try again.");
-        }
-        uid = signInData.user?.id;
+      throw signUpErr;
+    }
+
+    // Supabase returns an empty identities array when email already exists and enumeration protection is enabled
+    if (signUpData?.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+      throw new Error("An account with this email already exists. Please sign in instead.");
+    }
+
+    let uid = signUpData.user?.id;
+    if (!signUpData.session) {
+      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInErr) {
+        throw new Error("An account with this email already exists or requires email confirmation. Please sign in instead.");
       }
+      uid = signInData.user?.id;
     }
 
     if (!uid) throw new Error("Could not create admin user account.");
 
-    await supabase.from("profiles").upsert({ id: uid, full_name: fullName, email });
+    // Verify this user does not already own a school or profile
+    const { data: existingMembership } = await supabase
+      .from("memberships")
+      .select("id")
+      .eq("user_id", uid)
+      .limit(1);
+    if (existingMembership && existingMembership.length > 0) {
+      throw new Error("An account with this email already exists. Please sign in instead.");
+    }
 
-    // 2. Allocate collision-safe slug
+    await supabase.from("profiles").insert({ id: uid, full_name: fullName, email });
+
     const base = slugify(schoolName);
     let slug = `${base}-${rand2()}`;
     for (let i = 0; i < 8; i++) {
@@ -74,7 +82,6 @@ export default function Register() {
       }
     }
 
-    // 3. Insert school (schools_bootstrap_admin trigger automatically adds admin membership)
     const { error: schoolErr } = await supabase.from("schools").insert({
       name: schoolName,
       slug,
@@ -107,18 +114,30 @@ export default function Register() {
       const { data, error } = await supabase.functions.invoke("register-school", {
         body: { schoolName, fullName, email, password },
       });
-      if (!error && !(data as any)?.error && (data as any)?.slug) {
+
+      if ((data as any)?.error) {
+        throw new Error((data as any).error);
+      }
+
+      if (error) {
+        const msg = await friendlyInvokeError(error, "");
+        // If the edge function returned an explicit validation/conflict error (e.g. email already exists), stop immediately!
+        if (msg && !/temporarily unavailable|failed to fetch|network|edge function/i.test(msg)) {
+          throw new Error(msg);
+        }
+        slug = await registerDirectly();
+      } else if ((data as any)?.slug) {
         slug = (data as any).slug as string;
         const { error: sErr } = await supabase.auth.signInWithPassword({ email, password });
         if (sErr) throw sErr;
       } else {
-        // Fallback to direct registration when the Edge Function isn't deployed yet
         slug = await registerDirectly();
       }
+
       toast.success(`School created — ${buildSchoolUrl(slug, "")}`);
       window.location.href = schoolPath(slug, "/onboarding");
-    } catch (err) {
-      toast.error(friendlyError(err, "We couldn't register your school. Please try again."));
+    } catch (err: any) {
+      toast.error(err?.message || friendlyError(err, "We couldn't register your school. Please try again."));
     } finally { setBusy(false); }
   }
 

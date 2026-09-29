@@ -55,7 +55,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [school, setSchool] = useState<School | null>(() => readCached<School>(SCHOOL_CACHE_KEY));
+  const [school, setSchool] = useState<School | null>(() => { const slug = detectSlug(); const c = readCached<School>(SCHOOL_CACHE_KEY); return c && (!slug || c.slug === slug) ? c : null; });
   const [schoolLoading, setSchoolLoading] = useState(true);
   const [memberships, setMemberships] = useState<Membership[]>(() => readCached<Membership[]>(MEMBERSHIPS_CACHE_KEY) ?? []);
 

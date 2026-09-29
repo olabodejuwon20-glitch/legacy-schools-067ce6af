@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { GraduationCap, Loader2, Mail, KeyRound, ArrowLeft, Building2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { GraduationCap, Loader2, Mail, KeyRound, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import { friendlyError } from "@/lib/errors";
 
 /** Root admin sign in. School admins can sign in here OR from their /:slug/admin URL. */
 export default function SignIn() {
-  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,17 +25,34 @@ export default function SignIn() {
       const { data: signed, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       const uid = signed.user!.id;
-      const { data: m } = await supabase.from("memberships")
-        .select("school_id, role, schools(slug)")
-        .eq("user_id", uid).eq("role", "admin").eq("status", "active").maybeSingle();
+      const { data: rows } = await supabase
+        .from("memberships")
+        .select("school_id, role, created_at, schools(slug)")
+        .eq("user_id", uid)
+        .eq("role", "admin")
+        .eq("status", "active")
+        .order("created_at", { ascending: true })
+        .limit(1);
+
+      const m = rows?.[0];
       if (!m) {
+        const { data: isSuper } = await supabase.rpc("is_super_admin" as any, { _user: uid });
+        if (isSuper) {
+          toast.success("Welcome back");
+          window.location.href = "/super";
+          return;
+        }
         await supabase.auth.signOut();
         throw new Error("We couldn't sign you in with those details.");
       }
       const slug = (m as any).schools?.slug as string;
       toast.success("Welcome back");
       window.location.href = schoolPath(slug, "/app");
-    } catch (err) { toast.error(friendlyError(err, "We couldn't sign you in with those details.")); } finally { setBusy(false); }
+    } catch (err) {
+      toast.error(friendlyError(err, "We couldn't sign you in with those details."));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
