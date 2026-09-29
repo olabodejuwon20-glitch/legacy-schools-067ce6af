@@ -1,5 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { callAiGateway } from "../_shared/ai-call.ts";
+import { callAiGateway, hasAiKey } from "../_shared/ai-call.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -16,8 +16,7 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const aiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY") || Deno.env.get("OPENAI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
-    if (!aiKey) return json({ error: "AI analysis is temporarily unavailable. Please try again later." }, 500);
+    if (!hasAiKey()) return json({ error: "AI analysis is temporarily unavailable. Please try again later." }, 500);
 
     const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
     const admin = createClient(url, service, { auth: { persistSession: false } });
@@ -34,7 +33,7 @@ Deno.serve(async (req) => {
     if (session.student_id !== user.id) return json({ error: "Forbidden" }, 403);
     if (!session.submitted_at) return json({ error: "Session not submitted" }, 400);
 
-    // Return cached summary if present (older cached payloads lack per_topic — recompute those)
+    // Return cached summary if present (older cached payloads lack per_topic â€” recompute those)
     if (session.ai_summary && Array.isArray((session.ai_summary as any).per_topic)) {
       return json(session.ai_summary);
     }
@@ -75,7 +74,7 @@ Deno.serve(async (req) => {
     for (const sid of Object.keys(bySubject)) {
       const meta = subjMap[sid] || {};
       for (const q of bySubject[sid].slice(0, perSubjectLimit)) {
-        const label = (q.topic && String(q.topic).trim()) || `${meta.name ?? "Subject"} — General`;
+        const label = (q.topic && String(q.topic).trim()) || `${meta.name ?? "Subject"} â€” General`;
         const key = `${sid}::${label}`;
         const row = topicAgg.get(key) ?? { topic: label, subject: meta.name ?? "Subject", color: meta.color ?? null, correct: 0, wrong: 0, skipped: 0 };
         const sel = answerMap.get(q.id);
@@ -113,7 +112,7 @@ Write a personalised result analysis in markdown with these sections:
 ## Areas to Improve
 (bullet list of weakest 2-3 subjects with one specific study tip each)
 ## Next Steps
-(3 concrete actions for the next week — be specific, mention practice questions, library topics, AI tutor)
+(3 concrete actions for the next week â€” be specific, mention practice questions, library topics, AI tutor)
 
 Keep it warm, motivating, and under 400 words. Avoid generic platitudes.`;
 

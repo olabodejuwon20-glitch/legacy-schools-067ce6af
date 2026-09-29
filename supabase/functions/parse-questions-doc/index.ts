@@ -1,5 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { callAiGateway } from "../_shared/ai-call.ts";
+import { callAiGateway, hasAiKey } from "../_shared/ai-call.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -38,8 +38,7 @@ Deno.serve(async (req) => {
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const lovableKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY") || Deno.env.get("OPENAI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableKey) return json({ error: "AI extraction is temporarily unavailable. Please try again later." }, 503);
+    if (!hasAiKey()) return json({ error: "AI extraction is temporarily unavailable. Please try again later." }, 503);
 
     const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
     const { data: u } = await userClient.auth.getUser();

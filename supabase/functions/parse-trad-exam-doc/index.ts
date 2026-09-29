@@ -1,5 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { callAiGateway } from "../_shared/ai-call.ts";
+import { callAiGateway, hasAiKey } from "../_shared/ai-call.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -35,8 +35,7 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY") || Deno.env.get("OPENAI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableKey) {
+    if (!hasAiKey()) {
       console.error("[parse-trad-exam-doc] AI key missing");
       return json({ error: "AI extraction is temporarily unavailable. Please try again later." }, 500);
     }
@@ -99,7 +98,7 @@ Deno.serve(async (req) => {
     if (!aiRes.ok) {
       const errText = await aiRes.text();
       await admin.from("trad_exam_uploads").update({ status: "failed", error: `AI ${aiRes.status}: ${errText.slice(0, 500)}` }).eq("id", upload_id);
-      if (aiRes.status === 429) return json({ error: "Rate limit – try again shortly" }, 429);
+      if (aiRes.status === 429) return json({ error: "Rate limit â€“ try again shortly" }, 429);
       if (aiRes.status === 402) return json({ error: "AI credits exhausted" }, 402);
       return json({ error: "AI extraction failed. Please try again." }, 500);
     }

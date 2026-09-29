@@ -1,6 +1,6 @@
-// Shared Lovable AI Gateway helper used by every AI edge function.
-// Handles: auth context, per-school quota check, model routing, retries,
-// 402/429 surfacing, and writes a row to public.ai_jobs with cost + tokens.
+// Shared Direct Gemini + OpenRouter AI Gateway helper used by every AI edge function.
+// Handles: auth context, per-school quota check, model routing, Direct Gemini -> OpenRouter
+// automatic failover, 402/429 surfacing, response caching, and writes a row to public.ai_jobs.
 import { createClient, SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { cacheKey, getCached, putCached } from "./ai-cache.ts";
 
@@ -9,24 +9,29 @@ export const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GEMINI_OPENAI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
-// Rough per-1k-token pricing in USD (approximate, used only for budget tracking).
+// Rough per-1k-token pricing in USD (fallback when provider response omits usage.cost).
 const PRICING: Record<string, { in: number; out: number }> = {
-  "google/gemini-2.5-flash":        { in: 0.000075, out: 0.0003 },
-  "google/gemini-2.5-flash-lite":   { in: 0.00004,  out: 0.00015 },
+  "google/gemini-2.5-flash":        { in: 0.00015,  out: 0.0006 },
+  "google/gemini-2.5-flash-lite":   { in: 0.000075, out: 0.0003 },
   "google/gemini-2.5-pro":          { in: 0.00125,  out: 0.005 },
-  "google/gemini-3-flash-preview":  { in: 0.0001,   out: 0.0004 },
-  "openai/gpt-5":                   { in: 0.0025,   out: 0.01 },
+  "google/gemini-3-flash-preview":  { in: 0.00015,  out: 0.0006 },
+  "openai/gpt-4o-mini":             { in: 0.00015,  out: 0.0006 },
+  "openai/gpt-4o":                  { in: 0.0025,   out: 0.01 },
+  "openai/gpt-5-nano":              { in: 0.00015,  out: 0.0006 },
   "openai/gpt-5-mini":              { in: 0.00025,  out: 0.001 },
-  "openai/gpt-5.4-mini":            { in: 0.0003,   out: 0.0012 },
+  "openai/gpt-5":                   { in: 0.0025,   out: 0.01 },
+  "anthropic/claude-3.5-sonnet":    { in: 0.003,    out: 0.015 },
 };
 
 export interface AiCallOptions {
   schoolId: string;
   userId?: string | null;
   kind: string;                       // e.g. "lesson_plan", "mark_essay", "principal_query"
-  model?: string;                     // default: gemini-3-flash-preview
+  model?: string;                     // default: google/gemini-2.5-flash
   /** Caller's role — used to pick a per-role override from ai_model_routing. */
   role?: "admin" | "teacher" | "student" | "parent" | "default";
   messages: any[];
@@ -74,6 +79,40 @@ export function jsonResponse(body: any, status = 200) {
   });
 }
 
+/** Check whether at least one upstream AI provider key is configured. */
+export function hasAiKey(): boolean {
+  return Boolean(
+    Deno.env.get("GEMINI_API_KEY") ||
+    Deno.env.get("GOOGLE_AI_API_KEY") ||
+    Deno.env.get("OPENROUTER_API_KEY") ||
+    Deno.env.get("OPENAI_API_KEY"),
+  );
+}
+
+/** Parse JSON safely even when a model wraps output in ```json ... ``` fences. */
+export function parseAiJson<T = any>(raw: string | unknown, fallback: T = {} as T): T {
+  if (!raw) return fallback;
+  if (typeof raw === "object") return raw as T;
+  const text = String(raw).trim();
+  const stripped = text
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  try {
+    return JSON.parse(stripped) as T;
+  } catch {
+    const match = stripped.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+    if (match) {
+      try {
+        return JSON.parse(match[0]) as T;
+      } catch {
+        // fall through
+      }
+    }
+    return fallback;
+  }
+}
+
 /** Resolve the authenticated Supabase user from the request's bearer token. */
 export async function getAuthedUser(req: Request) {
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -88,7 +127,7 @@ export async function getAuthedUser(req: Request) {
 }
 
 function priceFor(model: string, prompt: number, completion: number) {
-  const p = PRICING[model] ?? { in: 0.0001, out: 0.0004 };
+  const p = PRICING[model] ?? { in: 0.00015, out: 0.0006 };
   return (prompt / 1000) * p.in + (completion / 1000) * p.out;
 }
 
@@ -101,7 +140,6 @@ export async function checkQuota(schoolId: string): Promise<string | null> {
     .maybeSingle();
   if (!data) return null;                     // no row = uses default cap, fine
   if (!data.enabled) return "AI features disabled for this school.";
-  // Reset window check is handled by bump_ai_quota; here we only block when current window is over cap.
   const now = new Date();
   const periodStart = new Date(data.period_start);
   const sameMonth =
@@ -119,13 +157,13 @@ export async function checkQuota(schoolId: string): Promise<string | null> {
 
 /**
  * Resolve which model to use for (schoolId, kind, role) from ai_model_routing.
- * Falls back to role='default' for the kind, then to the system default.
+ * Falls back to role='default' for the kind, then to google/gemini-2.5-flash.
  */
 export async function resolveModel(
   schoolId: string,
   kind: string,
   role: string = "default",
-  fallback = "google/gemini-3-flash-preview",
+  fallback = "google/gemini-2.5-flash",
 ): Promise<string> {
   try {
     const { data } = await admin()
@@ -144,42 +182,160 @@ export async function resolveModel(
   return fallback;
 }
 
+/** Normalize legacy model aliases for OpenRouter (vendor/model format). */
+function normalizeOpenRouterModel(rawModel: string): string {
+  const m = rawModel.trim();
+  if (!m) return "google/gemini-2.5-flash";
+  if (m === "google/gemini-3-flash-preview" || m === "gemini-3-flash-preview") {
+    return "google/gemini-2.5-flash";
+  }
+  if (m === "openai/gpt-5-nano" || m === "openai/gpt-5-mini" || m === "openai/gpt-5.4-mini") {
+    return "openai/gpt-4o-mini";
+  }
+  if (m === "openai/gpt-5" || m === "openai/gpt-5.4" || m === "openai/gpt-5.5") {
+    return "openai/gpt-4o";
+  }
+  if (!m.includes("/")) {
+    if (m.startsWith("gemini")) return `google/${m}`;
+    if (m.startsWith("gpt-")) return `openai/${m}`;
+    if (m.startsWith("claude-")) return `anthropic/${m}`;
+  }
+  return m;
+}
+
+/** Normalize model ID for Google's direct OpenAI-compatible Gemini endpoint. */
+function normalizeDirectGeminiModel(rawModel: string): string {
+  const clean = rawModel
+    .trim()
+    .replace(/^google\//, "")
+    .replace(/^gemini-3-flash-preview$/, "gemini-2.5-flash");
+  if (clean.startsWith("gemini-")) return clean;
+  return "gemini-2.5-flash";
+}
+
+/** Detect if messages contain multimodal file blocks (e.g. PDF/DOCX base64) or audio blocks. */
+function hasSpecialMultimodalBlocks(messages: any[]): boolean {
+  if (!Array.isArray(messages)) return false;
+  for (const msg of messages) {
+    if (!Array.isArray(msg?.content)) continue;
+    for (const part of msg.content) {
+      if (part?.type === "file" || part?.type === "input_audio") return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Dual-engine AI Gateway caller:
+ * - Uses Direct Google Gemini (`GEMINI_API_KEY` / `GOOGLE_AI_API_KEY`) for standard Gemini requests
+ * - Uses OpenRouter (`OPENROUTER_API_KEY`) to assist Gemini:
+ *   1. Automatic failover whenever Direct Gemini is unconfigured, rate-limited (429), or errors (4xx/5xx)
+ *   2. Primary handler for multimodal document/audio blocks (`file`, `input_audio`) and non-Google models (`openai/*`, `anthropic/*`)
+ *   3. Built-in OpenRouter model fallback array (`google/gemini-2.5-flash` -> `google/gemini-2.5-flash-lite` -> `openai/gpt-4o-mini`)
+ */
 export async function callAiGateway(payload: Record<string, any>): Promise<Response> {
   const geminiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
+  const openRouterKey = Deno.env.get("OPENROUTER_API_KEY");
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
 
-  let endpoint = GATEWAY;
-  let apiKey = lovableKey ?? "";
-  const rawModel = String(payload.model || "gemini-2.5-flash");
-  let resolvedModel = rawModel;
+  const rawModel = String(payload.model || "google/gemini-2.5-flash");
+  const isGeminiModel = rawModel.startsWith("google/") || rawModel.startsWith("gemini");
+  const needsOpenRouterMultimodal = hasSpecialMultimodalBlocks(payload.messages);
 
-  if (geminiKey) {
-    endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-    apiKey = geminiKey;
-    resolvedModel = rawModel
-      .replace(/^google\//, "")
-      .replace(/^gemini-3-flash-preview$/, "gemini-2.5-flash")
-      .replace(/^gemini-2\.5-flash-lite$/, "gemini-2.5-flash");
-    if (resolvedModel.startsWith("openai/")) resolvedModel = "gemini-2.5-flash";
-  } else if (openaiKey && !lovableKey) {
-    endpoint = "https://api.openai.com/v1/chat/completions";
-    apiKey = openaiKey;
-    resolvedModel = rawModel.replace(/^openai\//, "");
-    if (resolvedModel.startsWith("google/")) resolvedModel = "gpt-4o-mini";
+  // 1. Try Direct Gemini first if GEMINI_API_KEY is configured, model is Gemini, and no special file/audio blocks
+  if (geminiKey && isGeminiModel && !needsOpenRouterMultimodal) {
+    const geminiBody: Record<string, any> = {
+      ...payload,
+      model: normalizeDirectGeminiModel(rawModel),
+    };
+    if (geminiBody.reasoning) delete geminiBody.reasoning;
+
+    try {
+      const geminiRes = await fetch(GEMINI_OPENAI_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${geminiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(geminiBody),
+      });
+
+      if (geminiRes.ok || !openRouterKey) {
+        return geminiRes;
+      }
+      console.warn(
+        `[ai-gateway] Direct Gemini returned ${geminiRes.status}; failing over to OpenRouter assistant.`,
+      );
+    } catch (err) {
+      if (!openRouterKey) throw err;
+      console.warn("[ai-gateway] Direct Gemini network error; failing over to OpenRouter assistant:", err);
+    }
   }
 
-  const body: Record<string, any> = { ...payload, model: resolvedModel };
-  if (geminiKey && body.reasoning) delete body.reasoning;
+  // 2. OpenRouter AI Gateway (assists Gemini + handles multi-vendor routing & fallbacks)
+  if (openRouterKey) {
+    const primaryModel = normalizeOpenRouterModel(rawModel);
+    const fallbackModels = [
+      primaryModel,
+      "google/gemini-2.5-flash",
+      "google/gemini-2.5-flash-lite",
+      "openai/gpt-4o-mini",
+    ].filter((m, idx, arr) => Boolean(m) && arr.indexOf(m) === idx);
 
-  return fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+    const openRouterBody: Record<string, any> = {
+      ...payload,
+      model: primaryModel,
+      models: fallbackModels.slice(0, 3),
+    };
+
+    return fetch(OPENROUTER_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://www.legacyschools.study",
+        "X-Title": "Legacyskool OS",
+      },
+      body: JSON.stringify(openRouterBody),
+    });
+  }
+
+  // 3. Direct Gemini fallback even for special multimodal blocks if OpenRouter is not configured
+  if (geminiKey) {
+    const geminiBody: Record<string, any> = {
+      ...payload,
+      model: normalizeDirectGeminiModel(rawModel),
+    };
+    if (geminiBody.reasoning) delete geminiBody.reasoning;
+    return fetch(GEMINI_OPENAI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${geminiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(geminiBody),
+    });
+  }
+
+  // 4. Direct OpenAI fallback if only OPENAI_API_KEY is present
+  if (openaiKey) {
+    const resolvedModel = rawModel.startsWith("openai/")
+      ? rawModel.replace(/^openai\//, "")
+      : "gpt-4o-mini";
+    return fetch(OPENAI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ...payload, model: resolvedModel }),
+    });
+  }
+
+  return new Response(
+    JSON.stringify({ error: "No AI provider key configured (set GEMINI_API_KEY or OPENROUTER_API_KEY)." }),
+    { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 }
 
 /**
@@ -281,9 +437,10 @@ export async function aiCall(opts: AiCallOptions): Promise<AiCallResult> {
 
     if (!r.ok) {
       const text = await r.text().catch(() => "");
+      console.error("[aiCall] upstream error", r.status, text.slice(0, 400));
       const err =
         r.status === 429 ? "Rate limit reached. Please try again in a moment."
-        : r.status === 402 ? "AI is temporarily unavailable. Please try again later."
+        : r.status === 402 ? "AI credits exhausted. Please top up your AI gateway balance."
         : "AI is temporarily unavailable. Please try again later.";
       if (jobId) {
         await admin().from("ai_jobs").update({
@@ -295,6 +452,7 @@ export async function aiCall(opts: AiCallOptions): Promise<AiCallResult> {
     }
 
     const data = await r.json();
+    const resolvedModel = String(data.model || model);
     const msg = data.choices?.[0]?.message ?? {};
     const reply: string = msg.content ?? "";
     const toolCalls = msg.tool_calls ?? undefined;
@@ -303,11 +461,14 @@ export async function aiCall(opts: AiCallOptions): Promise<AiCallResult> {
       completion: data.usage?.completion_tokens ?? 0,
       total: data.usage?.total_tokens ?? 0,
     };
-    const costUsd = priceFor(model, usage.prompt, usage.completion);
+    const costUsd = typeof data.usage?.cost === "number"
+      ? Number(data.usage.cost)
+      : priceFor(resolvedModel, usage.prompt, usage.completion);
 
     if (jobId) {
       await admin().from("ai_jobs").update({
         status: "done",
+        model: resolvedModel,
         prompt_tokens: usage.prompt,
         completion_tokens: usage.completion,
         total_tokens: usage.total,
@@ -320,7 +481,7 @@ export async function aiCall(opts: AiCallOptions): Promise<AiCallResult> {
     // Persist to cache (best-effort).
     if (cacheable && key) {
       try {
-        await putCached(key, opts.schoolId, opts.kind, model,
+        await putCached(key, opts.schoolId, opts.kind, resolvedModel,
           { reply, toolCalls: toolCalls ?? null },
           { prompt: usage.prompt, completion: usage.completion },
           costUsd, opts.cacheTtlDays);
@@ -335,7 +496,7 @@ export async function aiCall(opts: AiCallOptions): Promise<AiCallResult> {
       });
     } catch (_) { /* ignore */ }
 
-    return { reply, toolCalls, raw: data, jobId, usage, costUsd, model };
+    return { reply, toolCalls, raw: data, jobId, usage, costUsd, model: resolvedModel };
   } catch (e: any) {
     if (jobId && !e.status) {
       await admin().from("ai_jobs").update({
