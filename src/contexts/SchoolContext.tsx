@@ -36,6 +36,16 @@ interface Ctx {
 const SchoolContext = createContext<Ctx | null>(null);
 
 const detectSlug = getResolvedSchoolSlug;
+const SCHOOL_CACHE_KEY = "ls_cached_school_v1";
+const MEMBERSHIPS_CACHE_KEY = "ls_cached_memberships_v1";
+function readCached<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try { const r = sessionStorage.getItem(key); return r ? (JSON.parse(r) as T) : null; } catch { return null; }
+}
+function writeCached(key: string, val: unknown) {
+  if (typeof window === "undefined") return;
+  try { if (val == null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
 
 export function SchoolProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">(() => (localStorage.getItem("edusmart-theme") as any) || "light");
@@ -45,9 +55,9 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [school, setSchool] = useState<School | null>(null);
+  const [school, setSchool] = useState<School | null>(() => readCached<School>(SCHOOL_CACHE_KEY));
   const [schoolLoading, setSchoolLoading] = useState(true);
-  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [memberships, setMemberships] = useState<Membership[]>(() => readCached<Membership[]>(MEMBERSHIPS_CACHE_KEY) ?? []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -60,7 +70,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     setSchoolLoading(true);
     const { data } = await supabase.rpc("get_school_by_slug", { _slug: slug });
     const row = Array.isArray(data) ? data[0] : null;
-    setSchool(row ?? null);
+    setSchool(row ?? null); writeCached(SCHOOL_CACHE_KEY, row ?? null);
     if (row?.slug) storeSchoolSlug(row.slug);
     setSchoolLoading(false);
   }, []);
@@ -84,7 +94,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
       .then(({ data }) => {
         if (cancelled) return;
         const row = data as School | null;
-        setSchool(row ?? null);
+        setSchool(row ?? null); writeCached(SCHOOL_CACHE_KEY, row ?? null);
         if (row?.slug) storeSchoolSlug(row.slug);
         setSchoolLoading(false);
       });
@@ -96,7 +106,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
 
   const loadMemberships = useCallback(async (uid: string) => {
     const { data } = await supabase.from("memberships").select("school_id,role,bio_completed,must_change_pin,admin_slot").eq("user_id", uid).eq("status", "active");
-    setMemberships((data ?? []) as Membership[]);
+    const rows = (data ?? []) as Membership[]; setMemberships(rows); writeCached(MEMBERSHIPS_CACHE_KEY, rows);
   }, []);
 
   const loadProfile = useCallback(async (uid: string, fallbackEmail: string) => {

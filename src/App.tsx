@@ -181,7 +181,16 @@ const SuperIntelligence = lazy(() => import("./pages/super/Intelligence"));
 const SuperTrash = lazy(() => import("./pages/super/Trash"));
 const ComingSoon = lazy(() => import("./pages/super/_ComingSoon"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 300_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function AppRoot() {
   const { activeRole, school } = useSchool();
