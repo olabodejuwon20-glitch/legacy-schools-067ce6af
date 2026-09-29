@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Section, Skel, EmptyState, MetricCard } from "@/components/super/primitives";
+import { Section, Skel, EmptyState, MetricCard, StatusBadge } from "@/components/super/primitives";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, TrendingDown, Layers } from "lucide-react";
+import { Users, TrendingDown, Layers, ArrowUpRight } from "lucide-react";
 
-type School = { id: string; name: string; plan: string | null; created_at: string };
+type School = { id: string; name: string; plan: string | null; status: string; created_at: string };
 type View = { school_id: string | null; session_id: string; created_at: string };
 
 function monthKey(iso: string) {
@@ -21,7 +22,7 @@ export default function IntelligenceCohorts() {
     (async () => {
       const since = new Date(Date.now() - 30 * 86400_000).toISOString();
       const [s, v] = await Promise.all([
-        supabase.from("schools").select("id, name, plan, created_at").order("created_at", { ascending: false }),
+        supabase.from("schools").select("id, name, plan, status, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
         supabase.from("page_views").select("school_id, session_id, created_at").gte("created_at", since).limit(20000),
       ]);
       if (!alive) return;
@@ -43,6 +44,7 @@ export default function IntelligenceCohorts() {
     return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 12).map(([month, list]) => ({
       month,
       total: list.length,
+      activeCount: list.filter(s => s.status === "active").length,
       byPlan: list.reduce<Record<string, number>>((acc, s) => { const p = s.plan ?? "trial"; acc[p] = (acc[p] ?? 0) + 1; return acc; }, {}),
     }));
   }, [schools]);
@@ -61,7 +63,7 @@ export default function IntelligenceCohorts() {
 
   const atRisk = useMemo(() => {
     if (!schools) return [];
-    const active = schools.filter(s => (s.plan ?? "trial") !== "trial");
+    const active = schools.filter(s => (s.plan ?? "trial") !== "trial" && s.status === "active");
     return active
       .map(s => ({ ...s, sessions: activityBySchool.get(s.id) ?? 0 }))
       .filter(s => s.sessions < 3)
@@ -72,12 +74,12 @@ export default function IntelligenceCohorts() {
   return (
     <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-3">
-        <MetricCard label="Total schools" value={schools?.length ?? "—"} icon={<Users className="size-4" />} />
-        <MetricCard label="Cohort months" value={cohorts.length || "—"} icon={<Layers className="size-4" />} />
-        <MetricCard label="At-risk (30d)" value={atRisk.length || "—"} icon={<TrendingDown className="size-4" />} />
+        <MetricCard label="Active / Total Schools" value={schools ? `${schools.filter(s => s.status === "active").length} / ${schools.length}` : "—"} icon={<Users className="size-4" />} />
+        <MetricCard label="Cohort Months" value={cohorts.length || "—"} icon={<Layers className="size-4" />} />
+        <MetricCard label="At-Risk Paying Schools (30d)" value={atRisk.length} icon={<TrendingDown className="size-4 text-destructive" />} />
       </div>
 
-      <Section title="Signup cohorts" description="New schools per month, split by current plan tier.">
+      <Section title="Signup cohorts" description="New schools per month, active retention, and current plan mix.">
         {!schools ? (
           <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skel key={i} className="h-8" />)}</div>
         ) : cohorts.length === 0 ? (
@@ -88,6 +90,7 @@ export default function IntelligenceCohorts() {
               <TableHeader><TableRow>
                 <TableHead>Cohort</TableHead>
                 <TableHead className="text-right w-24">Signups</TableHead>
+                <TableHead className="text-right w-28">Active Now</TableHead>
                 <TableHead>Plan mix</TableHead>
               </TableRow></TableHeader>
               <TableBody>
@@ -95,6 +98,7 @@ export default function IntelligenceCohorts() {
                   <TableRow key={c.month}>
                     <TableCell className="font-mono text-[12px]">{c.month}</TableCell>
                     <TableCell className="text-right tabular-nums font-medium">{c.total}</TableCell>
+                    <TableCell className="text-right tabular-nums text-success">{c.activeCount}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {Object.entries(c.byPlan).map(([p, n]) => `${p}: ${n}`).join("  ·  ")}
                     </TableCell>
@@ -106,7 +110,7 @@ export default function IntelligenceCohorts() {
         )}
       </Section>
 
-      <Section title="At-risk schools" description="Paying schools with fewer than 3 sessions in the last 30 days — outreach candidates.">
+      <Section title="At-risk schools" description="Paying schools with fewer than 3 sessions in the last 30 days — click any school to inspect or reach out.">
         {!schools || !views ? (
           <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skel key={i} className="h-8" />)}</div>
         ) : atRisk.length === 0 ? (
@@ -123,9 +127,14 @@ export default function IntelligenceCohorts() {
               <TableBody>
                 {atRisk.map(s => (
                   <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{s.plan ?? "trial"}</TableCell>
-                    <TableCell className="text-right tabular-nums">{s.sessions}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link to={`/super/schools/${s.id}`} className="inline-flex items-center gap-1 hover:underline text-foreground">
+                        {s.name}
+                        <ArrowUpRight className="size-3 text-muted-foreground" />
+                      </Link>
+                    </TableCell>
+                    <TableCell><StatusBadge status={s.plan ?? "trial"} /></TableCell>
+                    <TableCell className="text-right tabular-nums font-medium text-warning">{s.sessions}</TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</TableCell>
                   </TableRow>
                 ))}

@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Section, Skel, EmptyState, MetricCard, StatusBadge } from "@/components/super/primitives";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BookOpen, ShieldAlert, Gavel, Flag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BookOpen, ShieldAlert, Gavel, Flag, Check, X } from "lucide-react";
+import { toast } from "sonner";
+import { superAction } from "@/lib/super";
 
 type QB = { id: string; subject: string; approval_status: string; difficulty: string; created_at: string };
 type Viol = { id: string; type: string; created_at: string };
@@ -12,23 +15,34 @@ export default function IntelligenceContentQuality() {
   const [qb, setQb] = useState<QB[] | null>(null);
   const [violations, setViolations] = useState<Viol[] | null>(null);
   const [appeals, setAppeals] = useState<Appeal[] | null>(null);
+  const [busyAppeal, setBusyAppeal] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const since = new Date(Date.now() - 30 * 86400_000).toISOString();
-      const [q, v, a] = await Promise.all([
-        supabase.from("question_bank").select("id, subject, approval_status, difficulty, created_at").limit(3000),
-        supabase.from("assessment_violations_v2").select("id, type, created_at").gte("created_at", since).limit(2000),
-        supabase.from("exam_appeals").select("id, status, exam_kind, created_at").gte("created_at", since).limit(500),
-      ]);
-      if (!alive) return;
-      setQb((q.data as QB[]) ?? []);
-      setViolations((v.data as Viol[]) ?? []);
-      setAppeals((a.data as Appeal[]) ?? []);
-    })();
-    return () => { alive = false; };
-  }, []);
+  async function load() {
+    const since = new Date(Date.now() - 30 * 86400_000).toISOString();
+    const [q, v, a] = await Promise.all([
+      supabase.from("question_bank").select("id, subject, approval_status, difficulty, created_at").limit(3000),
+      supabase.from("assessment_violations_v2").select("id, type, created_at").gte("created_at", since).limit(2000),
+      supabase.from("exam_appeals").select("id, status, exam_kind, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(500),
+    ]);
+    setQb((q.data as QB[]) ?? []);
+    setViolations((v.data as Viol[]) ?? []);
+    setAppeals((a.data as Appeal[]) ?? []);
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  async function resolveAppeal(appealId: string, status: "resolved" | "rejected") {
+    setBusyAppeal(appealId);
+    try {
+      await superAction("resolve_exam_appeal", { appeal_id: appealId, status });
+      toast.success(`Appeal marked ${status}`);
+      await load();
+    } catch {
+      /* toasted */
+    } finally {
+      setBusyAppeal(null);
+    }
+  }
 
   const bySubject = useMemo(() => {
     if (!qb) return [];
@@ -56,7 +70,7 @@ export default function IntelligenceContentQuality() {
         <MetricCard label="Questions in bank" value={qb?.length ?? "—"} icon={<BookOpen className="size-4" />} />
         <MetricCard label="Approved" value={qb ? qb.filter(x => x.approval_status === "approved").length : "—"} icon={<Flag className="size-4" />} />
         <MetricCard label="Violations 30d" value={violations?.length ?? "—"} icon={<ShieldAlert className="size-4" />} />
-        <MetricCard label="Open appeals" value={appeals ? appeals.filter(a => a.status !== "resolved" && a.status !== "closed").length : "—"} icon={<Gavel className="size-4" />} />
+        <MetricCard label="Open appeals" value={appeals ? appeals.filter(a => a.status !== "resolved" && a.status !== "closed" && a.status !== "rejected").length : "—"} icon={<Gavel className="size-4" />} />
       </div>
 
       <Section title="Coverage by subject" description="Top subjects by question count and their approval health.">
@@ -108,7 +122,7 @@ export default function IntelligenceContentQuality() {
           )}
         </Section>
 
-        <Section title="Recent appeals" description="Latest 30 days of grade appeals.">
+        <Section title="Recent grade appeals" description="Latest 30 days of exam grade appeals — resolve or reject directly.">
           {!appeals ? (
             <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skel key={i} className="h-8" />)}</div>
           ) : appeals.length === 0 ? (
@@ -119,16 +133,46 @@ export default function IntelligenceContentQuality() {
                 <TableHeader><TableRow>
                   <TableHead>Kind</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Filed</TableHead>
+                  <TableHead>Filed</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {appeals.slice(0, 15).map(a => (
-                    <TableRow key={a.id}>
-                      <TableCell className="font-mono text-[12px]">{a.exam_kind}</TableCell>
-                      <TableCell><StatusBadge status={a.status} /></TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground">{new Date(a.created_at).toLocaleDateString()}</TableCell>
-                    </TableRow>
-                  ))}
+                  {appeals.slice(0, 15).map(a => {
+                    const isOpen = a.status !== "resolved" && a.status !== "closed" && a.status !== "rejected";
+                    return (
+                      <TableRow key={a.id}>
+                        <TableCell className="font-mono text-[12px]">{a.exam_kind}</TableCell>
+                        <TableCell><StatusBadge status={a.status} /></TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">
+                          {isOpen ? (
+                            <div className="inline-flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                disabled={busyAppeal === a.id}
+                                onClick={() => void resolveAppeal(a.id, "resolved")}
+                              >
+                                <Check className="size-3 mr-1" />Resolve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs text-muted-foreground"
+                                disabled={busyAppeal === a.id}
+                                onClick={() => void resolveAppeal(a.id, "rejected")}
+                              >
+                                <X className="size-3 mr-1" />Reject
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

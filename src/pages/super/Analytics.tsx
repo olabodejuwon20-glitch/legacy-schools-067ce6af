@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, Section, MetricCard, Skel, EmptyState, StatusBadge } from "@/components/super/primitives";
 import { AreaTrend, BarTrend } from "@/components/super/Chart";
-import { compact, money, timeAgo } from "@/lib/super";
-import { Building2, Users, ListChecks, Package, DollarSign, Activity, Eye, LogIn, MousePointerClick, Smartphone } from "lucide-react";
+import { compact, fmtNgn, timeAgo } from "@/lib/super";
+import { Building2, Users, ListChecks, Package, Wallet, Activity, Eye, LogIn, MousePointerClick, Smartphone, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Bucket = { label: string; value: number };
@@ -33,20 +34,21 @@ function bucketize<T extends { created_at: string }>(rows: T[], range: Range) {
   return buckets.map(({ label, value }) => ({ label, value }));
 }
 
+type PageViewRow = { id: string; path: string; session_id: string; user_id: string | null; device: string | null; created_at: string };
+type AuthEventRow = { id: string; event: string; user_id: string | null; created_at: string };
+
 export default function SuperAnalytics() {
   const [range, setRange] = useState<Range>("day");
-  const [pageViews, setPageViews] = useState<any[]>([]);
-  const [authEvents, setAuthEvents] = useState<any[]>([]);
+  const [pageViews, setPageViews] = useState<PageViewRow[]>([]);
+  const [authEvents, setAuthEvents] = useState<AuthEventRow[]>([]);
   const [liveDot, setLiveDot] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Legacy platform metrics
-  const [kpi, setKpi] = useState({ schools: 0, users: 0, attempts: 0, modules: 0, mrr: 0, exams: 0 });
+  const [kpi, setKpi] = useState({ schools: 0, users: 0, attempts: 0, modules: 0, termAddonKobo: 0, exams: 0 });
   const [planMix, setPlanMix] = useState<Bucket[]>([]);
   const [moduleAdoption, setModuleAdoption] = useState<Bucket[]>([]);
   const [recent, setRecent] = useState<{ id: string; name: string; created_at: string; plan: string; status: string }[]>([]);
 
-  // Initial + range-driven analytics fetch
   useEffect(() => {
     const since = new Date(Date.now() - RANGE_META[range].hours * 3_600_000).toISOString();
     (async () => {
@@ -54,13 +56,11 @@ export default function SuperAnalytics() {
         supabase.from("page_views").select("id, path, session_id, user_id, device, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(5000),
         supabase.from("auth_events").select("id, event, user_id, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(2000),
       ]);
-      setPageViews(pv.data ?? []);
-      setAuthEvents(ae.data ?? []);
+      setPageViews((pv.data as PageViewRow[]) ?? []);
+      setAuthEvents((ae.data as AuthEventRow[]) ?? []);
     })();
   }, [range]);
 
-  // Near-real-time polling (analytics tables are not broadcast on Realtime to avoid
-  // leaking per-user activity to non super-admin subscribers).
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
@@ -71,19 +71,18 @@ export default function SuperAnalytics() {
       ]);
       if (cancelled) return;
       setPageViews(prev => {
-        const next = pv.data ?? [];
+        const next = (pv.data as PageViewRow[]) ?? [];
         if (next.length && prev[0]?.id !== next[0]?.id) {
           setLiveDot(true); setTimeout(() => setLiveDot(false), 800);
         }
         return next;
       });
-      setAuthEvents(ae.data ?? []);
+      setAuthEvents((ae.data as AuthEventRow[]) ?? []);
     };
     const id = setInterval(tick, 8000);
     return () => { cancelled = true; clearInterval(id); };
   }, [range]);
 
-  // Legacy platform fetch (one-shot)
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -91,38 +90,40 @@ export default function SuperAnalytics() {
       const sinceISO = since.toISOString();
 
       const [schoolsRes, membershipsRes, attemptsRes, smRes, examsRes, recentRes, modulesRes] = await Promise.all([
-        supabase.from("schools").select("id, name, plan, status, created_at"),
-        supabase.from("memberships").select("id", { count: "exact", head: true }),
+        supabase.from("schools").select("id, name, plan, status, created_at").is("deleted_at", null),
+        supabase.from("memberships").select("id", { count: "exact", head: true }).is("deleted_at", null),
         supabase.from("exam_attempts").select("id, started_at").gte("started_at", sinceISO),
-        supabase.from("school_modules").select("module_id, enabled, modules!inner(name)").eq("enabled", true),
+        supabase.from("school_modules").select("module_id, enabled, term_price_kobo_override, modules!inner(name)").eq("enabled", true),
         supabase.from("exams").select("id", { count: "exact", head: true }),
-        supabase.from("schools").select("id, name, plan, status, created_at").order("created_at", { ascending: false }).limit(8),
-        supabase.from("modules").select("id, monthly_price_cents, slug"),
+        supabase.from("schools").select("id, name, plan, status, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
+        supabase.from("modules").select("id, term_price_kobo, pricing_model, slug"),
       ]);
 
-      const schools = (schoolsRes.data as any[]) ?? [];
-      const attempts = (attemptsRes.data as any[]) ?? [];
-      const sm = (smRes.data as any[]) ?? [];
-      const modules = (modulesRes.data as any[]) ?? [];
+      const schools = (schoolsRes.data as { id: string; name: string; plan: string; status: string; created_at: string }[]) ?? [];
+      const attempts = (attemptsRes.data as { id: string }[]) ?? [];
+      const sm = (smRes.data as { module_id: string; term_price_kobo_override?: number | null; modules?: { name?: string } }[]) ?? [];
+      const modules = (modulesRes.data as { id: string; term_price_kobo?: number | null; pricing_model?: string }[]) ?? [];
 
-      // KPIs
-      const priceById = new Map(modules.map(m => [m.id, m.monthly_price_cents ?? 0]));
-      const mrr = sm.reduce((sum, r) => sum + (priceById.get(r.module_id) ?? 0), 0);
+      const modById = new Map(modules.map(m => [m.id, m]));
+      const termAddonKobo = sm.reduce((sum, r) => {
+        const mod = modById.get(r.module_id);
+        if (!mod || mod.pricing_model === "included") return sum;
+        return sum + Number(r.term_price_kobo_override ?? mod.term_price_kobo ?? 0);
+      }, 0);
+
       setKpi({
         schools: schools.length,
         users: membershipsRes.count ?? 0,
         attempts: attempts.length,
         modules: sm.length,
-        mrr,
+        termAddonKobo,
         exams: examsRes.count ?? 0,
       });
 
-      // Plan mix
       const planCounts = new Map<string, number>();
       schools.forEach(s => planCounts.set(s.plan, (planCounts.get(s.plan) ?? 0) + 1));
       setPlanMix(Array.from(planCounts.entries()).map(([label, value]) => ({ label, value })));
 
-      // Module adoption — top 10
       const modCounts = new Map<string, number>();
       sm.forEach(r => {
         const name = r.modules?.name ?? "Unknown";
@@ -134,12 +135,11 @@ export default function SuperAnalytics() {
           .sort((a, b) => b.value - a.value).slice(0, 10),
       );
 
-      setRecent((recentRes.data as any[]) ?? []);
+      setRecent((recentRes.data as { id: string; name: string; created_at: string; plan: string; status: string }[]) ?? []);
       setLoading(false);
     })();
   }, []);
 
-  // Derived analytics
   const visitorsSeries = useMemo(() => bucketize(pageViews, range), [pageViews, range]);
   const signInSeries = useMemo(() => bucketize(authEvents.filter(e => e.event === "sign_in"), range), [authEvents, range]);
 
@@ -168,8 +168,8 @@ export default function SuperAnalytics() {
   return (
     <div>
       <PageHeader
-        title="Analytics"
-        description="Real-time website traffic, sign-ins and page popularity."
+        title="Product Analytics"
+        description="Real-time website traffic, sign-ins, page popularity, and module adoption."
         actions={
           <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
             {(Object.keys(RANGE_META) as Range[]).map(r => (
@@ -188,7 +188,6 @@ export default function SuperAnalytics() {
         }
       />
 
-      {/* Real-time KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <MetricCard
           label="Live now (5m)"
@@ -266,7 +265,7 @@ export default function SuperAnalytics() {
         </Section>
       </div>
 
-      <PageHeader title="Platform health" description="Tenant mix, adoption and revenue." />
+      <PageHeader title="Platform Adoption & Footprint" description="Tenant mix, module adoption, and add-on term run-rate in NGN." />
 
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
@@ -277,9 +276,9 @@ export default function SuperAnalytics() {
           <MetricCard label="Schools" value={compact(kpi.schools)} icon={<Building2 className="size-4" />} />
           <MetricCard label="Users" value={compact(kpi.users)} icon={<Users className="size-4" />} />
           <MetricCard label="Exams" value={compact(kpi.exams)} icon={<ListChecks className="size-4" />} />
-          <MetricCard label="Attempts (all-time)" value={compact(kpi.attempts)} icon={<Activity className="size-4" />} />
+          <MetricCard label="Attempts (30d)" value={compact(kpi.attempts)} icon={<Activity className="size-4" />} />
           <MetricCard label="Installed modules" value={compact(kpi.modules)} icon={<Package className="size-4" />} />
-          <MetricCard label="MRR (modules)" value={money(kpi.mrr)} icon={<DollarSign className="size-4" />} />
+          <MetricCard label="Add-on Run-Rate" value={fmtNgn(kpi.termAddonKobo)} icon={<Wallet className="size-4 text-success" />} />
         </div>
       )}
 
@@ -308,7 +307,10 @@ export default function SuperAnalytics() {
             <ul className="divide-y divide-border -my-2">
               {recent.map(s => (
                 <li key={s.id} className="py-2.5 flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate">{s.name}</span>
+                  <Link to={`/super/schools/${s.id}`} className="truncate font-medium hover:underline inline-flex items-center gap-1">
+                    {s.name}
+                    <ArrowUpRight className="size-3 text-muted-foreground" />
+                  </Link>
                   <div className="flex items-center gap-2">
                     <StatusBadge status={s.status} />
                     <span className="text-[11px] text-muted-foreground tabular-nums">{timeAgo(s.created_at)}</span>

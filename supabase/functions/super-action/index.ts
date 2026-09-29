@@ -718,6 +718,77 @@ Deno.serve(async (req) => {
         await audit(null, { job_key, duration_ms, summary });
         return json({ ok: true, job_key, duration_ms, summary });
       }
+      case "resolve_exam_appeal": {
+        const { appeal_id, status } = payload;
+        if (!appeal_id || !status) return json({ error: "appeal_id and status required" }, 400);
+        const { error } = await admin.from("exam_appeals").update({
+          status,
+          resolved_at: new Date().toISOString(),
+          resolved_by: user.id,
+        }).eq("id", appeal_id);
+        if (error) throw error;
+        await audit(null, { appeal_id, status });
+        return json({ ok: true });
+      }
+      case "grant_super_by_email": {
+        const { email } = payload;
+        if (!email) return json({ error: "email required" }, 400);
+        const { data: prof, error: pErr } = await admin
+          .from("profiles")
+          .select("id, full_name, email")
+          .ilike("email", String(email).trim())
+          .maybeSingle();
+        if (pErr) throw pErr;
+        if (!prof?.id) return json({ error: `No registered user found with email ${email}` }, 404);
+        const { error: rErr } = await admin
+          .from("user_roles")
+          .upsert({ user_id: prof.id, role: "super_admin" }, { onConflict: "user_id,role" });
+        if (rErr) throw rErr;
+        await admin.from("security_events").insert({
+          user_id: prof.id,
+          type: "grant_super",
+          ip: req.headers.get("x-forwarded-for") ?? null,
+        });
+        await audit(null, { target_user: prof.id, email: prof.email });
+        return json({ ok: true, user: prof });
+      }
+      case "update_security_policy": {
+        const { policy } = payload;
+        const { data: cur } = await admin.from("platform_settings").select("integrations").eq("id", 1).maybeSingle();
+        const nextIntg = {
+          ...((cur?.integrations as Record<string, unknown>) ?? {}),
+          security_policy: policy ?? {},
+        };
+        const { error } = await admin.from("platform_settings").update({ integrations: nextIntg }).eq("id", 1);
+        if (error) throw error;
+        await admin.from("security_events").insert({
+          user_id: user.id,
+          type: "security_policy_updated",
+          ip: req.headers.get("x-forwarded-for") ?? null,
+        });
+        await audit(null, { policy });
+        return json({ ok: true, policy });
+      }
+      case "clear_ai_cache": {
+        const { feature } = payload;
+        let q = admin.from("ai_cache").delete();
+        if (feature) q = q.eq("feature", feature);
+        else q = q.gte("hits", 0);
+        const { error } = await q;
+        if (error) throw error;
+        await audit(null, { feature: feature ?? "all" });
+        return json({ ok: true });
+      }
+      case "save_academic_default": {
+        const { policy_kind, body: policyBody } = payload;
+        if (!policy_kind) return json({ error: "policy_kind required" }, 400);
+        const { error } = await admin
+          .from("academic_policy_defaults")
+          .upsert({ policy_kind, body: policyBody ?? {} }, { onConflict: "policy_kind" });
+        if (error) throw error;
+        await audit(null, { policy_kind });
+        return json({ ok: true });
+      }
       default:
         return json({ error: "unknown action" }, 400);
     }

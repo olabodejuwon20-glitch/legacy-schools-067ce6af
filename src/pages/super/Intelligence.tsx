@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { BarChart3, Zap, BookOpen, Users, Sparkles, Loader2, DollarSign, Database, TrendingDown } from "lucide-react";
+import { BarChart3, Zap, BookOpen, Users, Sparkles, DollarSign, Database, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Skel } from "@/components/super/primitives";
 
 const ProductAnalyticsTab = lazy(() => import("./Analytics"));
 const AIUsageTab          = lazy(() => import("./Quotas"));
@@ -12,10 +13,10 @@ const CohortsTab          = lazy(() => import("./intelligence/Cohorts"));
 type TabKey = "analytics" | "ai" | "content" | "cohorts";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; description: string }[] = [
-  { key: "analytics", label: "Product Analytics", icon: BarChart3, description: "Page views, DAU/WAU/MAU, feature adoption." },
-  { key: "ai",        label: "AI Usage",          icon: Zap,       description: "Spend, cache hit-rate and per-school quotas." },
-  { key: "content",   label: "Content Quality",   icon: BookOpen,  description: "Question bank coverage, violations, appeals." },
-  { key: "cohorts",   label: "Cohorts",           icon: Users,     description: "Signup cohorts and at-risk schools." },
+  { key: "analytics", label: "Product Analytics", icon: BarChart3, description: "Page views, DAU/WAU/MAU, feature adoption, and NGN module run-rate." },
+  { key: "ai",        label: "AI Quotas & Spend", icon: Zap,       description: "Per-school monthly AI token caps, spend controls, and bulk presets." },
+  { key: "content",   label: "Content Quality",   icon: BookOpen,  description: "Question bank coverage, proctoring violations, and exam appeals." },
+  { key: "cohorts",   label: "Cohorts & Churn",   icon: Users,     description: "Monthly signup cohorts and at-risk paying schools." },
 ];
 
 type Insights = {
@@ -28,7 +29,7 @@ type Insights = {
 export default function SuperIntelligence() {
   const [params, setParams] = useSearchParams();
   const raw = params.get("tab") as TabKey | null;
-  const active: TabKey = (["analytics","ai","content","cohorts"] as TabKey[]).includes(raw as TabKey) ? (raw as TabKey) : "analytics";
+  const active: TabKey = (["analytics", "ai", "content", "cohorts"] as TabKey[]).includes(raw as TabKey) ? (raw as TabKey) : "analytics";
   const [insights, setInsights] = useState<Insights | null>(null);
 
   useEffect(() => {
@@ -40,7 +41,7 @@ export default function SuperIntelligence() {
         supabase.from("page_views").select("user_id, session_id, school_id").gte("created_at", dayAgo).limit(10000),
         supabase.from("ai_jobs").select("cost_usd").gte("created_at", weekAgo).limit(10000),
         supabase.from("ai_cache").select("hits, cost_saved_usd").limit(5000),
-        supabase.from("schools").select("id, plan").not("plan", "is", null).neq("plan", "trial"),
+        supabase.from("schools").select("id, plan").is("deleted_at", null).not("plan", "is", null).neq("plan", "trial"),
         supabase.from("page_views").select("school_id, session_id").gte("created_at", new Date(Date.now() - 30 * 86400_000).toISOString()).limit(20000),
       ]);
       if (!alive) return;
@@ -74,9 +75,9 @@ export default function SuperIntelligence() {
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
           <Sparkles className="size-3" /><span>Intelligence workspace</span>
         </div>
-        <h1 className="text-[22px] font-semibold tracking-tight text-foreground">Analytics &amp; AI</h1>
+        <h1 className="text-[22px] font-semibold tracking-tight text-foreground">Analytics, AI Governance &amp; Content Quality</h1>
         <p className="mt-1 text-[13px] text-muted-foreground max-w-2xl">
-          How the product is being used, what AI is costing us, and which schools need attention.
+          Real-time telemetry across every tenant — traffic, AI token budgets, exam integrity, and cohort retention.
         </p>
       </div>
 
@@ -108,7 +109,7 @@ export default function SuperIntelligence() {
         </nav>
       </div>
 
-      <Suspense fallback={<div className="min-h-[240px] grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>}>
+      <Suspense fallback={<div className="space-y-3"><Skel className="h-24" /><Skel className="h-64" /></div>}>
         {active === "analytics" && <ProductAnalyticsTab />}
         {active === "ai"        && <AIUsageTab />}
         {active === "content"   && <ContentQualityTab />}

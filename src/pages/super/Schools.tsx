@@ -158,10 +158,10 @@ export default function SuperSchools() {
 
   async function loadStats() {
     const counts = await Promise.all([
-      supabase.from("schools").select("id", { count: "exact", head: true }),
-      supabase.from("schools").select("id", { count: "exact", head: true }).eq("status", "active"),
-      supabase.from("schools").select("id", { count: "exact", head: true }).eq("status", "trial"),
-      supabase.from("schools").select("id", { count: "exact", head: true }).eq("status", "suspended"),
+      supabase.from("schools").select("id", { count: "exact", head: true }).is("deleted_at", null),
+      supabase.from("schools").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "active"),
+      supabase.from("schools").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "trial"),
+      supabase.from("schools").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "suspended"),
     ]);
     setStats({
       total: counts[0].count ?? 0, active: counts[1].count ?? 0,
@@ -414,7 +414,7 @@ export default function SuperSchools() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild><Link to={`/super/schools/${s.id}`}><Eye className="size-4 mr-2" />View details</Link></DropdownMenuItem>
                       <DropdownMenuItem onClick={() => window.open(buildSchoolUrl(s.slug, "/"), "_blank")}><ExternalLink className="size-4 mr-2" />Open portal</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setImpSchool(s)} className="text-red-600 focus:text-red-700"><UserCog className="size-4 mr-2" />Login as…</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setImpSchool(s)} className="text-destructive focus:text-destructive"><UserCog className="size-4 mr-2" />Login as…</DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {s.status === "suspended"
                         ? <DropdownMenuItem onClick={() => reactivate(s)}><PlayCircle className="size-4 mr-2" />Reactivate</DropdownMenuItem>
