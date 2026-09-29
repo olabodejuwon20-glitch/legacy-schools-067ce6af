@@ -16,7 +16,7 @@ type Props = {
   onSuspend30Days?: () => Promise<void> | void;
 };
 
-export default function ConfirmDeleteDialog({
+export function ConfirmDeleteDialog({
   open,
   onOpenChange,
   title,
@@ -175,3 +175,5 @@ export default function ConfirmDeleteDialog({
     </Dialog>
   );
 }
+
+export default ConfirmDeleteDialog;

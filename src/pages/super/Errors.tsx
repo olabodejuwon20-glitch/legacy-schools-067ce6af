@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skel } from "@/components/super/primitives";
-import { ConfirmDeleteDialog } from "@/components/super/ConfirmDeleteDialog";
+import ConfirmDeleteDialog from "@/components/super/ConfirmDeleteDialog";
 import { formatDistanceToNow } from "date-fns";
 import { AlertCircle, CheckCircle2, EyeOff, RefreshCw, Search, Trash2, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -153,7 +153,7 @@ export default function SuperErrors() {
       <div className="flex gap-2 flex-wrap items-center">
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search message, route, source…" className="pl-9 h-9" />
+          <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search message, route, sourceÃ¢â‚¬Â¦" className="pl-9 h-9" />
         </div>
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
@@ -201,13 +201,13 @@ export default function SuperErrors() {
                     <div className="font-medium text-sm truncate">{r.message}</div>
                     <Badge variant="outline" className={STATUS_COLORS[r.resolution_status]}>{r.resolution_status}</Badge>
                     {r.occurrence_count > 1 && (
-                      <Badge variant="secondary" className="text-xs">×{r.occurrence_count}</Badge>
+                      <Badge variant="secondary" className="text-xs">Ãƒâ€”{r.occurrence_count}</Badge>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                     {r.route && <span className="font-mono">{r.route}</span>}
                     {r.role && <span>role: {r.role}</span>}
-                    {r.browser && <span>{r.browser}{r.os ? ` · ${r.os}` : ""}</span>}
+                    {r.browser && <span>{r.browser}{r.os ? ` Ã‚Â· ${r.os}` : ""}</span>}
                     <span>last: {formatDistanceToNow(new Date(r.last_seen_at), { addSuffix: true })}</span>
                     {(r.affected_users?.length ?? 0) > 0 && <span>{r.affected_users!.length} user{r.affected_users!.length === 1 ? "" : "s"}</span>}
                   </div>
@@ -273,9 +273,9 @@ function ErrorDetail({ row, onClose, onUpdate, onTrash }: {
             <Info label="Occurrences">{row.occurrence_count}</Info>
             <Info label="First seen">{formatDistanceToNow(new Date(row.first_seen_at), { addSuffix: true })}</Info>
             <Info label="Last seen">{formatDistanceToNow(new Date(row.last_seen_at), { addSuffix: true })}</Info>
-            <Info label="Role">{row.role || "—"}</Info>
-            <Info label="Source">{row.source || "—"}</Info>
-            <Info label="Browser">{row.browser || "—"}{row.os ? ` · ${row.os}` : ""}</Info>
+            <Info label="Role">{row.role || "Ã¢â‚¬â€"}</Info>
+            <Info label="Source">{row.source || "Ã¢â‚¬â€"}</Info>
+            <Info label="Browser">{row.browser || "Ã¢â‚¬â€"}{row.os ? ` Ã‚Â· ${row.os}` : ""}</Info>
             <Info label="Users affected">{row.affected_users?.length ?? 0}</Info>
           </div>
           {row.route && (
@@ -295,7 +295,7 @@ function ErrorDetail({ row, onClose, onUpdate, onTrash }: {
           )}
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Resolution note</div>
-            <Textarea rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Root cause, fix summary, or reason for ignoring…" />
+            <Textarea rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Root cause, fix summary, or reason for ignoringÃ¢â‚¬Â¦" />
           </div>
           <div className="flex gap-2 flex-wrap pt-2 border-t border-border">
             <Button size="sm" variant="outline" onClick={() => onUpdate(row.id, "investigating", note)}>Investigating</Button>

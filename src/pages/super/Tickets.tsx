@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, Section, StatusBadge, Skel, EmptyState } from "@/components/super/primitives";
-import { ConfirmDeleteDialog } from "@/components/super/ConfirmDeleteDialog";
+import ConfirmDeleteDialog from "@/components/super/ConfirmDeleteDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,7 +37,7 @@ export default function SuperTickets() {
       ? await supabase.from("schools").select("id,name").in("id", schoolIds)
       : { data: [] as { id: string; name: string }[] };
     const smap = new Map((schools ?? []).map((s: { id: string; name: string }) => [s.id, s.name]));
-    setTickets((data ?? []).map((t: Ticket) => ({ ...t, school_name: smap.get(t.school_id) ?? "—" })));
+    setTickets((data ?? []).map((t: Ticket) => ({ ...t, school_name: smap.get(t.school_id) ?? "Ã¢â‚¬â€" })));
   }
   useEffect(() => { void load(); }, []);
 
@@ -106,20 +106,20 @@ export default function SuperTickets() {
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
-            <TabsTrigger value="open">Open · {counts.open ?? 0}</TabsTrigger>
-            <TabsTrigger value="pending">Pending · {counts.pending ?? 0}</TabsTrigger>
-            <TabsTrigger value="resolved">Resolved · {counts.resolved ?? 0}</TabsTrigger>
-            <TabsTrigger value="closed">Closed · {counts.closed ?? 0}</TabsTrigger>
+            <TabsTrigger value="open">Open Ã‚Â· {counts.open ?? 0}</TabsTrigger>
+            <TabsTrigger value="pending">Pending Ã‚Â· {counts.pending ?? 0}</TabsTrigger>
+            <TabsTrigger value="resolved">Resolved Ã‚Â· {counts.resolved ?? 0}</TabsTrigger>
+            <TabsTrigger value="closed">Closed Ã‚Â· {counts.closed ?? 0}</TabsTrigger>
             <TabsTrigger value="all">All</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="relative w-64">
           <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search subject or school…" className="pl-7 h-9" />
+          <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search subject or schoolÃ¢â‚¬Â¦" className="pl-7 h-9" />
         </div>
       </div>
 
-      <Section title={`Inbox · ${filtered.length}`}>
+      <Section title={`Inbox Ã‚Â· ${filtered.length}`}>
         {tickets === null ? (
           <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skel key={i} className="h-14" />)}</div>
         ) : filtered.length === 0 ? (
@@ -136,7 +136,7 @@ export default function SuperTickets() {
                       <StatusBadge status={t.status} />
                       <StatusBadge status={t.priority} />
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5 truncate">{t.school_name} · {timeAgo(t.updated_at)}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5 truncate">{t.school_name} Ã‚Â· {timeAgo(t.updated_at)}</div>
                   </div>
                 </button>
               </li>
@@ -200,7 +200,7 @@ export default function SuperTickets() {
                 {thread.map(m => (
                   <div key={m.id} className={`rounded-lg border p-3 text-sm ${m.internal ? "border-warning/40 bg-warning/5" : "border-border bg-card"}`}>
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
-                      <span className="font-medium text-foreground">{m.author_name}{m.internal && " · internal"}</span>
+                      <span className="font-medium text-foreground">{m.author_name}{m.internal && " Ã‚Â· internal"}</span>
                       <span>{timeAgo(m.created_at)}</span>
                     </div>
                     <div className="whitespace-pre-wrap">{m.body}</div>
@@ -210,7 +210,7 @@ export default function SuperTickets() {
               </div>
 
               <div className="space-y-2">
-                <Textarea rows={4} value={reply} onChange={e => setReply(e.target.value)} placeholder={internal ? "Internal note (only super admins see this)…" : "Reply to the school…"} />
+                <Textarea rows={4} value={reply} onChange={e => setReply(e.target.value)} placeholder={internal ? "Internal note (only super admins see this)Ã¢â‚¬Â¦" : "Reply to the schoolÃ¢â‚¬Â¦"} />
                 <div className="flex items-center justify-between">
                   <label className="text-xs flex items-center gap-2"><input type="checkbox" checked={internal} onChange={e => setInternal(e.target.checked)} />Internal note</label>
                   <Button size="sm" onClick={send} disabled={busy || !reply.trim()}><Send className="size-3.5 mr-1.5" />Send</Button>
