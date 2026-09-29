@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { callAiGateway } from "../_shared/ai-call.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,25 +49,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "You transcribe audio verbatim. Output ONLY the transcript, no preamble." },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Transcribe this audio." },
-              { type: "input_audio", input_audio: { data: audio_base64, format: mime_type.includes("mp3") ? "mp3" : "webm" } },
-            ],
-          },
-        ],
-      }),
+    const r = await callAiGateway({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "You transcribe audio verbatim. Output ONLY the transcript, no preamble." },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Transcribe this audio." },
+            { type: "input_audio", input_audio: { data: audio_base64, format: mime_type.includes("mp3") ? "mp3" : "webm" } },
+          ],
+        },
+      ],
     });
     if (!r.ok) {
       const t = await r.text();

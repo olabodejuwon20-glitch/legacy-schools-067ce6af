@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { callAiGateway } from "../_shared/ai-call.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -73,19 +74,12 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Facts for the digest (JSON):\n${JSON.stringify(facts, null, 2)}\n\nWrite the markdown digest now.`;
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: SYS },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+    const r = await callAiGateway({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: SYS },
+        { role: "user", content: userPrompt },
+      ],
     });
     if (r.status === 429) return json({ error: "AI is busy, please try again shortly." }, 429);
     if (r.status === 402) return json({ error: "AI credits exhausted." }, 402);

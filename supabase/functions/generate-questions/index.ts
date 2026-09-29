@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { callAiGateway } from "../_shared/ai-call.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -45,20 +46,13 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Generate ${count} ${difficulty} ${exam_body.toUpperCase()} ${subject ?? ""} questions${topic ? ` on the topic: ${topic}` : ""}. Return ONLY the JSON.`;
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYS },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+    const r = await callAiGateway({
+      model: "google/gemini-2.5-flash",
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYS },
+        { role: "user", content: userPrompt },
+      ],
     });
     if (!r.ok) {
       const t = await r.text();

@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { callAiGateway } from "../_shared/ai-call.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,14 +113,7 @@ function contextNote(ctx: Awaited<ReturnType<typeof loadStudentContext>>) {
 }
 
 async function callGateway(body: any, stream = false) {
-  return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model: "google/gemini-2.5-flash", stream, ...body }),
-  });
+  return callAiGateway({ model: "google/gemini-2.5-flash", stream, ...body });
 }
 
 function gatewayError(status: number) {

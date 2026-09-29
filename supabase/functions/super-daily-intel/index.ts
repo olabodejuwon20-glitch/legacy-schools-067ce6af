@@ -3,14 +3,14 @@
 // { summary, progress[], problems[], solutions[] } — each item links to a
 // super-admin area so the user can jump straight to it from the dashboard.
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { callAiGateway } from "../_shared/ai-call.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-3-flash-preview";
+const MODEL = "google/gemini-2.5-flash";
 
 function j(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -117,20 +117,13 @@ AREAS: ${JSON.stringify(AREAS)}`;
 
     const user_msg = `Signals:\n${JSON.stringify(signals, null, 2)}`;
 
-    const r = await fetch(GATEWAY, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: sys },
-          { role: "user", content: user_msg },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    const r = await callAiGateway({
+      model: MODEL,
+      messages: [
+        { role: "system", content: sys },
+        { role: "user", content: user_msg },
+      ],
+      response_format: { type: "json_object" },
     });
     if (!r.ok) {
       const t = await r.text().catch(() => "");

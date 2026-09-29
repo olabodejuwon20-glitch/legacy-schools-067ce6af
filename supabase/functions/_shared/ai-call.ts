@@ -144,6 +144,44 @@ export async function resolveModel(
   return fallback;
 }
 
+export async function callAiGateway(payload: Record<string, any>): Promise<Response> {
+  const geminiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+
+  let endpoint = GATEWAY;
+  let apiKey = lovableKey ?? "";
+  const rawModel = String(payload.model || "gemini-2.5-flash");
+  let resolvedModel = rawModel;
+
+  if (geminiKey) {
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    apiKey = geminiKey;
+    resolvedModel = rawModel
+      .replace(/^google\//, "")
+      .replace(/^gemini-3-flash-preview$/, "gemini-2.5-flash")
+      .replace(/^gemini-2\.5-flash-lite$/, "gemini-2.5-flash");
+    if (resolvedModel.startsWith("openai/")) resolvedModel = "gemini-2.5-flash";
+  } else if (openaiKey && !lovableKey) {
+    endpoint = "https://api.openai.com/v1/chat/completions";
+    apiKey = openaiKey;
+    resolvedModel = rawModel.replace(/^openai\//, "");
+    if (resolvedModel.startsWith("google/")) resolvedModel = "gpt-4o-mini";
+  }
+
+  const body: Record<string, any> = { ...payload, model: resolvedModel };
+  if (geminiKey && body.reasoning) delete body.reasoning;
+
+  return fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 /**
  * Non-streaming AI call. Logs to ai_jobs. Returns the reply text + tool calls.
  * Throws on gateway error (caller converts to HTTP response).
@@ -229,44 +267,17 @@ export async function aiCall(opts: AiCallOptions): Promise<AiCallResult> {
   }
 
   try {
-    const geminiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-
-    let endpoint = GATEWAY;
-    let apiKey = lovableKey ?? "";
-    let resolvedModel = model;
-
-    if (!lovableKey && geminiKey) {
-      endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-      apiKey = geminiKey;
-      resolvedModel = model.replace(/^google\//, "").replace(/^gemini-3-flash-preview$/, "gemini-2.5-flash");
-      if (resolvedModel.startsWith("openai/")) resolvedModel = "gemini-2.5-flash";
-    } else if (!lovableKey && openaiKey) {
-      endpoint = "https://api.openai.com/v1/chat/completions";
-      apiKey = openaiKey;
-      resolvedModel = model.replace(/^openai\//, "");
-      if (resolvedModel.startsWith("google/")) resolvedModel = "gpt-4o-mini";
-    }
-
     const body: any = {
-      model: resolvedModel,
+      model,
       messages: opts.messages,
       stream: false,
     };
     if (opts.tools) body.tools = opts.tools;
     if (opts.tool_choice) body.tool_choice = opts.tool_choice;
-    if (opts.reasoning && lovableKey) body.reasoning = opts.reasoning;
+    if (opts.reasoning) body.reasoning = opts.reasoning;
     if (opts.temperature !== undefined) body.temperature = opts.temperature;
 
-    const r = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    const r = await callAiGateway(body);
 
     if (!r.ok) {
       const text = await r.text().catch(() => "");

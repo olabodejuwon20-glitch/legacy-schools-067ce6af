@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { callAiGateway } from "../_shared/ai-call.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -34,9 +35,9 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const lovableKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY") || Deno.env.get("OPENAI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
     if (!lovableKey) {
-      console.error("[parse-trad-exam-doc] LOVABLE_API_KEY missing");
+      console.error("[parse-trad-exam-doc] AI key missing");
       return json({ error: "AI extraction is temporarily unavailable. Please try again later." }, 500);
     }
 
@@ -83,20 +84,16 @@ Deno.serve(async (req) => {
         ? { type: "file" as const, file: { filename: "paper.pdf", file_data: `data:application/pdf;base64,${b64}` } }
         : { type: "file" as const, file: { filename: "paper.docx", file_data: `data:${mime};base64,${b64}` } };
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYS },
-          { role: "user", content: [
-              { type: "text", text: "Extract every question from this exam paper. Return only the JSON." },
-              fileBlock,
-            ] },
-        ],
-      }),
+    const aiRes = await callAiGateway({
+      model: "google/gemini-2.5-pro",
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYS },
+        { role: "user", content: [
+            { type: "text", text: "Extract every question from this exam paper. Return only the JSON." },
+            fileBlock,
+          ] },
+      ],
     });
 
     if (!aiRes.ok) {

@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { callAiGateway } from "../_shared/ai-call.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -74,20 +75,13 @@ ${summary.map(s => `- ${s.subject}: ${s.average}% (${s.count} entries)`).join("\
 
 Write the comment now.`;
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYS },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+    const r = await callAiGateway({
+      model: "google/gemini-2.5-flash",
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYS },
+        { role: "user", content: userPrompt },
+      ],
     });
     if (r.status === 429) return json({ error: "AI is busy, please try again in a moment." }, 429);
     if (r.status === 402) return json({ error: "AI credits exhausted. Top up in workspace settings." }, 402);

@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { callAiGateway } from "../_shared/ai-call.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -15,7 +16,7 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const aiKey = Deno.env.get("LOVABLE_API_KEY");
+    const aiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY") || Deno.env.get("OPENAI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
     if (!aiKey) return json({ error: "AI analysis is temporarily unavailable. Please try again later." }, 500);
 
     const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
@@ -119,16 +120,12 @@ Keep it warm, motivating, and under 400 words. Avoid generic platitudes.`;
     // Reuse the coach analysis when we're only backfilling the topic breakdown.
     let markdown: string = cached?.markdown ?? "";
     if (!markdown) {
-      const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${aiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: "You are a supportive exam coach who writes well-structured, motivating feedback in markdown." },
-            { role: "user", content: prompt },
-          ],
-        }),
+      const aiRes = await callAiGateway({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: "You are a supportive exam coach who writes well-structured, motivating feedback in markdown." },
+          { role: "user", content: prompt },
+        ],
       });
       if (aiRes.status === 429) return json({ error: "Rate limited, try again shortly" }, 429);
       if (aiRes.status === 402) return json({ error: "AI credits exhausted" }, 402);

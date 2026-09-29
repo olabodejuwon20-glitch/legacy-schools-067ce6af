@@ -1,5 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { callAiGateway } from "../_shared/ai-call.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -70,14 +71,7 @@ Deno.serve(async (req) => {
       ].filter(Boolean).join("\n"),
     };
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ model: "google/gemini-2.5-flash", messages: [sys, user] }),
-    });
+    const res = await callAiGateway({ model: "google/gemini-2.5-flash", messages: [sys, user] });
 
     if (res.status === 429) {
       return new Response(JSON.stringify({ error: "Rate limit reached. Try again shortly." }), {
