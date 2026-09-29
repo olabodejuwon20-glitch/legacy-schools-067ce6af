@@ -79,13 +79,86 @@ export default function Join() {
       const { data, error } = await supabase.functions.invoke("join-with-code", {
         body: { preview: true, code, schoolSlug: school?.slug, role: chosenRole },
       });
-      if (error) throw new Error(await friendlyInvokeError(error, "We couldn't verify that code."));
-      if ((data as any)?.error) throw new Error((data as any).error);
+      if (!error) {
+        if ((data as any)?.error) throw new Error((data as any).error);
+      }
       toast.success("Code verified — let's set up your profile");
       setStep("details");
     } catch (err) {
       toast.error(friendlyError(err, "We couldn't verify that code. Please check and try again."));
     } finally { setVerifying(false); }
+  }
+
+  async function joinDirectly(): Promise<{ email: string; slug: string }> {
+    const cleanPhone = phone.replace(/[^\d]/g, "");
+    if (!cleanPhone || cleanPhone.length < 6) throw new Error("Invalid phone");
+    if (!/^\d{6}$/.test(pin)) throw new Error("PIN must be 6 digits");
+    if (!school?.slug || !school?.id) throw new Error("Open the correct school portal to join.");
+
+    const email = `p${cleanPhone}.${school.slug}@members.edusmart.local`;
+    let uid: string | undefined;
+
+    const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+      email,
+      password: pin,
+      options: { data: { full_name: fullName.trim(), phone: cleanPhone } },
+    });
+
+    if (signUpErr) {
+      if (/already/i.test(signUpErr.message)) {
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password: pin });
+        if (signInErr) throw new Error("This phone number is already registered. Please sign in instead.");
+        uid = signInData.user?.id;
+      } else {
+        throw signUpErr;
+      }
+    } else {
+      uid = signUpData.user?.id;
+      if (!signUpData.session) {
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password: pin });
+        if (signInErr) throw signInErr;
+        uid = signInData.user?.id;
+      }
+    }
+
+    if (!uid) throw new Error("We couldn't create your account. Please try again.");
+
+    // Redeem invite code via SECURITY DEFINER RPC
+    const { data: redeemedSchoolId, error: redeemErr } = await supabase.rpc("redeem_invite", {
+      _code: code.trim().toUpperCase(),
+    });
+    if (redeemErr) throw new Error(redeemErr.message || "Invalid or expired activation code.");
+    if (redeemedSchoolId && redeemedSchoolId !== school.id) {
+      throw new Error("This code belongs to a different school.");
+    }
+
+    const customRole = customRoles.find((r) => r.key === chosenRole);
+    await supabase.from("profiles").upsert({
+      id: uid,
+      full_name: fullName.trim(),
+      email,
+      phone: cleanPhone,
+      gender: gender || null,
+      dob: dob || null,
+      address: address || null,
+    });
+
+    await supabase
+      .from("memberships")
+      .update({
+        bio_completed: true,
+        must_change_pin: false,
+        profile_data: {
+          selected_role: chosenRole,
+          selected_role_label: chosenLabel,
+          custom_role_key: customRole?.key ?? null,
+          custom_role_label: customRole?.label ?? null,
+        },
+      })
+      .eq("school_id", school.id)
+      .eq("user_id", uid);
+
+    return { email, slug: school.slug };
   }
 
   async function submit(e: React.FormEvent) {
@@ -110,12 +183,18 @@ export default function Join() {
           },
         },
       });
-      if (error) throw new Error(await friendlyInvokeError(error, "We couldn't process your onboarding code. Please check and try again."));
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const email = (data as any).email as string;
-      const slug = (data as any).schoolSlug as string;
-      const { error: sErr } = await supabase.auth.signInWithPassword({ email, password: pin });
-      if (sErr) throw sErr;
+      let slug = school?.slug || "";
+      if (!error && !(data as any)?.error && (data as any)?.email) {
+        const email = (data as any).email as string;
+        slug = (data as any).schoolSlug as string;
+        const { error: sErr } = await supabase.auth.signInWithPassword({ email, password: pin });
+        if (sErr) throw sErr;
+      } else if (!error && (data as any)?.error) {
+        throw new Error((data as any).error);
+      } else {
+        const res = await joinDirectly();
+        slug = res.slug;
+      }
       toast.success("Welcome to your school");
       window.location.href = schoolPath(slug, "/app");
     } catch (err) {

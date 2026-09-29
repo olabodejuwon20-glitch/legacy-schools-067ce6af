@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.school-manifest]
 verify_jwt = false
+
+[functions.payments-webhook]
+verify_jwt = false

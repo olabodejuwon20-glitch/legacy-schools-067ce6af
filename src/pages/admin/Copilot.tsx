@@ -56,6 +56,98 @@ export default function Copilot() {
       ? "Ask anything about your school — attendance, fees, results, weak topics, approvals. I can also help you find any feature."
       : "Ask me where to find any feature on your portal, how to use it, and I'll send you straight there.";
 
+  async function fallbackCopilot(query: string): Promise<{ reply: string; trace: any[] }> {
+    const q = query.toLowerCase();
+    const slug = school!.slug;
+    const sid = school!.id;
+
+    if (role === "admin" && /at risk|struggling|below|failing|low score/i.test(q)) {
+      const { data } = await supabase
+        .from("assessment_results")
+        .select("student_id, percentage")
+        .eq("school_id", sid)
+        .lt("percentage", 50)
+        .order("graded_at", { ascending: false })
+        .limit(60);
+      const rows = data ?? [];
+      if (rows.length === 0) {
+        return {
+          reply: `No students currently have recorded assessment scores below **50%** this term.\n\n- View all learners in [Students](/${slug}/app/admin/students)\n- Check continuous assessment in [Assessments](/${slug}/app/admin/assessments-hub)`,
+          trace: [{ tool: "students_at_risk" }],
+        };
+      }
+      const byStudent = new Map<string, { sum: number; count: number }>();
+      for (const r of rows) {
+        const cur = byStudent.get(r.student_id) ?? { sum: 0, count: 0 };
+        cur.sum += Number(r.percentage);
+        cur.count += 1;
+        byStudent.set(r.student_id, cur);
+      }
+      const lines = [...byStudent.entries()]
+        .slice(0, 10)
+        .map(([id, v], i) => `${i + 1}. Student \`${id.slice(0, 8)}\` — **${Math.round(v.sum / v.count)}%** avg (${v.count} assessment${v.count > 1 ? "s" : ""} < 50%)`);
+      return {
+        reply: `Found **${byStudent.size}** student(s) averaging below 50%:\n\n${lines.join("\n")}\n\nOpen [Students](/${slug}/app/admin/students) or [Parent Alerts](/${slug}/app/admin/parent-alerts) to follow up.`,
+        trace: [{ tool: "students_at_risk" }],
+      };
+    }
+
+    if (role === "admin" && /fee|collection|invoice|payment|revenue|paid/i.test(q)) {
+      const { data } = await supabase
+        .from("school_invoices")
+        .select("status, amount_due_kobo, amount_paid_kobo")
+        .eq("school_id", sid);
+      const rows = data ?? [];
+      const due = rows.reduce((s, r: any) => s + Number(r.amount_due_kobo || 0), 0);
+      const paid = rows.reduce((s, r: any) => s + Number(r.amount_paid_kobo || 0), 0);
+      const rate = due ? Math.round((paid / due) * 100) : 0;
+      return {
+        reply: `### Fee Collection Summary\n- **Invoices issued:** ${rows.length}\n- **Total due:** ₦${Math.round(due / 100).toLocaleString()}\n- **Total collected:** ₦${Math.round(paid / 100).toLocaleString()}\n- **Collection rate:** **${rate}%**\n\nManage invoices and payments in [Fees & Payments](/${slug}/app/admin/fees).`,
+        trace: [{ tool: "fee_collection_rate" }],
+      };
+    }
+
+    if (role === "admin" && /weak.*topic|topic.*weak|mastery/i.test(q)) {
+      const { data } = await supabase
+        .from("student_topic_mastery")
+        .select("topic, subject_code, ema_mastery")
+        .eq("school_id", sid)
+        .order("ema_mastery", { ascending: true })
+        .limit(10);
+      const rows = data ?? [];
+      if (rows.length === 0) {
+        return {
+          reply: `No topic mastery data recorded yet. Once students complete practice or mock sessions, weak topics will appear here.\n\n- Set up questions in [Question Bank](/${slug}/app/admin/question-bank)`,
+          trace: [{ tool: "top_weak_topics" }],
+        };
+      }
+      const list = rows.slice(0, 5).map((r: any, i: number) => `${i + 1}. **${r.topic}** (${r.subject_code || "General"}) — ${Math.round(Number(r.ema_mastery) * 100)}% mastery`);
+      return {
+        reply: `### Weakest Topics Across Classes\n${list.join("\n")}`,
+        trace: [{ tool: "top_weak_topics" }],
+      };
+    }
+
+    if (/invite|onboarding code|add teacher|new teacher|new student/i.test(q)) {
+      return {
+        reply: `You can generate activation codes for teachers, students, and parents in **[Invites](/${slug}/app/admin/invites)** or **[Onboarding Center](/${slug}/app/admin/onboarding-center)**:\n\n1. Open [Invites](/${slug}/app/admin/invites)\n2. Select the role (**Teacher**, **Student**, or **Parent**) and click **Generate code**\n3. Share the 6-character code or join link \`/${slug}/join\` with your staff or students.`,
+        trace: [],
+      };
+    }
+
+    if (/link.*parent|parent.*child/i.test(q)) {
+      return {
+        reply: `To link a parent to their child:\n\n1. Go to **[Parents](/${slug}/app/admin/parents)**\n2. Select the parent account and choose the student(s) to link\n3. Save — the parent will immediately see their child's attendance, fees, and results.`,
+        trace: [],
+      };
+    }
+
+    return {
+      reply: `Here are the key sections for your **${role}** portal:\n\n- [Dashboard](/${slug}/app/${role}) — Overview & quick actions\n- [Students](/${slug}/app/admin/students) & [Teachers](/${slug}/app/admin/teachers) — Manage people\n- [Invites](/${slug}/app/admin/invites) — Generate 6-character onboarding codes\n- [Fees & Payments](/${slug}/app/admin/fees) — Invoices & fee tracking\n- [Settings](/${slug}/app/admin/settings) — School profile, grading & branding`,
+      trace: [],
+    };
+  }
+
   async function send(text?: string) {
     const content = (text ?? input).trim();
     if (!content || !school || busy) return;
@@ -73,13 +165,21 @@ export default function Copilot() {
           history: messages.map(m => ({ role: m.role, content: m.content })),
         },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setMessages([...next, { role: "assistant", content: data.reply, trace: data.tool_trace ?? [] }]);
+      if (!error && !data?.error && data?.reply) {
+        setMessages([...next, { role: "assistant", content: data.reply, trace: data.tool_trace ?? [] }]);
+      } else {
+        const fb = await fallbackCopilot(content);
+        setMessages([...next, { role: "assistant", content: fb.reply, trace: fb.trace }]);
+      }
       requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 1e9, behavior: "smooth" }));
     } catch (e: any) {
-      toast.error(e?.message ?? "Copilot failed");
-      setMessages(next);
+      try {
+        const fb = await fallbackCopilot(content);
+        setMessages([...next, { role: "assistant", content: fb.reply, trace: fb.trace }]);
+      } catch {
+        toast.error(e?.message ?? "Copilot failed");
+        setMessages(next);
+      }
     } finally {
       setBusy(false);
     }

@@ -32,15 +32,38 @@ export default function SchoolLogin() {
     e.preventDefault();
     setBusy(true);
     try {
+      let email = "";
+      let mustChange = false;
       const { data, error } = await supabase.functions.invoke("phone-auth", {
         body: { phone, schoolSlug: school!.slug },
       });
-      if (error) throw new Error(await friendlyInvokeError(error, "We couldn't sign you in. Please try again."));
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const email = (data as any).email as string;
-      const mustChange = !!(data as any).mustChangePin;
-      const { error: sErr } = await supabase.auth.signInWithPassword({ email, password: pin });
+      if (!error && !(data as any)?.error && (data as any)?.email) {
+        email = (data as any).email as string;
+        mustChange = !!(data as any).mustChangePin;
+      } else if (!error && (data as any)?.error) {
+        throw new Error((data as any).error);
+      } else {
+        // Direct fallback when phone-auth Edge Function isn't deployed
+        const cleanPhone = phone.replace(/[^\d]/g, "");
+        if (!cleanPhone || cleanPhone.length < 6) throw new Error("Invalid phone");
+        email = `p${cleanPhone}.${school!.slug.toLowerCase()}@members.edusmart.local`;
+      }
+      const { data: signed, error: sErr } = await supabase.auth.signInWithPassword({ email, password: pin });
       if (sErr) throw new Error("We couldn't sign you in with those details.");
+      if (signed.user?.id) {
+        const { data: mem } = await supabase
+          .from("memberships")
+          .select("must_change_pin")
+          .eq("user_id", signed.user.id)
+          .eq("school_id", school!.id)
+          .eq("status", "active")
+          .maybeSingle();
+        if (!mem) {
+          await supabase.auth.signOut();
+          throw new Error("We couldn't sign you in with those details.");
+        }
+        mustChange = mustChange || !!mem.must_change_pin;
+      }
       toast.success("Welcome");
       window.location.href = schoolPath(school!.slug, mustChange ? "/change-pin" : "/app");
     } catch (err) { toast.error(friendlyError(err, "We couldn't sign you in. Please try again.")); } finally { setBusy(false); }
