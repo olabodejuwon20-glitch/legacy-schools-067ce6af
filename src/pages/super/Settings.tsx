@@ -20,13 +20,10 @@ type Settings = {
 };
 
 const KNOWN_INTEGRATIONS = [
-  { key: "paystack", name: "Paystack (NGN)", desc: "Nigerian card, bank transfer & USSD collections" },
-  { key: "termii", name: "Termii SMS", desc: "Nigerian DND-compliant bulk SMS gateway" },
-  { key: "whatsapp", name: "WhatsApp Cloud API", desc: "Parent notifications & receipt delivery" },
-  { key: "gemini", name: "Google Gemini AI", desc: "AI Tutor, Copilot, Marking & Question Generator" },
-  { key: "resend", name: "Resend", desc: "Transactional email delivery" },
-  { key: "sentry", name: "Sentry", desc: "Runtime error telemetry" },
-  { key: "posthog", name: "PostHog", desc: "Product analytics & session replay" },
+  { key: "paddle", name: "Paddle", desc: "Subscription billing" },
+  { key: "resend", name: "Resend", desc: "Transactional email" },
+  { key: "sentry", name: "Sentry", desc: "Error tracking" },
+  { key: "posthog", name: "PostHog", desc: "Product analytics" },
 ];
 
 function formatNumber(n: number | string | null | undefined) {
@@ -112,7 +109,7 @@ export default function SuperSettings() {
         </TabsContent>
 
         <TabsContent value="smtp">
-          <Section title="SMTP" description="Outbound email config. Secrets live in Supabase Vault / Edge Function environment variables — this persists connection metadata.">
+          <Section title="SMTP" description="Outbound email config. Secrets live in Lovable Cloud — this only persists the connection metadata.">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div><Label>Host</Label><Input value={s.smtp.host ?? ""} onChange={e => setS({ ...s, smtp: { ...s.smtp, host: e.target.value } })} /></div>
               <div><Label>Port</Label><Input type="number" value={s.smtp.port ?? ""} onChange={e => setS({ ...s, smtp: { ...s.smtp, port: Number(e.target.value) || undefined } })} /></div>
@@ -128,7 +125,7 @@ export default function SuperSettings() {
         </TabsContent>
 
         <TabsContent value="integrations">
-          <Section title="Integrations" description="Toggle availability across the platform. API keys are managed in Supabase Edge Function secrets.">
+          <Section title="Integrations" description="Toggle availability across the platform. API keys are managed in Lovable Cloud secrets, not here.">
             <ul className="divide-y divide-border -my-2">
               {KNOWN_INTEGRATIONS.map(i => (
                 <li key={i.key} className="py-3 flex items-center justify-between">
@@ -192,17 +189,6 @@ function AICachePanel() {
   }
   useEffect(() => { load(); }, []);
 
-  async function clearCache() {
-    if (!confirm("Purge all cached AI responses across the platform?")) return;
-    try {
-      await superAction("clear_ai_cache", {});
-      toast.success("AI cache cleared");
-      await load();
-    } catch {
-      /* toasted */
-    }
-  }
-
   if (loading) return <Skel className="h-72" />;
   const t = data?.totals ?? {};
   const byFeature = (data?.by_feature ?? []) as any[];
@@ -214,8 +200,7 @@ function AICachePanel() {
       title="AI Cache status"
       description="Hit rate, tokens saved and last cache activity across all schools."
     >
-      <div className="flex justify-end gap-2 -mt-2 mb-3">
-        <Button size="sm" variant="outline" onClick={clearCache}>Clear AI Cache</Button>
+      <div className="flex justify-end -mt-2 mb-3">
         <Button size="sm" variant="outline" onClick={load}><RefreshCw className="size-3.5 mr-1.5" />Refresh</Button>
       </div>
 
