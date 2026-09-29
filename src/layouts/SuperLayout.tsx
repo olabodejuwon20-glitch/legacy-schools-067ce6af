@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSchool } from "@/contexts/SchoolContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronsLeft, ChevronsRight, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag, Sparkles, Bell, Activity, Command, TrendingUp, Wrench, Trash2 } from "lucide-react";
+import { Loader2, LayoutDashboard, Building2, Package, KeyRound, Settings2, ShoppingBag, CreditCard, Receipt, Users, Megaphone, LifeBuoy, BarChart3, ShieldCheck, ScrollText, Cog, ChevronsLeft, ChevronsRight, ChevronRight, Search, LogOut, Rocket, AlertCircle, Zap, Flag, Sparkles, Bell, Activity, Command, TrendingUp, Wrench, Trash2, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ const NAV = [
   ]},
   { group: "Products", items: [
     { to: "/super/products", icon: Package, label: "Products" },
+    { to: "/super/testing-lab", icon: FlaskConical, label: "Testing Lab" },
     { to: "/super/configurations", icon: Settings2, label: "Tenant Config" },
     { to: "/super/academic-defaults", icon: Settings2, label: "Academic Defaults" },
   ]},
@@ -69,6 +70,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   analytics: "Analytics",
   claim: "Claim Access",
   trash: "Trash",
+  "testing-lab": "Internal Testing Lab",
 };
 
 function useIsSuperAdmin() {

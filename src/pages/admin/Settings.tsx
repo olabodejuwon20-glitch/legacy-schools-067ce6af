@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { buildSchoolUrl } from "@/lib/tenant";
-import { Copy, Upload, Loader2, Image as ImageIcon, Plus, Trash2, Eye, Download, HelpCircle, BookOpen, ArrowRight, Lock, Unlock } from "lucide-react";
+import { Copy, Upload, Loader2, Image as ImageIcon, Plus, Trash2, Eye, Download, HelpCircle, BookOpen, ArrowRight, Lock, Unlock, PauseCircle } from "lucide-react";
+import ConfirmDeleteDialog from "@/components/super/ConfirmDeleteDialog";
 import { useNavigate } from "react-router-dom";
 import { schoolPath } from "@/lib/tenant";
 import { GradingWeightsCard } from "@/components/admin/GradingWeightsCard";
@@ -20,7 +21,8 @@ import { EXPORT_FONTS, clearExportBrandCache } from "@/lib/exportBrand";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function AdminSettings() {
-  const { school } = useSchool();
+  const { school, signOut } = useSchool();
+  const [schoolDeleteOpen, setSchoolDeleteOpen] = useState(false);
   const nav = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -761,6 +763,76 @@ export default function AdminSettings() {
               </Button>
             </div>
           </SectionCard>
+
+          <SectionCard
+            title="Delete or Suspend School Account"
+            description="Two ways to remove your school: suspend for 30 days (recoverable grace period) or permanently delete with confirmation."
+          >
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex flex-col justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 font-semibold text-sm">
+                    <PauseCircle className="size-4 text-warning" />
+                    1. Suspend School for 30 Days
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Suspends all portal access and holds your school in Trash for 30 days. Platform support can restore it anytime within 30 days before auto-purge.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" className="border-warning/40 text-warning hover:bg-warning/10 self-start" onClick={() => setSchoolDeleteOpen(true)}>
+                  <PauseCircle className="size-3.5 mr-1.5" /> Suspend for 30 days…
+                </Button>
+              </div>
+
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex flex-col justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 font-semibold text-sm text-destructive">
+                    <Trash2 className="size-4 text-destructive" />
+                    2. Delete School Permanently
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Permanently deletes your school and memberships immediately. Requires typing <span className="font-mono font-semibold text-foreground">DELETE</span> to confirm.
+                  </p>
+                </div>
+                <Button type="button" variant="destructive" size="sm" className="self-start" onClick={() => setSchoolDeleteOpen(true)}>
+                  <Trash2 className="size-3.5 mr-1.5" /> Delete permanently…
+                </Button>
+              </div>
+            </div>
+          </SectionCard>
+
+          <ConfirmDeleteDialog
+            open={schoolDeleteOpen}
+            onOpenChange={setSchoolDeleteOpen}
+            title="Delete or Suspend School Account"
+            itemName={school ? `${school.name} (/${school.slug})` : undefined}
+            onSuspend30Days={async () => {
+              if (!school) return;
+              const { data, error } = await supabase.functions.invoke("super-action", {
+                body: { action: "self_suspend_30_days", payload: { scope: "school", school_id: school.id } },
+              });
+              if (error || (data as any)?.error) {
+                toast.error((data as any)?.error ?? error?.message ?? "Failed to suspend school");
+                return;
+              }
+              toast.success("School suspended for 30 days.");
+              await signOut();
+              nav("/");
+            }}
+            onConfirm={async (confirm) => {
+              if (!school) return;
+              const { data, error } = await supabase.functions.invoke("super-action", {
+                body: { action: "self_delete_account", payload: { scope: "school", school_id: school.id, confirm } },
+              });
+              if (error || (data as any)?.error) {
+                toast.error((data as any)?.error ?? error?.message ?? "Failed to delete school");
+                return;
+              }
+              toast.success("School permanently deleted.");
+              await signOut();
+              nav("/");
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="pilot" className="space-y-4">

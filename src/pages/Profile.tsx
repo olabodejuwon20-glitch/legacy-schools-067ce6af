@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2, Save, Upload, Image as ImageIcon } from "lucide-react";
+import { Camera, Loader2, Save, Upload, Image as ImageIcon, PauseCircle, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import ConfirmDeleteDialog from "@/components/super/ConfirmDeleteDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -11,7 +13,9 @@ import { toast } from "sonner";
 import { publicEmail, publicInitials } from "@/lib/identity";
 
 export default function ProfilePage() {
-  const { user, school, activeRole, photoUrl, displayName, email, refreshProfile } = useSchool();
+  const { user, school, activeRole, photoUrl, displayName, email, refreshProfile, signOut } = useSchool();
+  const nav = useNavigate();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -180,6 +184,71 @@ export default function ProfilePage() {
           </div>
         </SectionCard>
       )}
+
+      <SectionCard title="Delete or Suspend Account" description="You have two ways to remove your account: suspend for 30 days (recoverable) or permanently delete with confirmation.">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 font-semibold text-sm">
+                <PauseCircle className="size-4 text-warning" />
+                1. Suspend for 30 Days
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Deactivates your account for 30 days. Your school admin or platform support can restore your account anytime within 30 days before it is purged.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="border-warning/40 text-warning hover:bg-warning/10 self-start" onClick={() => setDeleteModalOpen(true)}>
+              <PauseCircle className="size-3.5 mr-1.5" /> Suspend for 30 days…
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 font-semibold text-sm text-destructive">
+                <Trash2 className="size-4 text-destructive" />
+                2. Delete Account Permanently
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Permanently deletes your account and profile immediately. Requires typing <span className="font-mono font-semibold text-foreground">DELETE</span> to confirm.
+              </p>
+            </div>
+            <Button variant="destructive" size="sm" className="self-start" onClick={() => setDeleteModalOpen(true)}>
+              <Trash2 className="size-3.5 mr-1.5" /> Delete permanently…
+            </Button>
+          </div>
+        </div>
+      </SectionCard>
+
+      <ConfirmDeleteDialog
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Delete or Suspend Your Account"
+        itemName={`${displayName || "Account"} (${cleanEmail || email || user?.id || ""})`}
+        onSuspend30Days={async () => {
+          const { data, error } = await supabase.functions.invoke("super-action", {
+            body: { action: "self_suspend_30_days", payload: { scope: "user", school_id: school?.id } },
+          });
+          if (error || (data as any)?.error) {
+            toast.error((data as any)?.error ?? error?.message ?? "Failed to suspend account");
+            return;
+          }
+          toast.success("Your account has been suspended for 30 days.");
+          await signOut();
+          nav("/");
+        }}
+        onConfirm={async (confirm) => {
+          const { data, error } = await supabase.functions.invoke("super-action", {
+            body: { action: "self_delete_account", payload: { scope: "user", confirm } },
+          });
+          if (error || (data as any)?.error) {
+            toast.error((data as any)?.error ?? error?.message ?? "Failed to delete account");
+            return;
+          }
+          toast.success("Your account has been permanently deleted.");
+          await signOut();
+          nav("/");
+        }}
+      />
     </div>
   );
 }

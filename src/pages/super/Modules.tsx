@@ -5,7 +5,8 @@ import { PageHeader, Section, StatusBadge, Skel, EmptyState } from "@/components
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Package, RefreshCw, Sparkles } from "lucide-react";
+import { Loader2, Package, RefreshCw, Sparkles, FlaskConical } from "lucide-react";
+import { Link } from "react-router-dom";
 
 type ModuleRow = {
   id: string;
@@ -73,6 +74,7 @@ export default function SuperModules() {
         description="The canonical module registry. Slugs here are bound to the in-repo manifest and consumed by every school."
         actions={
           <>
+            <Button variant="outline" size="sm" asChild><Link to="/super/testing-lab"><FlaskConical className="size-3.5 mr-1.5" />Internal Testing Lab</Link></Button>
             <Button variant="outline" size="sm" onClick={load}><RefreshCw className="size-3.5 mr-1.5" />Refresh</Button>
             <Button size="sm" onClick={seedMissing} disabled={seeding || missing.length === 0}>
               {seeding ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Sparkles className="size-3.5 mr-1.5" />}
@@ -105,9 +107,15 @@ export default function SuperModules() {
                     v{r.version} · {r.pricing_model}{r.term_price_kobo ? ` · ₦${Math.round(r.term_price_kobo/100).toLocaleString("en-NG")}/term` : ""}
                   </p>
                 </div>
-                <Button variant={r.global_default ? "default" : "outline"} size="sm" onClick={() => toggleDefault(r)}>
-                  {r.global_default ? "Default on" : "Default off"}
-                </Button>
+                {r.status === "testing" ? (
+                  <Button variant="outline" size="sm" asChild className="border-warning/40 text-warning hover:bg-warning/10">
+                    <Link to="/super/testing-lab"><FlaskConical className="size-3.5 mr-1.5" />Verify & Approve in Lab</Link>
+                  </Button>
+                ) : (
+                  <Button variant={r.global_default ? "default" : "outline"} size="sm" onClick={() => toggleDefault(r)}>
+                    {r.global_default ? "Default on" : "Default off"}
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

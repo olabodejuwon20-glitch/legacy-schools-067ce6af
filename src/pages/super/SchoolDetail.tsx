@@ -830,36 +830,78 @@ function SecurityTab({ schoolId, enr }: { schoolId: string; enr: ReturnType<type
 function SettingsTab({ school }: { school: any }) {
   const nav = useNavigate();
   const [confirm, setConfirm] = useState("");
+  const [suspendReason, setSuspendReason] = useState("");
   const [busy, setBusy] = useState(false);
-  async function destroy() {
+  const [suspendBusy, setSuspendBusy] = useState(false);
+
+  async function suspend30Days() {
+    setSuspendBusy(true);
+    try {
+      await superAction("suspend_30_days", {
+        table: "schools",
+        id: school.id,
+        reason: suspendReason.trim() || "Suspended for 30 days (scheduled for deletion)",
+      });
+      toast.success("School suspended for 30 days and moved to Trash");
+      nav("/super/schools");
+    } catch {} finally { setSuspendBusy(false); }
+  }
+
+  async function destroyPermanently() {
     setBusy(true);
     try {
-      await superAction("delete_school", { school_id: school.id, confirm: "DELETE" });
-      toast.success("School deleted"); nav("/super/schools");
+      await superAction("hard_delete", { table: "schools", id: school.id, confirm: "DELETE" });
+      toast.success("School permanently deleted");
+      nav("/super/schools");
     } catch {} finally { setBusy(false); }
   }
+
   return (
     <div className="space-y-6">
-      <Section title="Tenant preferences" description="Baseline behavior overrides. Schema-driven UI ships in a later phase.">
+      <Section title="Tenant preferences" description="Baseline behavior overrides and tenant metadata.">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <Field label="Slug" value={`/${school.slug}`} mono />
           <Field label="Created" value={new Date(school.created_at).toLocaleString()} />
           <Field label="Pilot" value={school.pilot_status ?? "—"} />
-          <Field label="Data region" value="EU (default)" />
+          <Field label="Status" value={school.status ?? "active"} />
         </div>
       </Section>
 
-      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6">
-        <div className="flex items-start gap-3">
-          <div className="size-9 rounded-md bg-destructive/10 text-destructive grid place-items-center"><Trash2 className="size-4" /></div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-sm">Delete this school</h3>
-            <p className="text-xs text-muted-foreground mt-1 max-w-lg">This permanently removes the school record. Memberships, exams, and other tenant data with foreign references may be orphaned. Type <span className="font-mono font-semibold">DELETE</span> to confirm.</p>
-            <div className="mt-3 flex gap-2 max-w-sm">
-              <Input value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Type DELETE" />
-              <Button variant="destructive" disabled={confirm !== "DELETE" || busy} onClick={destroy}>
-                {busy && <Loader2 className="size-4 mr-2 animate-spin" />}Delete school
-              </Button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Option 1: Suspend for 30 days */}
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-6">
+          <div className="flex items-start gap-3">
+            <div className="size-9 rounded-md bg-warning/10 text-warning grid place-items-center shrink-0"><PauseCircle className="size-4" /></div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-sm">Option 1: Suspend for 30 days</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Immediately locks portal access and moves the school to <strong className="text-foreground">Trash</strong> for a 30-day grace period. You can restore all school data anytime within 30 days before automatic purge.
+              </p>
+              <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                <Input value={suspendReason} onChange={e => setSuspendReason(e.target.value)} placeholder="Optional reason (e.g. Requested closure)" />
+                <Button variant="outline" className="border-warning/40 text-warning hover:bg-warning/10 shrink-0" disabled={suspendBusy} onClick={suspend30Days}>
+                  {suspendBusy && <Loader2 className="size-4 mr-2 animate-spin" />}Suspend for 30 days
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Option 2: Delete permanently with confirmation */}
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6">
+          <div className="flex items-start gap-3">
+            <div className="size-9 rounded-md bg-destructive/10 text-destructive grid place-items-center shrink-0"><Trash2 className="size-4" /></div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-sm text-destructive">Option 2: Delete permanently (Immediate)</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Permanently erases this school, its memberships, modules, and invite codes immediately without a 30-day recovery window. Type <span className="font-mono font-semibold text-foreground">DELETE</span> to confirm.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Input value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Type DELETE" className="font-mono" />
+                <Button variant="destructive" className="shrink-0" disabled={confirm.trim() !== "DELETE" || busy} onClick={destroyPermanently}>
+                  {busy && <Loader2 className="size-4 mr-2 animate-spin" />}Delete permanently
+                </Button>
+              </div>
             </div>
           </div>
         </div>

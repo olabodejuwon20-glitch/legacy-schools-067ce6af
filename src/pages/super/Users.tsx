@@ -252,7 +252,8 @@ export default function SuperUsers() {
                               : <DropdownMenuItem onClick={() => act("set_membership_status", { membership_id: r.membership_id, status: "active" }, "Membership reactivated")}><UserCheck className="size-3.5 mr-2" />Reactivate</DropdownMenuItem>}
                             <DropdownMenuItem onClick={() => act("force_pin_reset", { membership_id: r.membership_id }, "PIN reset required on next sign-in")}><KeyRound className="size-3.5 mr-2" />Force PIN reset</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setPendingDelete(r)} className="text-destructive focus:text-destructive"><Trash2 className="size-3.5 mr-2" />Move to Trash</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => act("suspend_30_days", { table: "memberships", id: r.membership_id }, "Account suspended for 30 days (moved to Trash)")} className="text-warning focus:text-warning"><UserX className="size-3.5 mr-2" />Suspend for 30 days</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPendingDelete(r)} className="text-destructive focus:text-destructive"><Trash2 className="size-3.5 mr-2" />Delete account…</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -268,12 +269,15 @@ export default function SuperUsers() {
       <ConfirmDeleteDialog
         open={!!pendingDelete}
         onOpenChange={(v) => !v && setPendingDelete(null)}
-        title="Move membership to Trash"
-        description="The user's membership will be sent to Trash. It auto-purges after 30 days. You can restore it from the Trash page before then."
-        itemName={pendingDelete ? `${pendingDelete.full_name} · ${pendingDelete.role} @ ${pendingDelete.school_name}` : undefined}
+        title="Delete or Suspend Account (30 Days)"
+        itemName={pendingDelete ? `${pendingDelete.full_name} (${pendingDelete.email}) · ${pendingDelete.role} @ ${pendingDelete.school_name}` : undefined}
+        onSuspend30Days={async () => {
+          if (!pendingDelete) return;
+          await act("suspend_30_days", { table: "memberships", id: pendingDelete.membership_id }, "Account suspended for 30 days");
+        }}
         onConfirm={async (confirm) => {
           if (!pendingDelete) return;
-          await act("soft_delete", { table: "memberships", id: pendingDelete.membership_id, confirm }, "Moved to Trash");
+          await act("hard_delete", { table: "memberships", id: pendingDelete.membership_id, user_id: pendingDelete.user_id, confirm }, "Account permanently deleted");
         }}
       />
     </div>

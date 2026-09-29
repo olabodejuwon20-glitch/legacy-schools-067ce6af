@@ -1,21 +1,23 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Package, ShoppingBag, KeyRound, Flag, Loader2, TrendingUp, Building2, Sparkles } from "lucide-react";
+import { Package, ShoppingBag, KeyRound, Flag, Loader2, TrendingUp, Building2, Sparkles, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ModulesTab      = lazy(() => import("./Modules"));
 const MarketplaceTab  = lazy(() => import("./Marketplace"));
 const LicensingTab    = lazy(() => import("./Licensing"));
 const FeatureFlagsTab = lazy(() => import("./FeatureFlags"));
+const TestingLabTab   = lazy(() => import("./TestingLab"));
 
-type TabKey = "modules" | "marketplace" | "licensing" | "flags";
+type TabKey = "modules" | "marketplace" | "licensing" | "flags" | "lab";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; description: string }[] = [
-  { key: "modules",     label: "Modules",       icon: Package,     description: "Canonical registry of every module the platform ships." },
-  { key: "marketplace", label: "Marketplace",   icon: ShoppingBag, description: "Per-tenant catalog and incoming module requests." },
-  { key: "licensing",   label: "Licensing",     icon: KeyRound,    description: "Entitlement matrix — schools × modules." },
-  { key: "flags",       label: "Feature Flags", icon: Flag,        description: "Global rollouts and per-school overrides." },
+  { key: "modules",     label: "Modules",       icon: Package,      description: "Canonical registry of every module the platform ships." },
+  { key: "lab",         label: "Testing Lab",   icon: FlaskConical, description: "Stage, test, and verify new features in sandbox before rolling out to Products." },
+  { key: "marketplace", label: "Marketplace",   icon: ShoppingBag,  description: "Per-tenant catalog and incoming module requests." },
+  { key: "licensing",   label: "Licensing",     icon: KeyRound,     description: "Entitlement matrix — schools × modules." },
+  { key: "flags",       label: "Feature Flags", icon: Flag,         description: "Global rollouts and per-school overrides." },
 ];
 
 type Insights = {
@@ -30,7 +32,7 @@ type Insights = {
 export default function SuperProducts() {
   const [params, setParams] = useSearchParams();
   const raw = params.get("tab") as TabKey | null;
-  const active: TabKey = (["modules","marketplace","licensing","flags"] as TabKey[]).includes(raw as TabKey) ? (raw as TabKey) : "modules";
+  const active: TabKey = (["modules","marketplace","licensing","flags","lab"] as TabKey[]).includes(raw as TabKey) ? (raw as TabKey) : "modules";
   const [insights, setInsights] = useState<Insights | null>(null);
 
   useEffect(() => {
@@ -113,6 +115,7 @@ export default function SuperProducts() {
       {/* Tab body */}
       <Suspense fallback={<div className="min-h-[240px] grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>}>
         {active === "modules"     && <ModulesTab />}
+        {active === "lab"         && <TestingLabTab />}
         {active === "marketplace" && <MarketplaceTab />}
         {active === "licensing"   && <LicensingTab />}
         {active === "flags"       && <FeatureFlagsTab />}

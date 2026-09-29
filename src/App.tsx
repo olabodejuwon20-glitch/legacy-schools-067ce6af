@@ -179,6 +179,7 @@ const SuperBusiness = lazy(() => import("./pages/super/Business"));
 const SuperOperations = lazy(() => import("./pages/super/Operations"));
 const SuperIntelligence = lazy(() => import("./pages/super/Intelligence"));
 const SuperTrash = lazy(() => import("./pages/super/Trash"));
+const SuperTestingLab = lazy(() => import("./pages/super/TestingLab"));
 const ComingSoon = lazy(() => import("./pages/super/_ComingSoon"));
 
 const queryClient = new QueryClient({
@@ -284,6 +285,7 @@ const App = () => (
             <Route path="settings" element={<SuperSettings />} />
             <Route path="academic-defaults" element={<SuperAcademicDefaults />} />
             <Route path="trash" element={<SuperTrash />} />
+            <Route path="testing-lab" element={<SuperTestingLab />} />
           </Route>
 
             {/* School-scoped routes: /:slug/... */}

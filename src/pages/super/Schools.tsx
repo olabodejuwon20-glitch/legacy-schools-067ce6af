@@ -14,6 +14,7 @@ import { superAction, timeAgo } from "@/lib/super";
 import { buildSchoolUrl } from "@/lib/tenant";
 import { toast } from "sonner";
 import ImpersonateDialog from "@/components/super/ImpersonateDialog";
+import ConfirmDeleteDialog from "@/components/super/ConfirmDeleteDialog";
 import { enrichSchool, formatBytes, formatCompact, healthColor } from "@/lib/schoolHealth";
 import InsightsCards, { buildInsights } from "@/components/super/InsightsCards";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,7 @@ export default function SuperSchools() {
   const [rows, setRows] = useState<School[] | null>(null);
   const [liveMap, setLiveMap] = useState<Record<string, { students: number; teachers: number; parents: number; admins: number; aiTokens: number }>>({});
   const [impSchool, setImpSchool] = useState<School | null>(null);
+  const [delSchool, setDelSchool] = useState<School | null>(null);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
@@ -114,7 +116,7 @@ export default function SuperSchools() {
 
   async function load() {
     setRows(null);
-    let q = supabase.from("schools").select("id,name,slug,logo_url,plan,status,plan_expires_at,created_at,suspended_reason,pilot_status,pilot_ends_at", { count: "exact" });
+    let q = supabase.from("schools").select("id,name,slug,logo_url,plan,status,plan_expires_at,created_at,suspended_reason,pilot_status,pilot_ends_at", { count: "exact" }).is("deleted_at", null);
     if (debounced) q = q.or(`name.ilike.%${debounced}%,slug.ilike.%${debounced}%,email.ilike.%${debounced}%`);
     if (planFilter !== "all") q = q.eq("plan", planFilter as any);
     if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
@@ -416,7 +418,9 @@ export default function SuperSchools() {
                       <DropdownMenuSeparator />
                       {s.status === "suspended"
                         ? <DropdownMenuItem onClick={() => reactivate(s)}><PlayCircle className="size-4 mr-2" />Reactivate</DropdownMenuItem>
-                        : <DropdownMenuItem onClick={() => suspend(s)} className="text-destructive focus:text-destructive"><PauseCircle className="size-4 mr-2" />Suspend</DropdownMenuItem>}
+                        : <DropdownMenuItem onClick={() => suspend(s)} className="text-warning focus:text-warning"><PauseCircle className="size-4 mr-2" />Suspend</DropdownMenuItem>}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setDelSchool(s)} className="text-destructive focus:text-destructive"><X className="size-4 mr-2" />Delete or Suspend (30d)…</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -445,6 +449,24 @@ export default function SuperSchools() {
           school={{ id: impSchool.id, name: impSchool.name, slug: impSchool.slug }}
         />
       )}
+      <ConfirmDeleteDialog
+        open={!!delSchool}
+        onOpenChange={(v) => { if (!v) setDelSchool(null); }}
+        title="Delete or Suspend School (30 Days)"
+        itemName={delSchool ? `${delSchool.name} (/${delSchool.slug})` : undefined}
+        onSuspend30Days={async () => {
+          if (!delSchool) return;
+          await superAction("suspend_30_days", { table: "schools", id: delSchool.id });
+          toast.success("School suspended for 30 days (moved to Trash)");
+          load(); loadStats();
+        }}
+        onConfirm={async (confirm) => {
+          if (!delSchool) return;
+          await superAction("hard_delete", { table: "schools", id: delSchool.id, confirm });
+          toast.success("School permanently deleted");
+          load(); loadStats();
+        }}
+      />
     </div>
   );
 }
