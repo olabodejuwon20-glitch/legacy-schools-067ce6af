@@ -31,8 +31,23 @@ export default function SignIn() {
     }
     setResetBusy(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const cleanEmail = email.trim();
+      const redirectUrl = `${window.location.origin}/reset-password`;
+
+      // 1. Try custom Edge Function first (bypasses Supabase SMTP limits using Brevo/Resend)
+      const { data, error: fnError } = await supabase.functions.invoke("request-password-reset", {
+        body: { email: cleanEmail, redirectTo: redirectUrl },
+      });
+
+      if (!fnError && (data as any)?.ok) {
+        setResetSent(true);
+        toast.success("Password reset link sent! Check your inbox.");
+        return;
+      }
+
+      // 2. Fall back to standard Supabase Auth recovery
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: redirectUrl,
       });
       if (error) throw error;
       setResetSent(true);
