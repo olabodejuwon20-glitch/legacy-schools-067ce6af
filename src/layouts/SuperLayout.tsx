@@ -217,7 +217,7 @@ export default function SuperLayout() {
             <div className="size-6 rounded-md bg-gradient-to-br from-foreground to-foreground/70 text-background grid place-items-center text-[10px] font-bold shadow-sm">L</div>
             {!collapsed && (
               <div className="flex items-baseline gap-1.5 min-w-0">
-                <span className="text-[13px] font-semibold tracking-tight">Legacyskool</span>
+                <span className="text-[13px] font-semibold tracking-tight">LegacySKool</span>
                 <span className="text-[10px] font-medium text-muted-foreground tracking-wider uppercase">OS</span>
               </div>
             )}

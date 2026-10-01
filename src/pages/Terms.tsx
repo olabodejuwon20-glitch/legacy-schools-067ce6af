@@ -7,15 +7,15 @@ export default function Terms() {
   const sections = [
     {
       t: "1. Acceptance of terms",
-      d: "By creating a Legacyskool account or using the platform on behalf of a school, you agree to these Terms of Service. If you do not agree, do not use the platform.",
+      d: "By creating a LegacySKool account or using the platform on behalf of a school, you agree to these Terms of Service. If you do not agree, do not use the platform.",
     },
     {
-      t: "2. Who can use Legacyskool",
-      d: "Legacyskool is provided to registered schools, their authorised administrators, staff, students and parents. Each school is responsible for the accuracy of the accounts it creates and the activity that happens under those accounts.",
+      t: "2. Who can use LegacySKool",
+      d: "LegacySKool is provided to registered schools, their authorised administrators, staff, students and parents. Each school is responsible for the accuracy of the accounts it creates and the activity that happens under those accounts.",
     },
     {
       t: "3. School data ownership",
-      d: "Schools retain full ownership of all data they upload — student records, results, attendance, payments and files. Legacyskool processes this data only to deliver the service and never sells it.",
+      d: "Schools retain full ownership of all data they upload — student records, results, attendance, payments and files. LegacySKool processes this data only to deliver the service and never sells it.",
     },
     {
       t: "4. Acceptable use",
@@ -31,11 +31,11 @@ export default function Terms() {
     },
     {
       t: "7. Termination",
-      d: "A school may stop using Legacyskool at any time. We may suspend accounts that violate these terms. On termination we will export your data on request and delete it within 30 days.",
+      d: "A school may stop using LegacySKool at any time. We may suspend accounts that violate these terms. On termination we will export your data on request and delete it within 30 days.",
     },
     {
       t: "8. Limitation of liability",
-      d: "Legacyskool is provided on an 'as is' basis. We are not liable for indirect or consequential losses arising from use of the platform. Our total liability is limited to the fees paid in the prior 12 months.",
+      d: "LegacySKool is provided on an 'as is' basis. We are not liable for indirect or consequential losses arising from use of the platform. Our total liability is limited to the fees paid in the prior 12 months.",
     },
     {
       t: "9. Changes to these terms",
@@ -48,7 +48,7 @@ export default function Terms() {
   ];
   return (
     <div className="min-h-screen bg-background">
-      <SEO title="Terms of Service — Legacyskool" description="The terms that govern the use of the Legacyskool school operating system." path="/terms" />
+      <SEO title="Terms of Service — LegacySKool" description="The terms that govern the use of the LegacySKool school operating system." path="/terms" />
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
         <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Back</Link>
         <div className="mt-6 flex items-center gap-3">

@@ -5,14 +5,14 @@ import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export default function Privacy() {
   const items = [
-    { icon: Lock, t: "Encryption in transit & at rest", d: "All traffic is served over HTTPS and the database is encrypted at rest by our cloud provider." },
+    { icon: Lock, t: "Bank-grade encryption in transit & at rest", d: "All traffic is protected with industry-standard encryption in transit and secure encrypted storage at rest." },
     { icon: Database, t: "Automated daily backups", d: "Your school's data is backed up daily with point-in-time recovery available for the last 7 days." },
-    { icon: KeyRound, t: "Role-based access control", d: "Admins, teachers, students and parents only see what their role allows. Every table is protected by row-level security." },
+    { icon: KeyRound, t: "Role-based access control", d: "Admins, teachers, students and parents only see what their role allows. Strict access policies ensure your school records stay private." },
     { icon: Trash2, t: "Data deletion on request", d: `Email ${SUPPORT_EMAIL} from a verified admin address and we will permanently delete your school's data within 30 days.` },
   ];
   return (
     <div className="min-h-screen bg-background">
-      <SEO title="Privacy & Data Protection — Legacyskool" description="How Legacyskool protects your school's data: encryption, backups, access control and data deletion." path="/privacy" />
+      <SEO title="Privacy & Data Protection — LegacySKool" description="How LegacySKool protects your school's data: encryption, backups, access control and data deletion." path="/privacy" />
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
         <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Back</Link>
         <div className="mt-6 flex items-center gap-3">

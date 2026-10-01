@@ -63,7 +63,13 @@ export default function TeacherStudents() {
           </Select>
         </div>
       }>
-      {filtered.length === 0 ? <EmptyState icon={Users} title="No students" /> :
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No students found"
+          desc={q || classId !== "all" ? "No students match your current search or class filter." : "Students enrolled in your assigned classes will appear here."}
+        />
+      ) : (
         <ul className="divide-y divide-border">
           {filtered.map(s => {
             const inClasses = classes.filter(c => byClass[c.id]?.includes(s.id));
@@ -81,7 +87,8 @@ export default function TeacherStudents() {
               </li>
             );
           })}
-        </ul>}
+        </ul>
+      )}
     </SectionCard>
   );
 }

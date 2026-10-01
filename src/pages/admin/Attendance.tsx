@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 
 type Row = { id?: string; class_id: string; student_id: string; status: string; date: string; excuse_note?: string | null; excuse_status?: string | null };
@@ -100,8 +101,8 @@ export default function AdminAttendance() {
 
   async function resolveExcuse(row: Row, approve: boolean) {
     const { error } = await supabase.from("attendance").update({ status: approve ? "excused" : "absent", excuse_status: approve ? "approved" : "rejected" } as any).eq("class_id", row.class_id).eq("student_id", row.student_id).eq("date", row.date);
-    if (error) toast.error(error.message);
-    else { toast.success(approve ? "Absence excuse approved (Excused)" : "Absence excuse rejected"); void loadAttendance(); }
+    if (error) toast.error(friendlyError(error, "We couldn't update the attendance excuse. Please try again."));
+    else { toast.success(approve ? "Absence excused successfully." : "Absence marked as unexcused."); void loadAttendance(); }
   }
 
   async function sendLowAttendanceAlerts() {
@@ -115,8 +116,8 @@ export default function AdminAttendance() {
         return { school_id: school.id, student_id: l.student_user_id, parent_user_id: l.parent_user_id, created_by: user.id, category: "attendance", severity: "high", title: `Low Attendance Alert: ${st?.name || "Student"} (${st?.rate ?? 0}%)`, message: `${st?.name || "Your child"}'s attendance is ${st?.rate ?? 0}% (${st?.present}/${st?.total} days).` };
       });
       if (alerts.length > 0) await supabase.from("parent_alerts" as any).insert(alerts);
-      toast.success(alerts.length > 0 ? `Sent low-attendance alerts to ${alerts.length} parent(s).` : `Flagged ${lowStudents.length} student(s).`);
-    } catch (e: any) { toast.error(e?.message || "Failed to send parent alerts"); } finally { setAlerting(false); }
+      toast.success(alerts.length > 0 ? `Sent low-attendance alerts to ${alerts.length} parent(s).` : `Flagged ${lowStudents.length} student(s) for review.`);
+    } catch (e: any) { toast.error(friendlyError(e, "We couldn't send parent notifications right now. Please try again.")); } finally { setAlerting(false); }
   }
 
   function exportCsv() {
@@ -229,7 +230,7 @@ export default function AdminAttendance() {
           </div>
         }
       >
-        {lowStudents.length === 0 ? <EmptyState icon={ClipboardCheck} title={`All students above ${threshold}%`} /> :
+        {lowStudents.length === 0 ? <EmptyState icon={ClipboardCheck} title={`Excellent attendance! All students are above ${threshold}%`} desc="No students currently require attendance follow-up or parent intervention." /> :
           <ul className="divide-y divide-border">
             {lowStudents.map(s => (
               <li key={s.id} className="py-2 flex items-center gap-3">

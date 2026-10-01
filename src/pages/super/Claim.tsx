@@ -37,7 +37,7 @@ export default function SuperClaim() {
         );
       }
 
-      toast.success("Welcome to Legacyskool OS Super Admin");
+      toast.success("Welcome to LegacySKool OS Super Admin");
       nav("/super", { replace: true });
     } catch (err: any) {
       toast.error(err.message ?? "Failed to sign in");
@@ -52,7 +52,7 @@ export default function SuperClaim() {
         <div className="size-10 rounded-lg bg-foreground text-background grid place-items-center mb-4">
           <ShieldCheck className="size-5" />
         </div>
-        <h1 className="text-xl font-semibold tracking-tight">Legacyskool OS · Platform Access</h1>
+        <h1 className="text-xl font-semibold tracking-tight">LegacySKool OS · Platform Access</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {hasAny === false
             ? "No platform owner exists yet. Sign in below to claim Super Admin ownership."

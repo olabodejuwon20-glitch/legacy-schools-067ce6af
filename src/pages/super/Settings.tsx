@@ -97,7 +97,7 @@ export default function SuperSettings() {
         <TabsContent value="brand">
           <Section title="Brand">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div><Label>Platform name</Label><Input value={s.brand.name ?? ""} onChange={e => setS({ ...s, brand: { ...s.brand, name: e.target.value } })} placeholder="Legacyskool" /></div>
+              <div><Label>Platform name</Label><Input value={s.brand.name ?? ""} onChange={e => setS({ ...s, brand: { ...s.brand, name: e.target.value } })} placeholder="LegacySKool" /></div>
               <div><Label>Support email</Label><Input type="email" value={s.brand.support_email ?? ""} onChange={e => setS({ ...s, brand: { ...s.brand, support_email: e.target.value } })} /></div>
               <div><Label>Logo URL</Label><Input value={s.brand.logo_url ?? ""} onChange={e => setS({ ...s, brand: { ...s.brand, logo_url: e.target.value } })} placeholder="https://…" /></div>
               <div><Label>Primary color</Label><Input value={s.brand.primary ?? ""} onChange={e => setS({ ...s, brand: { ...s.brand, primary: e.target.value } })} placeholder="#0F172A or hsl(…)" /></div>

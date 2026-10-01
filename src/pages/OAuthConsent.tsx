@@ -85,7 +85,7 @@ export default function OAuthConsent() {
             <GraduationCap className="size-5" />
           </div>
           <div>
-            <div className="font-display font-bold text-lg leading-none">Legacyskool</div>
+            <div className="font-display font-bold text-lg leading-none">LegacySKool</div>
             <div className="text-xs text-muted-foreground mt-1">Authorize access</div>
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function OAuthConsent() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Loading…</div>
         ) : !sessionEmail ? (
           <form onSubmit={signIn} className="space-y-3">
-            <p className="text-sm text-muted-foreground">Sign in to your Legacyskool account to continue authorizing this connection.</p>
+            <p className="text-sm text-muted-foreground">Sign in to your LegacySKool account to continue authorizing this connection.</p>
             <div className="space-y-2"><Label>Email</Label>
               <Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
             <div className="space-y-2"><Label>Password</Label>
@@ -116,7 +116,7 @@ export default function OAuthConsent() {
                 <span className="font-medium text-foreground">{sessionEmail}</span>.
               </p>
               <div className="text-xs text-muted-foreground inline-flex items-center gap-1.5 mt-1">
-                <ShieldCheck className="size-3.5" /> This does not bypass Legacyskool's permissions or backend policies.
+                <ShieldCheck className="size-3.5" /> This connection respects LegacySKool's strict role permissions and security policies.
               </div>
             </div>
             <div className="flex gap-2">

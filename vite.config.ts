@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -6,8 +6,17 @@ import { VitePWA } from "vite-plugin-pwa";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  envPrefix: ["VITE_", "NEXT_PUBLIC_", "SUPABASE_"],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), ["VITE_", "NEXT_PUBLIC_", "SUPABASE_", "BREVO_", "RESEND_", "SUPPORT_"]);
+  return {
+    envPrefix: ["VITE_", "NEXT_PUBLIC_", "SUPABASE_", "BREVO_", "RESEND_", "SUPPORT_"],
+    define: {
+      "process.env.BREVO_API_KEY": JSON.stringify(env.BREVO_API_KEY || env.VITE_BREVO_API_KEY || process.env.BREVO_API_KEY || ""),
+      "process.env.RESEND_API_KEY": JSON.stringify(env.RESEND_API_KEY || env.VITE_RESEND_API_KEY || process.env.RESEND_API_KEY || ""),
+      "process.env.SUPPORT_EMAIL": JSON.stringify(env.SUPPORT_EMAIL || env.VITE_SUPPORT_EMAIL || process.env.SUPPORT_EMAIL || "nexolabsa@gmail.com"),
+      "process.env.BREVO_SENDER_EMAIL": JSON.stringify(env.BREVO_SENDER_EMAIL || env.VITE_BREVO_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || "nexolabsa@gmail.com"),
+      "process.env.RESEND_SENDER_EMAIL": JSON.stringify(env.RESEND_SENDER_EMAIL || env.VITE_RESEND_SENDER_EMAIL || process.env.RESEND_SENDER_EMAIL || "onboarding@resend.dev"),
+    },
   server: {
     host: "::",
     port: 8080,
@@ -154,4 +163,5 @@ export default defineConfig(({ mode }) => ({
     },
     chunkSizeWarningLimit: 800,
   },
-}));
+}; });
+

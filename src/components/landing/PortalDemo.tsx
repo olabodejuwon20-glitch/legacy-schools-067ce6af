@@ -73,7 +73,7 @@ function Frame({
             >
               <GraduationCap className="size-4" />
             </div>
-            <span className="font-semibold">Legacyskool</span>
+            <span className="font-semibold">LegacySKool</span>
           </div>
           <nav className="space-y-1">
             {sidebar.map((i) => {

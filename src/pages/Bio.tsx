@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { schoolPath } from "@/lib/tenant";
+import { friendlyError } from "@/lib/errors";
 
 export default function Bio() {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ export default function Bio() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !user) return;
-    if (file.size > 5 * 1024 * 1024) return toast.error("File too large (max 5 MB)");
+    if (file.size > 5 * 1024 * 1024) return toast.error("Please choose a photo smaller than 5 MB.");
     setUploading(true);
     try {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -33,15 +34,15 @@ export default function Bio() {
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
       setPhotoUrl(pub.publicUrl);
-      toast.success("Photo uploaded");
+      toast.success("Profile photo uploaded successfully.");
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error(friendlyError(err, "We couldn't upload your photo right now. Please try again."));
     } finally { setUploading(false); }
   }
 
   async function removePhoto() {
     setPhotoUrl("");
-    toast("Photo removed", { description: "Save to apply." });
+    toast("Photo removed", { description: "Click save below to confirm changes." });
   }
 
   // common
@@ -96,10 +97,10 @@ export default function Bio() {
       if (mErr) throw mErr;
 
       await Promise.all([refreshMemberships(), refreshProfile()]);
-      toast.success("Profile saved");
+      toast.success("Your profile details have been saved!");
       navigate(schoolPath(school.slug, `/app/${activeRole}`), { replace: true });
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error(friendlyError(err, "We couldn't save your profile details. Please try again."));
     } finally { setBusy(false); }
   }
 
@@ -108,7 +109,7 @@ export default function Bio() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title="Complete your profile — Legacyskool" description="Add your photo and details to finish setting up your account." path={`/${school.slug}/bio`} noindex />
+      <SEO title="Complete your profile — LegacySKool" description="Add your photo and details to finish setting up your account." path={`/${school.slug}/bio`} noindex />
       <header className="border-b border-border">
         <div className="mx-auto max-w-3xl px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -133,7 +134,7 @@ export default function Bio() {
           </div>
           <div>
             <h1 className="font-display text-2xl font-bold">Complete your profile</h1>
-            <p className="text-sm text-muted-foreground">This info will be used as your identification across {school.name}.</p>
+            <p className="text-sm text-muted-foreground">Your profile details help your school identify you across classes, results, and official records.</p>
           </div>
         </div>
 

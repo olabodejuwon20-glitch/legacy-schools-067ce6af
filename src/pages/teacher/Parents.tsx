@@ -58,7 +58,7 @@ export default function TeacherParents() {
         </div>
       }>
       {filtered.length === 0 ? (
-        <EmptyState icon={UserSquare2} title="No parents" desc="Parents are linked to students by the admin." />
+        <EmptyState icon={UserSquare2} title="No parents connected yet" desc="When parents link their accounts to their children, their contact details will show up here." />
       ) : (
         <ul className="divide-y divide-border">
           {filtered.map(p => {

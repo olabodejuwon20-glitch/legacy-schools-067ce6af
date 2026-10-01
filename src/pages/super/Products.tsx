@@ -84,7 +84,7 @@ export default function SuperProducts() {
         </div>
         <h1 className="font-display text-[22px] font-semibold tracking-tight text-foreground">What you ship</h1>
         <p className="font-sans mt-1 text-[13px] text-muted-foreground max-w-2xl">
-          Every module, entitlement, price, tenant override, and experiment across Legacyskool — one unified workspace.
+          Every module, entitlement, price, tenant override, and experiment across LegacySKool — one unified workspace.
         </p>
       </div>
 

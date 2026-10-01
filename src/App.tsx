@@ -17,6 +17,7 @@ import TenantHead from "./components/TenantHead";
 import ImpersonationBanner from "./components/ImpersonationBanner";
 const Register = lazy(() => import("./pages/Register"));
 const SignIn = lazy(() => import("./pages/SignIn"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const SchoolHome = lazy(() => import("./pages/SchoolHome"));
 const SchoolLogin = lazy(() => import("./pages/SchoolLogin"));
 const SchoolAdminLogin = lazy(() => import("./pages/SchoolAdminLogin"));
@@ -245,6 +246,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/register" element={<Register />} />
             <Route path="/signin" element={<SignIn />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify/:id" element={<VerifyResult />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/privacy" element={<Privacy />} />

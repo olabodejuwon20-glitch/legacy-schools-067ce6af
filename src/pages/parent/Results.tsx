@@ -5,6 +5,7 @@ import { ExportMenu } from "@/components/ExportMenu";
 import type { BrandedPDFOptions } from "@/lib/exporters";
 import { downloadResultSlip } from "@/lib/slip";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -45,7 +46,7 @@ export default function ParentResults() {
   const dist = useMemo(() => necoDistribution(scores), [childRows]);
 
   if (!kids.length) {
-    return <SectionCard title="Academic records"><EmptyState icon={FileBarChart} title="No children linked yet" desc="Ask the school admin to link your account." /></SectionCard>;
+    return <SectionCard title="Academic records"><EmptyState icon={FileBarChart} title="No children linked yet" desc="Please ask your school administrator to link your account to your children to view their academic records." /></SectionCard>;
   }
 
   return (
@@ -82,8 +83,8 @@ export default function ParentResults() {
             onClick={async () => {
               if (!active) return;
               setSlipLoading(true);
-              try { await downloadResultSlip(active); toast.success("Result slip downloaded"); }
-              catch (e: any) { toast.error(e.message ?? "Failed to generate slip"); }
+              try { await downloadResultSlip(active); toast.success("Result slip downloaded successfully."); }
+              catch (e: any) { toast.error(friendlyError(e, "We couldn't generate the result slip right now. Please try again.")); }
               finally { setSlipLoading(false); }
             }}>
             <FileDown className="size-4" /> <span className="hidden sm:inline ml-1">{slipLoading ? "Generating…" : "Result slip"}</span>
@@ -110,7 +111,7 @@ export default function ParentResults() {
       </div>
 
       {childRows.length === 0 ? (
-        <SectionCard title="Academic records"><EmptyState icon={FileBarChart} title="No results yet" /></SectionCard>
+        <SectionCard title="Academic records"><EmptyState icon={FileBarChart} title="No assessment results published yet" desc="When end-of-term results and test scores are published, your child's complete report card and breakdown will appear here." /></SectionCard>
       ) : (
         <>
           <SectionCard title="NECO grade distribution" description="A1–F9 across subjects">

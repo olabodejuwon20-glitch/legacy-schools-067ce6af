@@ -33,12 +33,12 @@ export function PilotWidget({ compact = false }: { compact?: boolean }) {
                     : "Active";
 
   const headline = pilot.pilot_status === "converted"
-    ? "Welcome to Legacyskool — your subscription is active."
+    ? "Welcome to LegacySKool — your subscription is active."
     : pilot.pilot_status === "expired"
       ? "Your 60-Day Pilot Program has ended."
       : pilot.premium_unlocked
         ? "🎉 Premium preview is unlocked"
-        : "🎉 Welcome to the Legacyskool 60-Day Pilot Program";
+        : "🎉 Welcome to the LegacySKool 60-Day Pilot Program";
 
   return (
     <div className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${palette} p-5`}>

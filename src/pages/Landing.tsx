@@ -86,24 +86,24 @@ export default function Landing() {
     <div className="min-h-screen bg-background">
       <CursorGlow />
       <SEO
-        title="Legacyskool — CBT exams, attendance, results & school payments"
+        title="LegacySKool — CBT exams, attendance, results & school payments"
         description="The school operating system for Africa: CBT and JAMB/NECO simulation, attendance, digital results, online fee collection and AI for teachers and students."
         path="/"
       />
       <BreadcrumbLd items={[{ name: "Home", path: "/" }]} />
       <FaqLd faqs={[
-        { q: "What is Legacyskool?", a: "A modern school management platform for African schools covering CBT exams, attendance, digital results, fee collection and parent communication." },
-        { q: "Does Legacyskool support JAMB and NECO practice?", a: "Yes. Students can practice with realistic JAMB and NECO simulations from a large question bank with instant scoring." },
+        { q: "What is LegacySKool?", a: "A modern school management platform for African schools covering CBT exams, attendance, digital results, fee collection and parent communication." },
+        { q: "Does LegacySKool support JAMB and NECO practice?", a: "Yes. Students can practice with realistic JAMB and NECO simulations from a large question bank with instant scoring." },
         { q: "How do parents see their child's progress?", a: "Parents get a dedicated portal showing attendance, behavior notes, results and fee balances the moment they are posted." },
         { q: "Can teachers create exams online?", a: "Teachers draft CA tests and exams which are approved by the school's exam committee before publishing to students." },
-        { q: "How do schools collect fees?", a: "Legacyskool supports online payments and offline proofs, with automatic receipts and reconciliations for the bursar." },
+        { q: "How do schools collect fees?", a: "LegacySKool supports online payments and offline proofs, with automatic receipts and reconciliations for the bursar." },
       ]} />
       {/* Header */}
       <header className="border-b border-border/60 backdrop-blur sticky top-0 z-30 bg-background/80">
         <div className="mx-auto max-w-7xl px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
           <Link to="/" className="flex items-center gap-2 min-w-0">
             <div className="grid place-items-center size-9 rounded-lg bg-primary text-primary-foreground"><GraduationCap className="size-5" /></div>
-            <span className="font-display font-bold text-base sm:text-lg tracking-tight truncate">Legacyskool</span>
+            <span className="font-display font-bold text-base sm:text-lg tracking-tight truncate">LegacySKool</span>
           </Link>
           <nav className="hidden lg:flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#pillars" className="hover:text-foreground">What we do</a>
@@ -332,7 +332,7 @@ export default function Landing() {
       <section id="stories" className="border-b border-border/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-20">
           <div className="text-center max-w-2xl mx-auto">
-            <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">Schools winning with Legacyskool</h2>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">Schools winning with LegacySKool</h2>
             <p className="text-muted-foreground mt-3">Real results from real schools.</p>
           </div>
           <div className="mt-10 grid md:grid-cols-3 gap-5">
@@ -377,18 +377,18 @@ export default function Landing() {
       <section id="about" className="border-b border-border/60">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 py-16 sm:py-20">
           <div className="text-center">
-            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">About Legacyskool</div>
+            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">About LegacySKool</div>
             <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-3">We're building the operating system for African schools.</h2>
           </div>
           <div className="mt-8 grid md:grid-cols-2 gap-6 text-muted-foreground leading-relaxed">
             <p>
-              Legacyskool was started by educators and engineers who watched schools drown in paper registers, leaked exam papers, missing report cards and uncollected fees. We replace all of that with one secure portal that any school — from 50 students to 5,000 — can run on day one.
+              LegacySKool was started by educators and engineers who watched schools drown in paper registers, leaked exam papers, missing report cards and uncollected fees. We replace all of that with one secure portal that any school — from 50 students to 5,000 — can run on day one.
             </p>
             <p>
                Every module we ship is built with a real school co-piloting the design, so what you see is shaped by the people who actually use it — not a template borrowed from another market.
             </p>
             <p>
-              We believe African schools deserve software that respects their bandwidth, their budgets and their workflows. That's why Legacyskool works on low-end Android phones, gracefully handles patchy networks, and offers pilot pricing so even small schools can go digital from term one.
+              We believe African schools deserve software that respects their bandwidth, their budgets and their workflows. That's why LegacySKool works on low-end Android phones, gracefully handles patchy networks, and offers pilot pricing so even small schools can go digital from term one.
             </p>
             <p>
               Beyond the platform, we run onboarding clinics, train staff on the ground and stand beside every school through their first exam cycle. The goal isn't to sell software — it's to leave each school more organised, more transparent and more trusted by its parents than we found it.
@@ -451,7 +451,7 @@ export default function Landing() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 text-xs text-muted-foreground flex flex-col sm:flex-row gap-3 justify-between">
-          <span>© 2026 Legacyskool. All rights reserved.</span>
+          <span>© 2026 LegacySKool. All rights reserved.</span>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             <a href="#pillars" className="hover:text-foreground">What we do</a>
             <a href="#about" className="hover:text-foreground">About</a>

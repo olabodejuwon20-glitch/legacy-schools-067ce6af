@@ -45,11 +45,11 @@ export default function SchoolLogin() {
       } else {
         // Direct fallback when phone-auth Edge Function isn't deployed
         const cleanPhone = phone.replace(/[^\d]/g, "");
-        if (!cleanPhone || cleanPhone.length < 6) throw new Error("Invalid phone");
+        if (!cleanPhone || cleanPhone.length < 6) throw new Error("Please enter a valid phone number.");
         email = `p${cleanPhone}.${school!.slug.toLowerCase()}@members.edusmart.local`;
       }
       const { data: signed, error: sErr } = await supabase.auth.signInWithPassword({ email, password: pin });
-      if (sErr) throw new Error("We couldn't sign you in with those details.");
+      if (sErr) throw new Error("We couldn't sign you in. Please check your phone number and PIN.");
       if (signed.user?.id) {
         const { data: mem } = await supabase
           .from("memberships")
@@ -60,13 +60,13 @@ export default function SchoolLogin() {
           .maybeSingle();
         if (!mem) {
           await supabase.auth.signOut();
-          throw new Error("We couldn't sign you in with those details.");
+          throw new Error("We couldn't find an active account for your school profile. Please contact your school administrator.");
         }
         mustChange = mustChange || !!mem.must_change_pin;
       }
-      toast.success("Welcome");
+      toast.success("Welcome back to your school portal!");
       window.location.href = schoolPath(school!.slug, mustChange ? "/change-pin" : "/app");
-    } catch (err) { toast.error(friendlyError(err, "We couldn't sign you in. Please try again.")); } finally { setBusy(false); }
+    } catch (err) { toast.error(friendlyError(err, "We couldn't sign you in. Please verify your phone number and 6-digit PIN.")); } finally { setBusy(false); }
   }
 
   return (
@@ -83,9 +83,9 @@ export default function SchoolLogin() {
           <div className="space-y-2"><Label className="flex items-center gap-1.5"><KeyRound className="size-3.5"/>6-digit PIN</Label>
             <Input required inputMode="numeric" pattern="\d{6}" maxLength={6} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,""))} placeholder="••••••" />
             <p className="text-[11px] text-muted-foreground">{"\u00a0"}</p></div>
-          <Button type="submit" className="w-full" disabled={busy}>{busy && <Loader2 className="size-4 animate-spin mr-1.5"/>}Sign in</Button>
+          <Button type="submit" className="w-full" disabled={busy}>{busy && <Loader2 className="size-4 animate-spin mr-1.5"/>}Sign in to Portal</Button>
           <p className="text-xs text-muted-foreground text-center">First time?{" "}
-            <Link to={schoolPath(school.slug, "/join")} className="text-primary font-medium">Use your onboarding code</Link></p>
+            <Link to={schoolPath(school.slug, "/join")} className="text-primary font-medium">Use your activation code</Link></p>
         </form>
       </Card>
     </div>

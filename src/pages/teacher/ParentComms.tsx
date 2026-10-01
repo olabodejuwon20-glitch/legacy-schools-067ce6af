@@ -74,7 +74,7 @@ export default function TeacherParentComms() {
           </DialogContent>
         </Dialog>
       }>
-      {rows.length === 0 ? <EmptyState icon={Mail} title="No messages yet" desc="Send your first update to a parent." /> :
+      {rows.length === 0 ? <EmptyState icon={Mail} title="No parent messages sent yet" desc="Send your first update to keep parents informed about student progress and classroom activities." /> :
         <ul className="divide-y divide-border">
           {rows.map(m => (
             <li key={m.id} className="py-3">

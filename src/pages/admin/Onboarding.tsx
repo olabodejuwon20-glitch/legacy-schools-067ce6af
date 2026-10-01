@@ -15,6 +15,7 @@ import { HelpTip } from "@/components/HelpTip";
 import { cn } from "@/lib/utils";
 import { SUPPORT_EMAIL, waLink } from "@/lib/contact";
 import { Mail, MessageCircle, HelpCircle } from "lucide-react";
+import { sendPortalReady } from "@/lib/brevo";
 
 type Step = 0 | 1;
 
@@ -122,6 +123,18 @@ export default function AdminOnboarding() {
       });
       if (error) throw error;
       try { sessionStorage.setItem(`onboarding-complete:${school.id}`, "1"); } catch {}
+
+      // Dispatch "Your school portal is ready" email notification
+      supabase.auth.getUser().then(({ data: authData }) => {
+        const userEmail = authData?.user?.email || profile.email;
+        if (userEmail && school?.slug) {
+          const portalLink = window.location.origin + schoolPath(school.slug, "/app/admin");
+          sendPortalReady(userEmail, portalLink).catch(err => {
+            console.warn("[onboarding] sendPortalReady dispatch error:", err);
+          });
+        }
+      }).catch(() => {});
+
       toast.success("Setup complete — welcome aboard!");
       nav(schoolPath(school.slug, "/app/admin"), { replace: true });
     } catch (e: any) {
@@ -242,7 +255,7 @@ export default function AdminOnboarding() {
             <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Onboarding help")}`}><Mail className="size-3.5 mr-1.5" /> Email</a>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <a href={waLink("Hi, I need help with school onboarding on Legacyskool.")} target="_blank" rel="noopener noreferrer"><MessageCircle className="size-3.5 mr-1.5" /> WhatsApp</a>
+            <a href={waLink("Hi, I need help with school onboarding on LegacySKool.")} target="_blank" rel="noopener noreferrer"><MessageCircle className="size-3.5 mr-1.5" /> WhatsApp</a>
           </Button>
         </div>
       </div>

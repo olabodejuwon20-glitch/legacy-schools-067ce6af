@@ -97,7 +97,7 @@ export default function TradScratchCards() {
               <div><Label>Max uses</Label><Input type="number" min={1} max={50} value={form.max_uses} onChange={e => setForm({ ...form, max_uses: +e.target.value })} /></div>
             </div>
             <p className="text-xs text-muted-foreground">
-              PINs are shown only once via CSV download. Keep the file safe — Legacyskool does not store recoverable copies.
+              PINs are shown only once via CSV download. Keep the file safe — LegacySKool does not store recoverable copies.
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>

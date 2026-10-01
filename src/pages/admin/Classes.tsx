@@ -59,7 +59,7 @@ export default function AdminClasses() {
         }
         return;
       }
-      toast.success("Class created");
+      toast.success("Class created successfully!");
       setOpen(false);
       setForm({ code: "", name: "", subject: "", grade_level: "", teacher_id: "" });
       load();
@@ -69,7 +69,7 @@ export default function AdminClasses() {
   }
 
   return (
-    <SectionCard title="Classes" description={`${rows.length} classes`}
+    <SectionCard title="Classes" description={`${rows.length} active classes`}
       action={
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button><Plus className="size-4 mr-1.5" />New class</Button></DialogTrigger>
@@ -96,7 +96,7 @@ export default function AdminClasses() {
         </Dialog>
       }>
       {rows.length === 0
-        ? <EmptyState icon={BookOpen} title="No classes yet" desc="Create your first class to get started." />
+        ? <EmptyState icon={BookOpen} title="No classes set up yet" desc="Create your first class roster to start assigning teachers and enrolling students." />
         : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {rows.map(c => (
               <div key={c.id} className="rounded-xl bg-card border border-border p-5 shadow-card">

@@ -19,9 +19,9 @@ export default function ChangePin() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (pin === "123456") return toast.error("Choose a new PIN, not the default.");
-    if (pin !== confirmPin) return toast.error("PINs don't match.");
-    if (!/^\d{6}$/.test(pin)) return toast.error("PIN must be 6 digits.");
+    if (pin === "123456") return toast.error("Please create a unique 6-digit PIN, not the default sequence.");
+    if (pin !== confirmPin) return toast.error("The two PINs do not match. Please verify and re-enter.");
+    if (!/^\d{6}$/.test(pin)) return toast.error("Your security PIN must be exactly 6 digits.");
     if (!user || !school || !activeRole) return;
     setBusy(true);
     try {
@@ -32,10 +32,10 @@ export default function ChangePin() {
         .eq("user_id", user.id).eq("school_id", school.id).eq("role", activeRole);
       if (mErr) throw mErr;
       await refreshMemberships();
-      toast.success("PIN updated");
+      toast.success("Security PIN updated successfully! Welcome to your portal.");
       navigate(schoolPath(school.slug, "/app"), { replace: true });
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error(friendlyError(err, "We couldn't update your security PIN. Please try again."));
     } finally { setBusy(false); }
   }
 
@@ -49,21 +49,21 @@ export default function ChangePin() {
             ) : (
               <div className="grid place-items-center size-9 rounded-lg bg-primary text-primary-foreground"><GraduationCap className="size-5" /></div>
             )}
-            <span className="font-display font-bold text-lg truncate">{school?.name ?? "School portal"}</span>
+            <span className="font-display font-bold text-lg truncate">{school?.name ?? "School Portal"}</span>
           </div>
           <Button variant="ghost" size="sm" onClick={signOut}>Sign out</Button>
         </div>
       </header>
       <main className="mx-auto max-w-md px-6 py-12">
         <Card className="p-8">
-          <h1 className="font-display text-2xl font-bold">Set your personal PIN</h1>
-          <p className="text-sm text-muted-foreground mt-2">For security, you must replace the default PIN before continuing.</p>
+          <h1 className="font-display text-2xl font-bold">Create your personal PIN</h1>
+          <p className="text-sm text-muted-foreground mt-2">To protect your account and school records, please set a personal 6-digit security PIN before continuing.</p>
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div className="space-y-2"><Label className="flex items-center gap-1.5"><KeyRound className="size-3.5"/>New 6-digit PIN</Label>
-              <Input required inputMode="numeric" pattern="\d{6}" maxLength={6} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,""))} /></div>
+              <Input required inputMode="numeric" pattern="\d{6}" maxLength={6} placeholder="••••••" value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,""))} /></div>
             <div className="space-y-2"><Label>Confirm PIN</Label>
-              <Input required inputMode="numeric" pattern="\d{6}" maxLength={6} value={confirmPin} onChange={e=>setConfirmPin(e.target.value.replace(/\D/g,""))} /></div>
-            <Button type="submit" className="w-full" disabled={busy}>{busy && <Loader2 className="size-4 animate-spin"/>} Update PIN</Button>
+              <Input required inputMode="numeric" pattern="\d{6}" maxLength={6} placeholder="••••••" value={confirmPin} onChange={e=>setConfirmPin(e.target.value.replace(/\D/g,""))} /></div>
+            <Button type="submit" className="w-full" disabled={busy}>{busy && <Loader2 className="size-4 animate-spin mr-1.5"/>} Update Security PIN</Button>
           </form>
         </Card>
       </main>

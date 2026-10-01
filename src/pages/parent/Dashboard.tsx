@@ -81,7 +81,7 @@ export default function ParentDashboard() {
 
       {children.length === 0 ? (
         <SectionCard title="My Children">
-          <EmptyState icon={UserSquare2} title="No children linked" desc="Ask the school admin to link your account to your children." />
+          <EmptyState icon={UserSquare2} title="No children linked yet" desc="Please ask your school administrator to link your account to your children so you can monitor their progress." />
         </SectionCard>
       ) : (
         <>
@@ -127,7 +127,7 @@ export default function ParentDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SectionCard title="Recent Results">
-              {results.length === 0 ? <EmptyState icon={Star} title="No results yet" /> :
+              {results.length === 0 ? <EmptyState icon={Star} title="No results published yet" desc="Continuous assessment and exam scores will appear here once published by teachers." /> :
                 <div className="overflow-x-auto"><table className="w-full text-sm">
                   <thead className="text-xs text-muted-foreground"><tr className="border-b border-border">
                     <th className="text-left py-2">Subject</th><th className="text-right">Score</th><th className="text-left">Grade</th><th className="text-left">Term</th></tr></thead>
@@ -170,7 +170,7 @@ export default function ParentDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SectionCard title="Upcoming events" action={<Link to={`${base}/activity`} className="text-xs text-primary font-medium">View all</Link>}>
-              {events.length === 0 ? <EmptyState icon={Calendar} title="No events scheduled" /> :
+              {events.length === 0 ? <EmptyState icon={Calendar} title="No events scheduled" desc="School notices, academic dates, and parent-teacher meetings will show up here." /> :
                 <ul className="space-y-2">{events.map(e => (
                   <li key={e.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
                     <div className="flex items-center gap-3"><div className="size-9 rounded-lg bg-parent/10 grid place-items-center"><Calendar className="size-4 text-parent" /></div>
@@ -181,7 +181,7 @@ export default function ParentDashboard() {
             </SectionCard>
 
             <SectionCard title="Performance trend" action={active ? <span className="text-xs text-muted-foreground">{active.full_name || active.email}</span> : null}>
-              {trend.length === 0 ? <EmptyState icon={FileBarChart} title="No results yet" /> :
+              {trend.length === 0 ? <EmptyState icon={FileBarChart} title="Performance trends pending" desc="Subject performance trends will appear here as term assessments are recorded." /> :
                 <div className="h-[220px]"><ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trend}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />

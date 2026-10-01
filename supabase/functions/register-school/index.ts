@@ -62,7 +62,91 @@ Deno.serve(async (req) => {
       { onConflict: "school_id,user_id,role" } as any,
     );
 
-    return json({ ok: true, slug: school.slug, schoolId: school.id, email });
+    // Send Onboarding Notice Email: "Your School Portal Is Being Prepared"
+    let emailSent = false;
+    try {
+      const brevoKey = Deno.env.get("BREVO_API_KEY");
+      const resendKey = Deno.env.get("RESEND_API_KEY");
+      const supportEmail = "nexolabsa@gmail.com";
+      const subject = "Your School Portal Is Being Prepared";
+      const emailHtml = `<!doctype html>
+<html>
+<head><meta charset="utf-8"/><title>${subject}</title></head>
+<body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background-color:#f6f7f9;color:#1e293b;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+    <tr>
+      <td style="padding:32px 32px 24px;text-align:center;background:#2563eb;color:#ffffff;">
+        <h1 style="margin:0;font-size:24px;font-weight:700;letter-spacing:-0.02em;">LegacySKool</h1>
+        <p style="margin:6px 0 0;font-size:13px;opacity:0.9;">School Management Platform</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:32px;">
+        <h2 style="margin-top:0;font-size:20px;color:#0f172a;">Your school portal is being prepared</h2>
+        <p>Hello ${fullName},</p>
+        <p>We are currently setting up your new LegacySKool portal for <strong>${schoolName}</strong>. Our system is organizing your digital workspace so everything is perfectly in place for your teachers, students, and parents.</p>
+        <div style="background:#f8fafc;border-left:4px solid #2563eb;padding:16px;margin:24px 0;border-radius:0 8px 8px 0;">
+          <p style="margin:0;font-weight:600;color:#1e293b;">Estimated preparation time: 30 minutes</p>
+          <p style="margin:6px 0 0;font-size:13px;color:#64748b;">We will send you another email with your direct access link the moment your portal is live.</p>
+        </div>
+        <p>While you wait, you can prepare your class rosters and list of subjects to make setup instant.</p>
+        <p style="margin-top:28px;">If you have any questions, reply to this email or reach our support team at <a href="mailto:${supportEmail}" style="color:#2563eb;text-decoration:none;font-weight:500;">${supportEmail}</a>.</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:20px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;font-size:12px;color:#64748b;">
+        <p style="margin:0;">© ${new Date().getFullYear()} LegacySKool. All rights reserved.</p>
+        <p style="margin:4px 0 0;">Dedicated Support: <a href="mailto:${supportEmail}" style="color:#2563eb;text-decoration:none;">${supportEmail}</a></p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+      if (brevoKey) {
+        const sender = Deno.env.get("BREVO_SENDER_EMAIL") || supportEmail;
+        const r = await fetch("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: { "api-key": brevoKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sender: { name: "LegacySKool", email: sender },
+            to: [{ email }],
+            subject,
+            htmlContent: emailHtml,
+          }),
+        });
+        if (r.ok) {
+          emailSent = true;
+          console.log("[register-school] Brevo onboarding email sent to", email);
+        } else {
+          console.warn("[register-school] Brevo send failed:", await r.text());
+        }
+      }
+
+      if (!emailSent && resendKey) {
+        const from = Deno.env.get("RESEND_FROM") || Deno.env.get("RESEND_SENDER_EMAIL") || "LegacySKool <onboarding@resend.dev>";
+        const r = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from,
+            to: [email],
+            subject,
+            html: emailHtml,
+          }),
+        });
+        if (r.ok) {
+          emailSent = true;
+          console.log("[register-school] Resend onboarding email sent to", email);
+        } else {
+          console.warn("[register-school] Resend send failed:", await r.text());
+        }
+      }
+    } catch (mailErr) {
+      console.error("[register-school] Could not dispatch welcome email:", mailErr);
+    }
+
+    return json({ ok: true, slug: school.slug, schoolId: school.id, email, emailSent });
   } catch (e) {
     console.error('[register-school] error:', e); return json({ error: 'An internal error occurred' }, 500);
   }

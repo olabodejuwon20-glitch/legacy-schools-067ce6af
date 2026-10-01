@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 
 export default function ParentAttendance() {
   const { school, user } = useSchool();
@@ -34,15 +35,15 @@ export default function ParentAttendance() {
   useEffect(() => { void loadRecords(); }, [loadRecords]);
 
   async function submitExcuse(row: any) {
-    if (!excuseText.trim()) return toast.error("Please enter a reason for the absence/lateness");
+    if (!excuseText.trim()) return toast.error("Please provide a reason for the absence or late arrival.");
     setSubmitting(true);
     const { error } = await supabase.from("attendance").update({ excuse_note: excuseText.trim(), excuse_status: "pending" } as any).eq("id", row.id);
     setSubmitting(false);
-    if (error) toast.error(error.message);
-    else { toast.success("Excuse submitted for teacher/admin approval"); setActiveRowId(null); setExcuseText(""); void loadRecords(); }
+    if (error) toast.error(friendlyError(error, "We couldn't submit your absence note. Please try again."));
+    else { toast.success("Absence note submitted for teacher and admin review."); setActiveRowId(null); setExcuseText(""); void loadRecords(); }
   }
 
-  if (!groups.length) return <SectionCard title="Attendance"><EmptyState icon={ClipboardCheck} title="No attendance records yet" /></SectionCard>;
+  if (!groups.length) return <SectionCard title="Attendance"><EmptyState icon={ClipboardCheck} title="No attendance records yet" desc="Daily attendance marks will appear here once recorded by the class teacher." /></SectionCard>;
 
   return (
     <div className="space-y-6">{groups.map(g => {

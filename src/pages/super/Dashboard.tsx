@@ -183,7 +183,7 @@ export default function SuperDashboard() {
             <span>Live · updated {timeAgo(new Date().toISOString())}</span>
           </div>
           <h1 className="text-[22px] font-semibold tracking-tight text-foreground">Platform command center</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">Every school, dollar, and signal across Legacyskool — in one glance.</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">Every school, dollar, and signal across LegacySKool — in one glance.</p>
         </div>
         <div className="flex items-center gap-1.5">
           <QuickAction icon={<Plus className="size-3.5" />} label="Add school" to="/super/schools" />

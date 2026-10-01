@@ -91,9 +91,9 @@ export default function Join() {
 
   async function joinDirectly(): Promise<{ email: string; slug: string }> {
     const cleanPhone = phone.replace(/[^\d]/g, "");
-    if (!cleanPhone || cleanPhone.length < 6) throw new Error("Invalid phone");
-    if (!/^\d{6}$/.test(pin)) throw new Error("PIN must be 6 digits");
-    if (!school?.slug || !school?.id) throw new Error("Open the correct school portal to join.");
+    if (!cleanPhone || cleanPhone.length < 6) throw new Error("Please enter a valid phone number.");
+    if (!/^\d{6}$/.test(pin)) throw new Error("Your security PIN must be exactly 6 digits.");
+    if (!school?.slug || !school?.id) throw new Error("Please open your school's unique portal link to join.");
 
     const email = `p${cleanPhone}.${school.slug}@members.edusmart.local`;
     let uid: string | undefined;
@@ -127,9 +127,9 @@ export default function Join() {
     const { data: redeemedSchoolId, error: redeemErr } = await supabase.rpc("redeem_invite", {
       _code: code.trim().toUpperCase(),
     });
-    if (redeemErr) throw new Error(redeemErr.message || "Invalid or expired activation code.");
+    if (redeemErr) throw new Error("This activation code is invalid or has already been redeemed. Please check with your school administrator.");
     if (redeemedSchoolId && redeemedSchoolId !== school.id) {
-      throw new Error("This code belongs to a different school.");
+      throw new Error("This code is registered for a different school portal.");
     }
 
     const customRole = customRoles.find((r) => r.key === chosenRole);
@@ -206,7 +206,7 @@ export default function Join() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title={`Join ${school.name} — set up your account`} description={`Redeem your activation code to join ${school.name} on Legacyskool.`} path={`/${school.slug}/join`} noindex />
+      <SEO title={`Join ${school.name} — set up your account`} description={`Redeem your activation code to join ${school.name} on LegacySKool.`} path={`/${school.slug}/join`} noindex />
       <PWAInstallPrompt schoolName={school.name} />
       <header className="border-b border-border">
         <div className="mx-auto max-w-3xl px-6 h-16 flex items-center justify-between">

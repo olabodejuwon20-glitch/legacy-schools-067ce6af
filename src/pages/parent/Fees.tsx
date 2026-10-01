@@ -46,7 +46,7 @@ export default function ParentFees() {
         <div className="text-3xl font-display font-bold">{naira(outstanding)}</div>
       </SectionCard>
       <SectionCard title="All invoices">
-        {invoices.length === 0 ? <EmptyState icon={Wallet} title="No invoices yet" /> :
+        {invoices.length === 0 ? <EmptyState icon={Wallet} title="No invoices right now" desc="You don't have any outstanding fee statements or invoices for your children." /> :
           <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground border-b border-border"><tr>
               <th className="text-left py-2">Child</th><th className="text-left">Description</th>

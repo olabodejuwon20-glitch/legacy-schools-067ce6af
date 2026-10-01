@@ -132,7 +132,7 @@ export function buildTimeline(
       at: createdAt,
       kind: "registration",
       title: "School registered",
-      detail: `${school.name ?? "School"} joined Legacyskool`,
+      detail: `${school.name ?? "School"} joined LegacySKool`,
     },
   ];
   return baseEvents.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());

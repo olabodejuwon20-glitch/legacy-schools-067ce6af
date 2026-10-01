@@ -77,7 +77,7 @@ export default function AdminPayments() {
             <StatCard label="Outstanding" value={naira(totals.outstanding)} icon={Wallet} tone="warning" />
           </div>
           <SectionCard title="Recent payments">
-            {payments.length === 0 ? <EmptyState icon={Banknote} title="No payments yet" /> : (
+            {payments.length === 0 ? <EmptyState icon={Banknote} title="No payments recorded yet" desc="School fee payments, online transactions, and manual receipts will appear here." /> : (
               <PaymentsTable rows={payments.slice(0, 10)} profiles={profiles} onChanged={refresh} />
             )}
           </SectionCard>
@@ -87,7 +87,7 @@ export default function AdminPayments() {
           <div className="flex justify-end">
             <PaymentTypeDialog schoolId={school?.id} classes={classes} onSaved={refresh} />
           </div>
-          {types.length === 0 ? <EmptyState icon={Wallet} title="No payment types yet" desc="Create your first payment type — tuition, levy, uniform, etc." /> : (
+          {types.length === 0 ? <EmptyState icon={Wallet} title="No fee categories yet" desc="Create your school fee categories — tuition, development levy, uniforms, bus fares, etc." /> : (
             <div className="grid gap-3">
               {types.map(t => (
                 <div key={t.id} className="p-4 rounded-xl bg-card border border-border flex items-center justify-between gap-4">
