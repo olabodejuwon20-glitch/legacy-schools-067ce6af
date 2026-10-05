@@ -139,7 +139,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok: true, emailSent, message: "Password reset link processed" });
+    if (emailSent) {
+      return json({ ok: true, emailSent: true, message: "Password reset link processed" });
+    } else {
+      console.warn("[request-password-reset] Email delivery failed for", cleanEmail);
+      return json({ ok: false, emailSent: false, error: "Failed to send reset email" }, 500);
+    }
   } catch (err: any) {
     console.error("[request-password-reset] Error:", err);
     return json({ error: "Internal server error" }, 500);
