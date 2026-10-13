@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Helmet } from "react-helmet-async";
 import { GlobalSearch, type SearchGroup } from "@/components/GlobalSearch";
 import { Building2 as BuildingIcon, Users as UsersIcon } from "lucide-react";
+import AssistantChat from "@/pages/super/AssistantChat";
 
 const NAV = [
   { group: "Overview", items: [
@@ -286,6 +287,7 @@ export default function SuperLayout() {
           </main>
         </div>
       </div>
+<AssistantChat />
     </SuperGuard>
   );
 }

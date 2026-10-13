@@ -33,6 +33,7 @@ import { PilotReadOnlyBanner } from "@/components/pilot/PilotReadOnlyBanner";
 import { Helmet } from "react-helmet-async";
 import { GlobalSearch, type SearchGroup } from "@/components/GlobalSearch";
 import { supabase } from "@/integrations/supabase/client";
+import { MovableCopilot } from "@/components/MovableCopilot";
 import { Users as UsersIcon, BookOpen as BookOpenIcon, UserSquare2 as ParentIcon, GraduationCap as TeacherIcon } from "lucide-react";
 
 const TITLES: Record<string, { title: string; sub: string }> = {
@@ -484,14 +485,11 @@ export default function AppLayout() {
       </div>
 
       {activeRole && (
-        <NavLink
+        <MovableCopilot
           to={schoolPath(school.slug, `/app/${activeRole}/copilot`)}
           title={activeRole === "admin" ? "Ask Principal Copilot" : "Ask Portal Copilot"}
-          className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full pl-4 pr-5 py-3 shadow-lg bg-primary text-primary-foreground hover:opacity-90 transition-all hover:scale-105"
-        >
-          <Brain className="size-5" />
-          <span className="hidden sm:inline text-sm font-semibold">Ask Copilot</span>
-        </NavLink>
+          role={activeRole}
+        />
       )}
     </div>
   );

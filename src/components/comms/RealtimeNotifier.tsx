@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Wifi, WifiOff } from "lucide-react";
+import { WifiOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSchool } from "@/contexts/SchoolContext";
 import { schoolPath } from "@/lib/tenant";
@@ -9,27 +9,26 @@ import { useOnlineStatus } from "@/lib/realtime-status";
 
 /**
  * Global realtime hub mounted once in AppLayout.
- * - Toasts on incoming DMs (where I'm the recipient) and new platform announcements.
- * - Watches browser online/offline and shows a reconnect banner.
- * - Auto-resubscribes when the channel closes (e.g. after a reconnect).
+ * - Toasts on incoming DMs (where I'm the recipient).
+ * - Shows an offline banner ONLY when the device is actually offline.
+ * - Uses exponential backoff and max retry limits to avoid infinite reconnect loops.
  */
 export function RealtimeNotifier() {
   const { user, school, activeRole } = useSchool();
   const navigate = useNavigate();
   const online = useOnlineStatus();
-  const [channelStatus, setChannelStatus] = useState<"connecting" | "open" | "closed">("connecting");
   const wasOnlineRef = useRef(true);
 
   useEffect(() => {
-    if (!user || !school) return;
+    if (!user || !school || !online) return;
     let cancelled = false;
-    let retry: number | null = null;
+    let retryTimer: number | null = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
     let currentCh: ReturnType<typeof supabase.channel> | null = null;
 
     const subscribe = () => {
-      // Tear down any previous channel before creating a new one to avoid
-      // "cannot add postgres_changes callbacks ... after subscribe()" when
-      // the topic is reused (e.g. React strict-mode double-invoke or retry).
+      if (cancelled) return;
       if (currentCh) {
         try { supabase.removeChannel(currentCh); } catch { /* noop */ }
         currentCh = null;
@@ -37,7 +36,7 @@ export function RealtimeNotifier() {
       const nonce = (typeof crypto !== "undefined" && (crypto as any).randomUUID)
         ? (crypto as any).randomUUID().slice(0, 8)
         : Math.random().toString(36).slice(2, 10);
-      const ch = supabase.channel(`notifier:${user.id}:${school.id}:${nonce}:${Date.now()}`);
+      const ch = supabase.channel(`notifier:${user.id}:${school.id}:${nonce}`);
       currentCh = ch;
       ch.on(
           "postgres_changes",
@@ -58,17 +57,18 @@ export function RealtimeNotifier() {
         )
         .subscribe((status) => {
           if (cancelled) return;
-          if (status === "SUBSCRIBED") setChannelStatus("open");
-          else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-            setChannelStatus("closed");
-            // schedule a single retry
-            if (retry) window.clearTimeout(retry);
-            retry = window.setTimeout(() => {
-              if (cancelled) return;
-              subscribe();
-            }, 2000);
-          } else {
-            setChannelStatus("connecting");
+          if (status === "SUBSCRIBED") {
+            retryCount = 0;
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            if (retryCount < MAX_RETRIES) {
+              const delay = Math.min(30000, 2000 * Math.pow(2, retryCount));
+              retryCount += 1;
+              if (retryTimer) window.clearTimeout(retryTimer);
+              retryTimer = window.setTimeout(() => {
+                if (cancelled || !navigator.onLine) return;
+                subscribe();
+              }, delay);
+            }
           }
         });
       return ch;
@@ -77,31 +77,29 @@ export function RealtimeNotifier() {
     subscribe();
     return () => {
       cancelled = true;
-      if (retry) window.clearTimeout(retry);
+      if (retryTimer) window.clearTimeout(retryTimer);
       if (currentCh) {
         try { supabase.removeChannel(currentCh); } catch { /* noop */ }
         currentCh = null;
       }
     };
-  }, [user?.id, school?.id, activeRole, navigate]);
+  }, [user?.id, school?.id, activeRole, navigate, online]);
 
   // Toast on network status transitions
   useEffect(() => {
     if (online && !wasOnlineRef.current) toast.success("Back online", { duration: 2000 });
-    if (!online && wasOnlineRef.current) toast.error("You're offline. Reconnecting…", { duration: 3000 });
+    if (!online && wasOnlineRef.current) toast.error("You are offline", { duration: 3000 });
     wasOnlineRef.current = online;
   }, [online]);
 
-  const showBanner = !online || channelStatus !== "open";
-  if (!showBanner) return null;
+  // Only display the banner if the user's browser is actually offline
+  if (online) return null;
 
   return (
     <div className="fixed top-2 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-      <div className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium shadow-md ${
-        !online ? "bg-destructive text-destructive-foreground" : "bg-amber-500/95 text-white"
-      }`}>
-        {!online ? <WifiOff className="size-3.5" /> : <Wifi className="size-3.5 animate-pulse" />}
-        {!online ? "Offline" : "Reconnecting…"}
+      <div className="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium shadow-md bg-destructive text-destructive-foreground animate-in fade-in slide-in-from-top-1">
+        <WifiOff className="size-3.5" />
+        Offline
       </div>
     </div>
   );

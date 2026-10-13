@@ -19,6 +19,7 @@ import CursorGlow from "@/components/landing/CursorGlow";
 import PortalDemo from "@/components/landing/PortalDemo";
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_SLA, mailtoOnboard, waLink } from "@/lib/contact";
 import { formatNaira, revenueForSchool, type PlanPricing } from "@/lib/pricing";
+import { SubscriptionBuilder } from "@/components/billing/SubscriptionBuilder";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -214,91 +215,22 @@ export default function Landing() {
       {/* Interactive portal demo */}
       <PortalDemo />
 
-      <section id="pricing" className="border-b border-border/60 bg-muted/30">
+      <section id="pricing" className="border-b border-border/60 bg-muted/20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-20">
-          <div className="grid lg:grid-cols-[1.05fr_1.3fr] gap-8 lg:gap-12 items-start">
-            <div>
-              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pricing calculator</div>
-              <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-3">Estimate your termly and annual school cost.</h2>
-              <p className="text-muted-foreground mt-3 max-w-xl">Adjust your student count to compare plans instantly. The calculator includes each plan's student allowance and extra-student pricing.</p>
-
-              <div className="mt-8 rounded-xl border border-border bg-background p-5 sm:p-6 space-y-5">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-medium">Students on roll</div>
-                    <div className="text-xs text-muted-foreground mt-1">Use the slider or type the number directly.</div>
-                  </div>
-                  <div className="w-full sm:w-40">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={5000}
-                      value={studentCount}
-                      onChange={(e) => setStudentCountValue(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <Slider
-                  min={0}
-                  max={5000}
-                  step={10}
-                  value={[studentCount]}
-                  onValueChange={([value]) => setStudentCount(value ?? 0)}
-                />
-
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="rounded-lg border border-border bg-card px-3 py-3">
-                    <div className="text-xs text-muted-foreground">Best fit</div>
-                    <div className="font-semibold mt-1">{bestFit.label}</div>
-                  </div>
-                  <div className="rounded-lg border border-border bg-card px-3 py-3">
-                    <div className="text-xs text-muted-foreground">Termly</div>
-                    <div className="font-semibold mt-1">{formatNaira(bestFit.revenue.termKobo)}</div>
-                  </div>
-                  <div className="rounded-lg border border-border bg-card px-3 py-3">
-                    <div className="text-xs text-muted-foreground">Annual</div>
-                    <div className="font-semibold mt-1">{formatNaira(bestFit.revenue.annualKobo)}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-4">
-              {calculatorRows.map((plan) => (
-                <Card key={plan.plan} className={`p-5 sm:p-6 ${plan.plan === bestFit.plan ? "border-primary ring-2 ring-primary/15" : ""}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-lg">{plan.label}</h3>
-                        {plan.plan === bestFit.plan && <span className="text-xs font-medium rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-primary">Recommended</span>}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">Includes {plan.included_students.toLocaleString()} students, then {formatNaira(plan.extra_student_kobo)} per extra student each term.</p>
-                    </div>
-                    <div className="text-left sm:text-right">
-                      <div className="text-2xl font-bold">{formatNaira(plan.revenue.termKobo)}</div>
-                      <div className="text-xs text-muted-foreground">per term</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid sm:grid-cols-3 gap-3 text-sm">
-                    <div className="rounded-lg bg-muted/50 px-3 py-3">
-                      <div className="text-xs text-muted-foreground">Base plan</div>
-                      <div className="font-medium mt-1">{formatNaira(plan.revenue.basePlanKobo)}</div>
-                    </div>
-                    <div className="rounded-lg bg-muted/50 px-3 py-3">
-                      <div className="text-xs text-muted-foreground">Extra students</div>
-                      <div className="font-medium mt-1">{plan.revenue.extraStudents.toLocaleString()} · {formatNaira(plan.revenue.extraStudentKobo)}</div>
-                    </div>
-                    <div className="rounded-lg bg-muted/50 px-3 py-3">
-                      <div className="text-xs text-muted-foreground">Annual prepay</div>
-                      <div className="font-medium mt-1">{formatNaira(plan.revenue.annualKobo)}</div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+          <div className="max-w-3xl mx-auto text-center mb-10">
+            <div className="text-xs uppercase tracking-[0.2em] text-primary font-bold">Modular Pricing Engine</div>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2 text-foreground">
+              Predictable, capacity-based pricing.
+            </h2>
+            <p className="text-muted-foreground mt-3 text-sm sm:text-base">
+              Every school gets the full administrative core, CBT simulation, gradebook, and digital library. Scale only by student capacity and the operational add-ons you activate.
+            </p>
           </div>
+
+          <SubscriptionBuilder
+            isPublicPreview={true}
+            initialStudentCount={250}
+          />
         </div>
       </section>
 

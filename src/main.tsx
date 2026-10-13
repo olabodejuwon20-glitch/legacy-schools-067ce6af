@@ -7,7 +7,9 @@ import { installGlobalErrorReporter } from "./lib/error-reporter";
 import { installUserSafeToasts } from "./lib/error-sanitizer";
 import { registerAppSW } from "./lib/registerSW";
 
-void registerAppSW();
+window.addEventListener('load', () => {
+  void registerAppSW();
+});
 
 installGlobalErrorReporter();
 installUserSafeToasts();

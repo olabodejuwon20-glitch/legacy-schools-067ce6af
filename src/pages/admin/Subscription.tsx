@@ -16,11 +16,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  formatNaira, daysUntil, planStatusTone,
-  startSubscriptionCheckout, payInvoice,
+  daysUntil, planStatusTone,
+  payInvoice,
   type PlanTier, type SubInvoice,
 } from "@/lib/subscription";
+import { formatNaira, snapStudentCountToBracket } from "@/lib/pricing";
 import { PilotWidget } from "@/components/pilot/PilotWidget";
+import { SubscriptionBuilder } from "@/components/billing/SubscriptionBuilder";
 
 type SchoolRow = {
   id: string; name: string; plan: string; status: string;
@@ -61,30 +63,20 @@ export default function AdminSubscription({ initialTab = "plans" }: { initialTab
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [school?.id]);
 
-  const currentTier = useMemo(() => plans.find(p => p.plan === row?.plan), [plans, row]);
+  const activeBracket = useMemo(() => {
+    const count = row?.included_students || row?.student_count || 100;
+    return snapStudentCountToBracket(count);
+  }, [row]);
+
   const daysLeft = daysUntil(row?.plan_expires_at ?? row?.term_ends_at ?? null);
   const tone = planStatusTone(row?.status ?? "active", daysLeft);
 
-  function priceFor(p: PlanTier): number {
-    const students = row?.student_count ?? 0;
-    const included = row?.included_students ?? p.included_students;
-    const extra = Math.max(0, students - included);
-    const extraKobo = (row?.extra_student_kobo ?? p.extra_student_kobo) * extra;
-    const base = p.term_price_kobo + extraKobo;
-    return cycle === "annual" ? base * 3 : base;
-  }
-
-  async function choose(plan: string) {
-    if (!school) return;
-    setBusy(plan);
-    try {
-      const res = await startSubscriptionCheckout({ school_id: school.id, plan, cycle });
-      if (res.mode === "test") toast.info("Test mode — using Paystack test key");
-      window.location.href = res.authorization_url;
-    } catch (e: any) {
-      toast.error(e.message ?? "Could not start checkout");
-    } finally { setBusy(null); }
-  }
+  const scrollToBuilder = () => {
+    const el = document.getElementById("subscription-builder-section");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   async function reopen(inv: SubInvoice) {
     setBusy(inv.id);
@@ -160,11 +152,11 @@ export default function AdminSubscription({ initialTab = "plans" }: { initialTab
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <StatusIcon className="size-5" />
-              <h2 className="text-lg font-semibold">{currentTier?.label ?? row.plan} plan</h2>
+              <h2 className="text-lg font-semibold">{activeBracket.name}</h2>
               <Badge variant={tone === "bad" ? "destructive" : "secondary"} className="capitalize">{sub?.status ?? row.status}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {row.student_count} students on roll · billed {row.billing_cycle ?? "termly"} in {row.currency || "NGN"}
+              Capacity: up to {activeBracket.maxStudents.toLocaleString()} students · {activeBracket.includedStorageGb} GB storage · billed {row.billing_cycle ?? "termly"} in {row.currency || "NGN"}
             </p>
             <p className="text-sm">
               {daysLeft == null ? "No expiry set" : daysLeft < 0 ? <span className="text-destructive font-medium">{Math.abs(daysLeft)} day(s) overdue</span> : <span>{daysLeft} day(s) until renewal</span>}
@@ -172,8 +164,8 @@ export default function AdminSubscription({ initialTab = "plans" }: { initialTab
             </p>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold tabular-nums">{currentTier ? formatNaira(priceFor(currentTier)) : "—"}</div>
-            <div className="text-xs text-muted-foreground">{cycle === "annual" ? "per year" : "per term"}</div>
+            <div className="text-2xl font-bold tabular-nums">{formatNaira(activeBracket.termPriceKobo)}</div>
+            <div className="text-xs text-muted-foreground">{row.billing_cycle === "annual" ? "per year (15% off)" : "per term"}</div>
           </div>
         </div>
       </Card>
@@ -209,8 +201,8 @@ export default function AdminSubscription({ initialTab = "plans" }: { initialTab
               </Button>
             ) : (
               <>
-                <Button variant="default" onClick={() => currentTier && choose(currentTier.plan)} disabled={!currentTier || busy === currentTier?.plan}>
-                  <RefreshCw className="size-4 mr-1" /> Renew now
+                <Button variant="default" onClick={scrollToBuilder}>
+                  <RefreshCw className="size-4 mr-1" /> Customize / Renew Plan
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -242,51 +234,12 @@ export default function AdminSubscription({ initialTab = "plans" }: { initialTab
           <TabsTrigger value="invoices">Billing history ({invoices.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="plans" className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="text-sm text-muted-foreground">Pricing scales with your student roll. Choose a billing cycle and a plan to start checkout.</p>
-            <Select value={cycle} onValueChange={v => setCycle(v as any)}>
-              <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="termly">Termly (per term)</SelectItem>
-                <SelectItem value="annual">Annual (×3 prepay)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {plans.filter(p => p.plan !== "trial").map(p => {
-              const isCurrent = p.plan === row.plan;
-              const price = priceFor(p);
-              return (
-                <Card key={p.plan} className={`p-5 flex flex-col gap-3 ${isCurrent ? "border-primary ring-2 ring-primary/20" : ""}`}>
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold flex items-center gap-2">{p.label} {isCurrent && <Badge variant="default" className="text-[10px]">Current</Badge>}</h3>
-                    {p.plan === "premium" && <Sparkles className="size-4 text-primary" />}
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">{formatNaira(price)}</div>
-                    <div className="text-xs text-muted-foreground">{cycle === "annual" ? "per year" : "per term"}</div>
-                  </div>
-                  <ul className="text-xs text-muted-foreground space-y-1 flex-1">
-                    <li>• Up to {p.included_students.toLocaleString()} students included</li>
-                    {p.extra_student_kobo > 0 && <li>• +{formatNaira(p.extra_student_kobo)} per extra student</li>}
-                    <li>• All core LMS features</li>
-                    {p.plan === "standard" && <li>• AI tutor, parent digest, NECO mock</li>}
-                    {p.plan === "premium" && <li>• Priority support + advanced AI</li>}
-                    {p.plan === "enterprise" && <li>• Custom integrations</li>}
-                  </ul>
-                  <Button
-                    disabled={busy === p.plan || (isCurrent && row.status === "active" && (daysLeft ?? 0) > 14)}
-                    onClick={() => choose(p.plan)}
-                    variant={isCurrent ? "outline" : "default"}
-                  >
-                    {busy === p.plan ? "Starting…" : isCurrent ? "Renew now" : "Choose plan"}
-                    <ArrowUpRight className="size-4 ml-1" />
-                  </Button>
-                </Card>
-              );
-            })}
+        <TabsContent value="plans" className="space-y-6">
+          <div id="subscription-builder-section">
+            <SubscriptionBuilder
+              schoolId={school?.id}
+              initialStudentCount={row.student_count || 100}
+            />
           </div>
         </TabsContent>
 

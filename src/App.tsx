@@ -59,6 +59,8 @@ const AdminAISettings = lazy(() => import("./pages/admin/AISettings"));
 const AdminCopilot = lazy(() => import("./pages/admin/Copilot"));
 const AdminKnowledge = lazy(() => import("./pages/admin/Knowledge"));
 const AdminSubscription = lazy(() => import("./pages/admin/Subscription"));
+const AdminBilling = lazy(() => import("./pages/admin/Billing"));
+const AdminBillingThankYou = lazy(() => import("./pages/admin/BillingThankYou"));
 const AdminParents = lazy(() => import("./pages/admin/Parents"));
 const AdminAttendance = lazy(() => import("./pages/admin/Attendance"));
 const AdminRoles = lazy(() => import("./pages/admin/Roles"));
@@ -330,7 +332,8 @@ const App = () => (
               <Route path="admin/copilot" element={<RoleGate allow="admin"><PremiumGate feature="Principal AI Copilot" description="Ask anything about your school — attendance, fees, weak topics. Unlocked with any paid plan."><AdminCopilot /></PremiumGate></RoleGate>} />
               <Route path="admin/knowledge" element={<RoleGate allow="admin"><AdminKnowledge /></RoleGate>} />
               <Route path="admin/subscription" element={<RoleGate allow="admin"><AdminSubscription /></RoleGate>} />
-              <Route path="admin/billing" element={<RoleGate allow="admin"><AdminSubscription initialTab="invoices" /></RoleGate>} />
+              <Route path="admin/billing" element={<RoleGate allow="admin"><AdminBilling /></RoleGate>} />
+              <Route path="admin/billing/thank-you" element={<RoleGate allow="admin"><AdminBillingThankYou /></RoleGate>} />
               <Route path="admin/academic" element={<RoleGate allow="admin"><AdminAcademic /></RoleGate>} />
               <Route path="admin/roles" element={<RoleGate allow="admin"><AdminRoles /></RoleGate>} />
               <Route path="admin/trad-exams" element={<RoleGate allow="admin"><AdminTradExams /></RoleGate>} />
